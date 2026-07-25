@@ -1,0 +1,82 @@
+import { describe, expect, it } from 'vitest';
+import { inheritVampire } from '../simulation/bloodlines/inheritance';
+import type { HumanCharacter, VampireCharacter } from '../types/models';
+
+const sire: VampireCharacter = {
+  id: 'sire',
+  name: 'Elda',
+  age: 400,
+  professionId: 'scribe',
+  attributes: {
+    strength: 4,
+    agility: 4,
+    vitality: 5,
+    willpower: 6,
+    intelligence: 6,
+    presence: 4,
+    bloodControl: 6,
+  },
+  traitIds: ['memories_of_the_blood', 'blood_mage', 'strong'],
+  health: 20,
+  maxHealth: 20,
+  morale: 60,
+  loyalty: 90,
+  ambition: 70,
+  stress: 10,
+  combat: 6,
+  vitae: 8,
+  maxVitae: 10,
+  bloodEssence: 1,
+  hunger: 0,
+  memoryFragments: [],
+  professionSkills: { Crafting: 2, Research: 2 },
+};
+
+const human: HumanCharacter = {
+  id: 'human-1',
+  name: 'Adela',
+  familyName: 'Stein',
+  age: 24,
+  professionId: 'blacksmith',
+  attributes: {
+    strength: 4,
+    agility: 3,
+    vitality: 4,
+    willpower: 3,
+    intelligence: 3,
+    presence: 2,
+    bloodControl: 0,
+  },
+  traitIds: ['blacksmith_training', 'frail'],
+  factionId: 'village',
+  health: 11,
+  maxHealth: 11,
+  morale: 50,
+  loyalty: 35,
+  ambition: 44,
+  stress: 12,
+  combat: 2,
+  bloodQuality: 4,
+  recruitability: 80,
+  status: 'wandering',
+  relationships: {},
+};
+
+describe('vampire inheritance', () => {
+  it('combines sire and human traits into a new vampire', () => {
+    const result = inheritVampire(sire, human, 'inheritance-seed');
+    expect(result.vampire.id).toBe('vampire-human-1');
+    expect(result.vampire.professionId).toBe('blacksmith');
+    expect(result.report.finalTraits.length).toBeGreaterThan(0);
+    expect(result.report.retainedTraits.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('can generate deterministic mutations from the configured algorithm', () => {
+    const seeds = Array.from({ length: 400 }, (_, index) => `mutation-${index}`);
+    const mutationResult = seeds
+      .map((seed) => inheritVampire(sire, human, seed))
+      .find((result) => result.report.mutations.length > 0);
+    expect(mutationResult).toBeDefined();
+    expect(mutationResult?.report.mutations.length).toBeGreaterThan(0);
+  });
+});
