@@ -63,7 +63,7 @@ export class BloodwakeApp {
             <button id="reroll-vampire">Reroll</button>
             <button id="start-game">Start Game</button>
           </div>
-          <div id="preview-panel">${this.renderVampirePreview(preview)}</div>
+          <div id="preview-panel"></div>
         </section>
         <section class="panel saves-panel">
           <h2>Save Slots</h2>
@@ -76,9 +76,10 @@ export class BloodwakeApp {
     const nameInput = this.query<HTMLInputElement>('#player-name');
     const seedInput = this.query<HTMLInputElement>('#world-seed');
     const previewPanel = this.query<HTMLDivElement>('#preview-panel');
+    previewPanel.replaceChildren(this.createPreviewContent(preview));
     const refreshPreview = (): void => {
       const state = createNewGameState({ playerName: nameInput.value, seed: seedInput.value || createDefaultSeed() });
-      previewPanel.innerHTML = this.renderVampirePreview(state);
+      previewPanel.replaceChildren(this.createPreviewContent(state));
     };
     this.query<HTMLButtonElement>('#randomize-seed').onclick = () => {
       seedInput.value = createDefaultSeed();
@@ -285,34 +286,51 @@ export class BloodwakeApp {
     this.bindGameActions();
   }
 
-  private renderVampirePreview(state: SaveGame): string {
-    return `
-      <div class="preview-grid">
-        <div>
-          <h3>${state.player.name}</h3>
-          <p>Seed: ${state.seed}</p>
-          <p>Starting profession: ${state.player.professionId}</p>
-        </div>
-        <div>
-          <h3>Attributes</h3>
-          <ul>${Object.entries(state.player.attributes)
-            .map(([key, value]) => `<li>${key}: ${value}</li>`)
-            .join('')}</ul>
-        </div>
-        <div>
-          <h3>Traits</h3>
-          <ul>${(state.player.traitIds.length > 0 ? state.player.traitIds : ['None'])
-            .map((traitId) => {
-              if (traitId === 'None') {
-                return '<li>None</li>';
-              }
-              const trait = getTraitById(traitId);
-              return `<li><strong>${trait.name}</strong> (${trait.rarity}) — ${trait.description}</li>`;
-            })
-            .join('')}</ul>
-        </div>
-      </div>
-    `;
+  private createPreviewContent(state: SaveGame): DocumentFragment {
+    const fragment = document.createDocumentFragment();
+    const grid = document.createElement('div');
+    grid.className = 'preview-grid';
+
+    const summary = document.createElement('div');
+    const summaryTitle = document.createElement('h3');
+    summaryTitle.textContent = state.player.name;
+    const summarySeed = document.createElement('p');
+    summarySeed.textContent = `Seed: ${state.seed}`;
+    const summaryProfession = document.createElement('p');
+    summaryProfession.textContent = `Starting profession: ${state.player.professionId}`;
+    summary.append(summaryTitle, summarySeed, summaryProfession);
+
+    const attributes = document.createElement('div');
+    const attributesTitle = document.createElement('h3');
+    attributesTitle.textContent = 'Attributes';
+    const attributesList = document.createElement('ul');
+    for (const [key, value] of Object.entries(state.player.attributes)) {
+      const item = document.createElement('li');
+      item.textContent = `${key}: ${value}`;
+      attributesList.append(item);
+    }
+    attributes.append(attributesTitle, attributesList);
+
+    const traits = document.createElement('div');
+    const traitsTitle = document.createElement('h3');
+    traitsTitle.textContent = 'Traits';
+    const traitsList = document.createElement('ul');
+    const previewTraits = state.player.traitIds.length > 0 ? state.player.traitIds : ['None'];
+    for (const traitId of previewTraits) {
+      const item = document.createElement('li');
+      if (traitId === 'None') {
+        item.textContent = 'None';
+      } else {
+        const trait = getTraitById(traitId);
+        item.textContent = `${trait.name} (${trait.rarity}) — ${trait.description}`;
+      }
+      traitsList.append(item);
+    }
+    traits.append(traitsTitle, traitsList);
+
+    grid.append(summary, attributes, traits);
+    fragment.append(grid);
+    return fragment;
   }
 
   private renderSaveSlots(slots: SaveSlot[]): string {
