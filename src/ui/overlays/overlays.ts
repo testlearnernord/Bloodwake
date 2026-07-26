@@ -6,6 +6,7 @@ import { getTraitById } from '../../simulation/traits/traitUtils';
 import type { BuiltRoom, InventoryEntry, ItemCategory, ItemId, SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
 import type { MenuId } from '../uiState';
+import { htmlEscape } from '../../utilities/html';
 
 const INVENTORY_FILTERS: Array<{ id: 'all' | ItemCategory; label: string }> = [
   { id: 'all', label: 'All' },
@@ -43,17 +44,17 @@ export const renderOverlay = (
       <header class="overlay-header"><h2 id="overlay-title">Character & Bloodline</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
       <div class="overlay-body columns two">
         <section>
-          <h3>${state.player.name}</h3>
-          <p>Profession: ${state.player.professionId}</p>
+          <h3>${htmlEscape(state.player.name)}</h3>
+          <p>Profession: ${htmlEscape(state.player.professionId)}</p>
           <p>Vitae Capacity: ${state.player.maxVitae} · Hunger: ${state.player.hunger}</p>
           <h4>Attributes</h4>
-          <ul>${Object.entries(state.player.attributes).map(([key, value]) => `<li>${key}: base ${value}, item bonus pending, final ${value}</li>`).join('')}</ul>
+          <ul>${Object.entries(state.player.attributes).map(([key, value]) => `<li>${htmlEscape(key)}: base ${value}, item bonus pending, final ${value}</li>`).join('')}</ul>
         </section>
         <section>
           <h4>Traits</h4>
           <ul>${traits.map((trait) => `<li>${trait.name} (${trait.rarity}) — ${trait.description}</li>`).join('')}</ul>
           <h4>Inheritance History</h4>
-          <ul>${state.inheritanceHistory.slice(0, 6).map((entry) => `<li>Final traits: ${entry.finalTraits.join(', ') || 'none'}</li>`).join('') || '<li>No inheritance events yet.</li>'}</ul>
+          <ul>${state.inheritanceHistory.slice(0, 6).map((entry) => `<li>Final traits: ${entry.finalTraits.map(htmlEscape).join(', ') || 'none'}</li>`).join('') || '<li>No inheritance events yet.</li>'}</ul>
         </section>
       </div>
     `;
@@ -74,7 +75,7 @@ export const renderOverlay = (
           <h3>Items</h3>
           <div class="item-grid">${entries
             .map(
-              (entry) => `<button class="item-card ${selectedEntry?.itemId === entry.itemId ? 'selected' : ''}" data-item-id="${entry.itemId}">${renderIcon(ITEMS_BY_ID[entry.itemId].iconId)}<span>${entry.label}</span><span>× ${entry.quantity}</span><span>${entry.quality ?? 'Common'} · ${ITEMS_BY_ID[entry.itemId].rarity}</span></button>`,
+              (entry) => `<button class="item-card ${selectedEntry?.itemId === entry.itemId ? 'selected' : ''}" data-item-id="${entry.itemId}">${renderIcon(ITEMS_BY_ID[entry.itemId].iconId)}<span>${htmlEscape(entry.label)}</span><span>× ${entry.quantity}</span><span>${entry.quality ?? 'Common'} · ${ITEMS_BY_ID[entry.itemId].rarity}</span></button>`,
             )
             .join('') || '<p>No items in this category.</p>'}</div>
         </section>
@@ -118,7 +119,7 @@ export const renderOverlay = (
           ${
             state.servants.length === 0
               ? '<p>No servants have been recruited yet. Turn a human in the world to create your first vampire servant.</p>'
-              : state.servants.map((servant) => `<button class="servant-card" data-servant-row="${servant.id}">${servant.name} · ${servant.type}</button>`).join('')
+              : state.servants.map((servant) => `<button class="servant-card" data-servant-row="${servant.id}">${htmlEscape(servant.name)} · ${htmlEscape(servant.type)}</button>`).join('')
           }
         </section>
         <section>
@@ -128,7 +129,7 @@ export const renderOverlay = (
               ? '<p>Once recruited, servants can gather, build, and craft for your stronghold.</p>'
               : state.servants
                   .map(
-                    (servant) => `<article><h4>${servant.name}</h4><p>${servant.professionId}</p><p>Health ${servant.health}/${servant.maxHealth} · Morale ${servant.morale} · Loyalty ${servant.loyalty}</p><p>Ambition ${servant.ambition} · Stress ${servant.stress}</p><p>Task: ${servant.currentTask ?? 'none'} — ${servant.taskReason}</p></article>`,
+                    (servant) => `<article><h4>${htmlEscape(servant.name)}</h4><p>${htmlEscape(servant.professionId)}</p><p>Health ${servant.health}/${servant.maxHealth} · Morale ${servant.morale} · Loyalty ${servant.loyalty}</p><p>Ambition ${servant.ambition} · Stress ${servant.stress}</p><p>Task: ${htmlEscape(servant.currentTask ?? 'none')} — ${htmlEscape(servant.taskReason)}</p></article>`,
                   )
                   .join('')
           }
@@ -140,7 +141,7 @@ export const renderOverlay = (
               ? '<p>Priority controls unlock once a servant exists.</p>'
               : state.servants
                   .map(
-                    (servant) => `<article><h4>${servant.name}</h4>${(['Building', 'Crafting', 'Gathering', 'Guarding', 'Research', 'Hunting'] as const)
+                    (servant) => `<article><h4>${htmlEscape(servant.name)}</h4>${(['Building', 'Crafting', 'Gathering', 'Guarding', 'Research', 'Hunting'] as const)
                       .map(
                         (jobType) => `<label>${jobType}<select data-servant-id="${servant.id}" data-job-type="${jobType}">${['Disabled', 'Low', 'Normal', 'High', 'Critical']
                           .map((priority) => `<option value="${priority}" ${servant.priorities[jobType] === priority ? 'selected' : ''}>${priority}</option>`)
@@ -215,13 +216,13 @@ export const renderOverlay = (
             })
             .join('')}</ol>
           <h3>Completed Steps</h3>
-          <ul>${questState.completedStepIds.map((stepId) => `<li>${stepId}</li>`).join('') || '<li>None yet.</li>'}</ul>
+          <ul>${questState.completedStepIds.map((stepId) => `<li>${htmlEscape(stepId)}</li>`).join('') || '<li>None yet.</li>'}</ul>
         </section>
         <section>
           <h3>Memories</h3>
-          <ul>${state.collectibles.filter((entry) => entry.discovered).map((entry) => `<li>${entry.collectibleId}</li>`).join('') || '<li>No memories recovered yet.</li>'}</ul>
+          <ul>${state.collectibles.filter((entry) => entry.discovered).map((entry) => `<li>${htmlEscape(entry.collectibleId)}</li>`).join('') || '<li>No memories recovered yet.</li>'}</ul>
           <h3>Recent Events</h3>
-          <ul>${state.lastEventLog.slice(0, 10).map((line) => `<li>${line}</li>`).join('')}</ul>
+          <ul>${state.lastEventLog.slice(0, 10).map((line) => `<li>${htmlEscape(line)}</li>`).join('')}</ul>
         </section>
       </div>
     `;

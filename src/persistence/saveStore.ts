@@ -45,12 +45,16 @@ const normalizeInventoryEntry = (value: unknown): InventoryEntry | null => {
   if (value.quantity <= 0 || !Number.isFinite(value.quantity)) {
     return null;
   }
+  const quantity = Math.floor(value.quantity);
+  if (quantity <= 0) {
+    return null;
+  }
   if (!(value.itemId in ITEMS_BY_ID)) {
     throw new Error(`Unknown item in save: ${String(value.itemId)}`);
   }
   return {
     itemId: value.itemId as ItemId,
-    quantity: Math.floor(value.quantity),
+    quantity,
     quality: typeof value.quality === 'string' && QUALITY_LEVELS.includes(value.quality as QualityLevel) ? (value.quality as QualityLevel) : undefined,
   };
 };

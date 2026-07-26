@@ -1,6 +1,7 @@
 import type { InventoryEntry, ItemId, SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
 import type { MenuId } from '../uiState';
+import { htmlEscape } from '../../utilities/html';
 
 interface TopBarResourceDefinition {
   id: string;
@@ -38,13 +39,13 @@ export const renderTopBar = (
   pauseVisible: boolean,
   resourceDelta: Record<string, number>,
 ): string => {
-  const worldInfo = `Day ${state.time.day} · ${state.time.phase.toUpperCase()} · ${activeZone}`;
+  const worldInfo = htmlEscape(`Day ${state.time.day} · ${state.time.phase.toUpperCase()} · ${activeZone}`);
   const pauseText = pauseVisible ? 'Paused' : 'Live';
 
   return `
     <div class="topbar-group topbar-left">
       <div class="topbar-line"><strong>${worldInfo}</strong></div>
-      <div class="topbar-line">Objective: ${objective}</div>
+      <div class="topbar-line">Objective: ${htmlEscape(objective)}</div>
       <div class="topbar-line">State: ${pauseText}</div>
       <div class="button-row compact">
         <button data-global-action="advance-phase" aria-label="Advance day phase">Advance Phase</button>

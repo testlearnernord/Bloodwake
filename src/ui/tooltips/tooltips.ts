@@ -31,7 +31,9 @@ export class TooltipManager {
     this.tooltipEl.classList.remove('hidden');
   };
 
-  private onMouseOut = (): void => {
+  private onMouseOut = (event: MouseEvent): void => {
+    const anchor = (event.target as HTMLElement | null)?.closest<HTMLElement>('[data-tooltip]');
+    if (anchor?.contains(event.relatedTarget as Node | null)) return;
     this.tooltipEl?.classList.add('hidden');
   };
 
