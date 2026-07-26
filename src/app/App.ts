@@ -113,10 +113,14 @@ export class BloodwakeApp {
       }
     }
     this.query<HTMLButtonElement>('#import-save').onclick = async () => {
-      const raw = this.query<HTMLTextAreaElement>('#import-json').value;
-      const imported = importSaveGame(raw);
-      await saveToSlot(SLOT_IDS[0], imported);
-      await this.renderTitleScreen();
+      try {
+        const raw = this.query<HTMLTextAreaElement>('#import-json').value;
+        const imported = importSaveGame(raw);
+        await saveToSlot(SLOT_IDS[0], imported);
+        await this.renderTitleScreen();
+      } catch (error) {
+        alert(error instanceof Error ? error.message : 'Failed to import save.');
+      }
     };
   }
 
