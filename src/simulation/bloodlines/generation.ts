@@ -28,7 +28,7 @@ const countStartingTraits = (rng: SeededRng): number => {
 };
 
 const buildTraitPool = (rarity: TraitRarity): TraitDefinition[] =>
-  TRAITS.filter((trait) => trait.rarity === rarity && !trait.humanOnly && (!trait.vampireOnly || trait.vampireOnly));
+  TRAITS.filter((trait) => trait.rarity === rarity && !trait.humanOnly);
 
 const pickTrait = (rng: SeededRng, rarity: TraitRarity, chosenIds: string[]): string | null => {
   const candidates = buildTraitPool(rarity)
