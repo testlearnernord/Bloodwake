@@ -39,8 +39,11 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     Array.isArray(save.npcs) &&
     Array.isArray(save.craftingQueue) &&
     Array.isArray(save.constructionTasks) &&
+    save.player !== null &&
     typeof save.player === 'object' &&
+    save.resources !== null &&
     typeof save.resources === 'object' &&
+    save.time !== null &&
     typeof save.time === 'object' &&
     Array.isArray(save.quests) &&
     Array.isArray(save.collectibles)
