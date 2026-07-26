@@ -3,13 +3,14 @@ import { ITEMS_BY_ID } from '../../data/items';
 import { PROFESSIONS_BY_ID } from '../../data/professions';
 import { RECIPES_BY_ID } from '../../data/recipes';
 import { ROOMS_BY_ID } from '../../data/rooms';
-import type { CraftingOrder, InventoryEntry, QualityLevel, ResourcePool, Servant } from '../../types/models';
+import type { CraftingOrder, InventoryEntry, QualityLevel, Servant } from '../../types/models';
 import { SeededRng } from '../../utilities/rng';
 import { getTraitById } from '../traits/traitUtils';
+import { addItem, consumeItems, hasItems, mergeCompatibleStacks } from '../inventory/inventory';
 
-export const canCraftRecipe = (resources: ResourcePool, recipeId: string): boolean => {
+export const canCraftRecipe = (inventory: InventoryEntry[], recipeId: string): boolean => {
   const recipe = RECIPES_BY_ID[recipeId];
-  return Object.entries(recipe.inputs).every(([resourceId, amount]) => (resources[resourceId] ?? 0) >= amount);
+  return hasItems(inventory, recipe.inputs);
 };
 
 export const queueCraftingOrder = (craftingQueue: CraftingOrder[], recipeId: string): CraftingOrder[] => {
@@ -53,32 +54,26 @@ const scoreCraftQuality = (servant: Servant, recipeId: string, seed: string): Qu
 };
 
 export const completeCraftingOrder = (
-  resources: ResourcePool,
   inventory: InventoryEntry[],
   order: CraftingOrder,
   servant: Servant,
   seed: string,
-): { resources: ResourcePool; inventory: InventoryEntry[]; order: CraftingOrder } => {
+): { inventory: InventoryEntry[]; order: CraftingOrder } => {
   const recipe = RECIPES_BY_ID[order.recipeId];
-  if (!canCraftRecipe(resources, order.recipeId)) {
-    throw new Error('Insufficient resources for recipe.');
-  }
-  const updatedResources = { ...resources };
-  for (const [resourceId, amount] of Object.entries(recipe.inputs)) {
-    updatedResources[resourceId] -= amount;
+  if (!canCraftRecipe(inventory, order.recipeId)) {
+    throw new Error('Insufficient items for recipe.');
   }
   const quality = scoreCraftQuality(servant, order.recipeId, seed);
-  const updatedInventory = [...inventory];
+  let updatedInventory = consumeItems(inventory, recipe.inputs);
   for (const output of recipe.outputs) {
     const item = ITEMS_BY_ID[output.itemId];
     if (!item) {
       throw new Error(`Unknown item: ${output.itemId}`);
     }
-    updatedInventory.push({ itemId: output.itemId, quantity: output.quantity, quality });
+    updatedInventory = addItem(updatedInventory, output.itemId, output.quantity, quality);
   }
   return {
-    resources: updatedResources,
-    inventory: updatedInventory,
+    inventory: mergeCompatibleStacks(updatedInventory),
     order: { ...order, progress: recipe.workAmount, status: 'complete' },
   };
 };

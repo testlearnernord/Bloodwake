@@ -97,6 +97,7 @@ export const generateStartingVampire = (options: NewGameOptions = {}): { seed: s
       hunger: 0,
       memoryFragments: [],
       professionSkills: profession.jobBonuses,
+      equipment: {},
     },
   };
 };

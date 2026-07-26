@@ -2,8 +2,9 @@ import Phaser from 'phaser';
 import { BITE_RANGE, TURN_COST_VITAE } from '../../config/balancing';
 import { COFFIN_RESPAWN, WORLD_BOUNDS } from '../../config/game';
 import { ENEMIES } from '../../data/enemies';
+import { applyIncomingDamage } from '../../simulation/combat/stats';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
-import type { EnemyType, HumanCharacter } from '../../types/models';
+import type { EnemyType, HumanCharacter, ItemId } from '../../types/models';
 import type { GameBridge } from '../bridge';
 
 interface SceneEnemy {
@@ -21,7 +22,7 @@ interface SceneHuman {
 
 interface SceneResourceNode {
   id: string;
-  resourceId: string;
+  itemId: ItemId;
   amount: number;
   sprite: Phaser.GameObjects.Rectangle;
 }
@@ -69,11 +70,16 @@ export class WorldScene extends Phaser.Scene {
     const state = this.bridge.getState();
     this.syncHumansWithState();
     this.syncMemoryWithState();
-    this.updateMovement();
-    this.updateNearbyHuman();
-    this.updateZone();
-    this.updateEnemyAi(time);
-    this.handleActionKeys(time);
+    if (!this.bridge.isInputBlocked()) {
+      this.updateMovement();
+      this.updateNearbyHuman();
+      this.updateZone();
+      this.updateEnemyAi(time);
+      this.handleActionKeys(time);
+    } else {
+      this.player.setVelocity(0, 0);
+      this.bridge.onHumanFocused(null);
+    }
     if (!canPlayerExplore(state.time.phase)) {
       this.player.setPosition(COFFIN_RESPAWN.x, COFFIN_RESPAWN.y);
       this.player.setVelocity(0, 0);
@@ -157,9 +163,11 @@ export class WorldScene extends Phaser.Scene {
 
   private createResources(): void {
     this.resources = [
-      { id: 'wood-node', resourceId: 'Wood', amount: 3, sprite: this.add.rectangle(430, 340, 20, 20, 0x2d6a4f) },
-      { id: 'herb-node', resourceId: 'Herbs', amount: 2, sprite: this.add.rectangle(740, 250, 18, 18, 0x74c69d) },
-      { id: 'ore-node', resourceId: 'Iron Ore', amount: 2, sprite: this.add.rectangle(840, 520, 20, 20, 0x6c757d) },
+      { id: 'wood-node', itemId: 'wood', amount: 3, sprite: this.add.rectangle(430, 340, 20, 20, 0x2d6a4f) },
+      { id: 'herb-node', itemId: 'herbs', amount: 2, sprite: this.add.rectangle(740, 250, 18, 18, 0x74c69d) },
+      { id: 'ore-node', itemId: 'iron_ore', amount: 2, sprite: this.add.rectangle(840, 520, 20, 20, 0x6c757d) },
+      { id: 'stone-node', itemId: 'stone', amount: 2, sprite: this.add.rectangle(300, 280, 18, 18, 0x868e96) },
+      { id: 'food-node', itemId: 'food', amount: 2, sprite: this.add.rectangle(980, 180, 18, 18, 0xe9c46a) },
     ];
   }
 
@@ -197,6 +205,7 @@ export class WorldScene extends Phaser.Scene {
     this.tabKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.bridge.isInputBlocked()) return;
       if (pointer.rightButtonDown()) {
         this.performHeavyAttack(this.time.now);
       } else {
@@ -239,6 +248,7 @@ export class WorldScene extends Phaser.Scene {
 
   private updateEnemyAi(time: number): void {
     const state = this.bridge.getState();
+    const combat = this.bridge.getCombatStats();
     for (const enemy of this.enemies) {
       if (!enemy.sprite.active) continue;
       const definition = ENEMIES.find((entry) => entry.id === enemy.type);
@@ -248,7 +258,8 @@ export class WorldScene extends Phaser.Scene {
         this.physics.moveToObject(enemy.sprite, this.player, definition.speed);
         if (distance < 28 && time - Number(enemy.sprite.getData('lastHit') ?? 0) > 1000) {
           enemy.sprite.setData('lastHit', time);
-          const health = Math.max(0, state.player.health - definition.damage);
+          const reduced = applyIncomingDamage(definition.damage, combat.armor);
+          const health = Math.max(0, state.player.health - reduced);
           this.bridge.onPlayerVitalsChanged(health, state.player.vitae);
           if (health <= 0) {
             this.bridge.onRespawn();
@@ -267,6 +278,7 @@ export class WorldScene extends Phaser.Scene {
   private handleActionKeys(time: number): void {
     if (Phaser.Input.Keyboard.JustDown(this.dodgeKey) && time - this.lastDodgeAt > 1200) {
       this.lastDodgeAt = time;
+      this.bridge.onDodgeUsed(Date.now() + 1200);
       const body = this.player.body as Phaser.Physics.Arcade.Body | null;
       const dash = new Phaser.Math.Vector2(body?.velocity.x ?? 0, body?.velocity.y ?? 0).normalize();
       if (dash.length() === 0) {
@@ -288,7 +300,8 @@ export class WorldScene extends Phaser.Scene {
   private performPrimaryAttack(time: number): void {
     if (time - this.lastAttackAt < 450) return;
     this.lastAttackAt = time;
-    this.damageEnemiesInFront(4, 54);
+    const combat = this.bridge.getCombatStats();
+    this.damageEnemiesInFront(combat.attackDamage, 54);
   }
 
   private performHeavyAttack(time: number): void {
@@ -296,7 +309,8 @@ export class WorldScene extends Phaser.Scene {
     if (time - this.lastHeavyAttackAt < 900 || state.player.vitae < 1) return;
     this.lastHeavyAttackAt = time;
     this.bridge.onPlayerVitalsChanged(state.player.health, state.player.vitae - 1);
-    this.damageEnemiesInFront(7, 70);
+    const combat = this.bridge.getCombatStats();
+    this.damageEnemiesInFront(combat.attackDamage + 3, 70);
   }
 
   private damageEnemiesInFront(damage: number, range: number): void {
@@ -307,6 +321,8 @@ export class WorldScene extends Phaser.Scene {
       const toEnemy = new Phaser.Math.Vector2(enemy.sprite.x - this.player.x, enemy.sprite.y - this.player.y);
       if (toEnemy.length() <= range && toEnemy.normalize().dot(facing) > 0.2) {
         enemy.health -= damage;
+        enemy.sprite.setTint(0xff6b6b);
+        this.time.delayedCall(120, () => enemy.sprite.clearTint());
         if (enemy.health <= 0) {
           enemy.sprite.destroy();
           this.bridge.onEnemyDefeated(enemy.type);
@@ -321,8 +337,8 @@ export class WorldScene extends Phaser.Scene {
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, node.sprite.x, node.sprite.y);
       if (distance <= 50) {
         node.sprite.destroy();
-        this.bridge.onCollectResource(node.resourceId, node.amount);
-        this.hintText.setText(`Collected ${node.amount} ${node.resourceId}.`);
+        this.bridge.onCollectItem(node.itemId, node.amount);
+        this.hintText.setText(`Collected ${node.amount} ${node.itemId.replace('_', ' ')}.`);
         return;
       }
     }
@@ -339,7 +355,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.nearbyHumanId) {
       const state = this.bridge.getState();
       if (state.player.vitae >= TURN_COST_VITAE) {
-        this.hintText.setText('Human is within reach. Use the command panel to drain or turn them.');
+        this.hintText.setText('Human is within reach. Open context actions to feed, drain, or turn.');
       }
     }
   }

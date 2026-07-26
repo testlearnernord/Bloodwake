@@ -1,29 +1,28 @@
 # Game Design
 
-## Vertical slice loop
+## Core loop (Milestone 0.2)
 
-1. Generate a seeded starting vampire.
-2. Explore the forest and village at night.
-3. Fight enemies and harvest Blood Essence.
+1. Generate a deterministic starting vampire from world seed + character roll.
+2. Explore the world at night and collect physical items.
+3. Fight enemies for Blood Essence (strategic resource).
 4. Feed on or turn humans.
-5. Recover a memory fragment.
-6. Return to the stronghold.
-7. Place rooms and advance phases.
-8. Let servants gather, build, and craft.
-9. Save and reload progress.
+5. Expand the stronghold with item-based construction costs.
+6. Queue crafting recipes that consume inventory items and produce item outputs.
+7. Equip weapon/armor/accessory items and consume Healing Draught when needed.
+8. Progress quest and memory log through overlays and HUD context.
 
-## Blood systems
+## Resource model
 
-- `Vitae`: short-term combat and turning resource carried by the player.
-- `Blood Essence`: strategic stronghold resource stored in the base.
+- **Physical inventory items**: wood, stone, ore, herbs, food, crafted equipment/consumables.
+- **Strategic resources**: Blood Essence, Security (plus placeholders for gold/knowledge/influence).
 
-## Trait design
+## UI design pillars
 
-- Traits have rarity, category, modifiers, incompatibilities, and optional rule-changing effects.
-- The legendary trait `Memories of the Blood` changes turning by retaining an extra human trait.
+- Top bar for strategic state + resources + management entry points
+- Bottom HUD for combat vitals and future combat expansion hooks
+- Context panel only when interactions are available
+- Overlay-based management screens that pause/block world input
 
-## Incomplete systems
+## Deferred systems
 
-- Enthrallment is not fully implemented.
-- Relationship simulation and long-form stronghold automation remain future work.
-- Additional quests, rooms, items, and enemies are planned but not present yet.
+Milestone 0.3 handles advanced lock-on combat and full animation overhaul.

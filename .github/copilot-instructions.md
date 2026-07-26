@@ -9,3 +9,5 @@
 - Make small focused changes; do not silently rewrite architecture.
 - Update documentation whenever user-visible behavior, commands, or data definitions change.
 - Do not claim incomplete systems are complete.
+- Keep strategic resources (`strategicResources`) separate from physical inventory items (`inventory`).
+

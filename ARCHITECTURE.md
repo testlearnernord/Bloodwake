@@ -4,28 +4,30 @@
 
 - Browser-only, static deployment
 - Deterministic gameplay simulation
-- Testable systems separated from Phaser-specific code
-- Small understandable modules for future Copilot-driven iteration
+- Strict TypeScript with testable pure systems
+- Lightweight vanilla DOM UI without framework dependencies
 
 ## Structure
 
-- `src/config`: central game title, save version, and balancing constants
-- `src/data`: data-driven definitions for traits, professions, items, recipes, rooms, quests, collectibles, enemies, and servant events
-- `src/simulation`: pure gameplay systems for generation, inheritance, building, crafting, servants, and time
-- `src/game`: Phaser scene and bridge integration
-- `src/app`: UI shell and state creation
-- `src/persistence`: IndexedDB save slots, validation, migration, and local settings
+- `src/config`: title, save version, balancing constants
+- `src/data`: traits, professions, items, recipes, rooms, quests, collectibles, enemies
+- `src/simulation`: pure gameplay systems (generation, inheritance, inventory, crafting, building, servants, combat stats)
+- `src/game`: Phaser world scene and UI/game bridge
+- `src/app`: application coordinator and state creation
+- `src/ui`: shell, top bar, HUD, overlays, icon registry, tooltips, notifications, shortcut state
+- `src/persistence`: IndexedDB save slots, validation, and migration
 - `src/tests`: deterministic unit tests
 
-## Key decisions
+## Key decisions in Milestone 0.2
 
-- The initial world uses one Phaser scene with three contiguous zones to keep the playable slice small.
-- Stronghold management uses DOM panels so simulation UIs stay decoupled from the render loop.
-- Save validation and migration are explicit, versioned, and JSON-friendly.
-- Trait behavior uses data plus a small effect-handler registry rather than a single giant switch.
+- Split physical items and strategic resources in the save model.
+- Keep all menu screens in a single reusable overlay host (one major overlay open at a time).
+- Keep Phaser simulation independent from DOM rendering by using a typed bridge.
+- Centralize menu shortcuts and icon rendering in `src/ui` modules.
+- Use local inline SVG icon registry instead of network assets.
 
 ## Known limitations
 
-- The world is a compact slice rather than a broad region map.
-- Room placement supports only the current fixed-size grid.
-- Equipment management is minimal and not yet a drag-and-drop inventory.
+- Combat feel remains intentionally lightweight pending Milestone 0.3.
+- Overlay layouts prioritize desktop and are compact on narrower windows.
+- Tactical lock-on and animation state machines are deferred.

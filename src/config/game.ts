@@ -1,5 +1,5 @@
-export const GAME_TITLE = 'Vampire Breed';
-export const SAVE_FORMAT_VERSION = 1;
+export const GAME_TITLE = 'Bloodwake';
+export const SAVE_FORMAT_VERSION = 2;
 export const GRID_WIDTH = 4;
 export const GRID_HEIGHT = 4;
 export const STARTING_WORLD_SEED = '1042';

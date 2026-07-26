@@ -1,47 +1,60 @@
-# Vampire Breed
+# Bloodwake
 
-Vampire Breed is a free browser-based 2D vampire action RPG vertical slice built with TypeScript, Phaser 3, Vite, IndexedDB, and plain HTML/CSS.
+Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: initial playable vertical slice.
-
-Screenshot placeholder: launch locally with `npm run dev` and capture the current build when visuals change.
+> Current status: Milestone 0.2 UI, inventory, and presentation overhaul.
 
 ## Zero-cost architecture
 
-- Runs entirely in the browser
-- Deploys to GitHub Pages as a static site
-- Uses no backend, accounts, runtime APIs, or paid services
-- Bundles all gameplay code and uses only local placeholder visuals
+- Static deployment to GitHub Pages
+- No backend, accounts, telemetry, analytics, or runtime API calls
+- No paid services
+- No runtime CDN dependencies
+- Local SVG icons and programmatic visuals only
 
-## What is actually implemented
+## Implemented in Milestone 0.2
 
-- Seeded starting vampire generation with configurable trait rarity rules
-- Deterministic human generation, feeding, draining, and turning
-- Trait inheritance with retained traits, sire traits, incompatibility cleanup, and mutations
-- Playable top-down Phaser scene with movement, attacks, dodge, enemy AI, resource pickup, a memory fragment, death, and respawn
-- Stronghold room placement, phase advancement, servant priorities, automated work, and crafting queues
-- IndexedDB save slots, manual save, auto-save, export/import, validation, and migration scaffolding
-- Unit tests for RNG, generation, inheritance, crafting, building, servant tasking, time rules, and save logic
+- Fullscreen application shell (top strategic bar, centered world view, bottom combat HUD)
+- Overlay-based management UI (Character, Inventory, Servants, Stronghold, Crafting, Journal, Pause)
+- Deterministic world seed + `characterRoll` new-game generation flow
+- New games start with **no starter servant**; first servant is acquired by turning a human
+- Item-based inventory operations with deterministic helpers
+- Strategic resources split from physical inventory items
+- Equipment loadout with stat impact (weapon damage, armor mitigation)
+- Healing Draught consumable support
+- Save format version 2 migration from legacy data
+- Startup fatal-error panel fallback instead of blank white startup failures
+- GitHub Pages smoke validation (`npm run smoke:pages`)
 
 ## Controls
 
+### World controls
 - `WASD`: move
 - `Left Mouse`: primary attack
 - `Right Mouse`: heavy attack
 - `Space`: dodge
 - `E`: interact / collect
-- `F`: feed on a nearby human
-- `Tab`: pause or management toggle
-- `Escape`: pause menu
+- `F`: feed nearby human
 
-## Feature overview
+### Menu shortcuts
+- `C`: Character & Bloodline
+- `I`: Inventory & Equipment
+- `V`: Servants
+- `B`: Stronghold
+- `K`: Crafting
+- `J`: Journal & Memories
+- `Escape`: close overlay, or open Pause if none is open
 
-- Ruined Stronghold, Forest Road, and Village Edge zones
-- Vitae and Blood Essence as separate resources
-- One intro quest chain and one collectible memory fragment
-- Human and vampire servants with transparent task reasons
-- Room building: Coffin Chamber, Storage Room, Workshop, Servant Quarters, Blood Cellar
-- Crafting: Wood Planks, Iron Ingot, Simple Sword, Leather Armor, Healing Draught
+Shortcuts are guarded and do not trigger while typing in form controls.
+
+## Display targets
+
+The shell is tuned for desktop play and tested for:
+- 1366×768
+- 1920×1080
+- 2560×1440
+
+Document-level scrolling is disabled during gameplay. Only overlay bodies scroll when needed.
 
 ## Local installation
 
@@ -50,42 +63,38 @@ npm install
 npm run dev
 ```
 
-## npm commands
+## Validation commands
 
 ```bash
-npm run dev
+npm run typecheck
 npm run lint
 npm test
 npm run build
-npm run preview
-npm run typecheck
-npm run format
+npm run smoke:pages
 ```
 
-## Testing
+## GitHub Pages configuration
 
-The project uses deterministic Vitest unit tests. Run `npm test` for the suite and `npm run typecheck` plus `npm run lint` before merging.
+- Repository Pages source must be set to **GitHub Actions** in Settings → Pages.
+- Production base path is `/Bloodwake/`.
+- Deploy workflow builds `dist/` and uploads the generated artifact.
 
-## Production build
+## Current limitations
 
-`npm run build` creates a Vite production build configured with the `/Bloodwake/` base path required for GitHub Pages repository hosting.
+- Milestone 0.3 combat/animation systems are not implemented yet.
+- This milestone keeps placeholder world visuals and lightweight combat logic.
 
-## GitHub Pages deployment
+## Deferred to Milestone 0.3
 
-GitHub Actions runs CI for lint, typecheck, tests, and build, then publishes `dist/` to GitHub Pages from `main`.
-
-## Save-data warning
-
-Save files live in IndexedDB in the current browser. Import/export JSON is provided for backup, but schema changes may still require migrations in future milestones.
-
-## Roadmap summary
-
-The current milestone focuses on the first vertical slice. Next milestones expand combat depth, stronghold automation, more quests, and broader bloodline progression.
+- Ctrl target lock toggle
+- Target selection and cycling
+- Target-relative orbital movement
+- Ranged target-seeking projectiles
+- Full light/heavy/bite animation state machines
+- Enemy telegraphs and advanced combat patterns
+- Hit stop, camera shake, and deeper attack feedback
+- Full animated world character sprite sheets
 
 ## License
 
 MIT. See `LICENSE`.
-
-## Disclaimer
-
-This is a fictional gothic strategy-action game set in a stylized historical fantasy world.
