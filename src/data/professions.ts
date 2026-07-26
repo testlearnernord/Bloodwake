@@ -1,0 +1,78 @@
+import type { ProfessionDefinition } from '../types/models';
+
+export const PROFESSIONS: ProfessionDefinition[] = [
+  {
+    id: 'peasant',
+    name: 'Peasant',
+    description: 'General laborer comfortable with field work.',
+    defaultFaction: 'village',
+    jobBonuses: { Gathering: 1, Building: 1 },
+    attributeBonuses: { vitality: 1 },
+    practicalBenefit: 'Provides flexible labor for gathering and building.',
+  },
+  {
+    id: 'woodcutter',
+    name: 'Woodcutter',
+    description: 'Reliable logger who brings in timber quickly.',
+    defaultFaction: 'village',
+    jobBonuses: { Gathering: 2, Building: 1 },
+    attributeBonuses: { strength: 1, vitality: 1 },
+    practicalBenefit: 'Improves wood gathering and room construction.',
+  },
+  {
+    id: 'hunter',
+    name: 'Hunter',
+    description: 'Tracks prey and knows the forest roads.',
+    defaultFaction: 'wild',
+    jobBonuses: { Hunting: 2, Gathering: 1, Guarding: 1 },
+    attributeBonuses: { agility: 1 },
+    practicalBenefit: 'Improves food and leather yields.',
+  },
+  {
+    id: 'blacksmith',
+    name: 'Blacksmith',
+    description: 'Experienced in metalworking and weapons.',
+    defaultFaction: 'village',
+    jobBonuses: { Crafting: 2, Building: 1 },
+    attributeBonuses: { strength: 1, intelligence: 1 },
+    practicalBenefit: 'Improves iron working and weapon crafting.',
+  },
+  {
+    id: 'herbalist',
+    name: 'Herbalist',
+    description: 'Collects herbs and brews simple medicines.',
+    defaultFaction: 'village',
+    jobBonuses: { Crafting: 2, Gathering: 1 },
+    attributeBonuses: { intelligence: 1 },
+    practicalBenefit: 'Improves potion production.',
+  },
+  {
+    id: 'guard',
+    name: 'Guard',
+    description: 'Armed watchman used to standing patrol.',
+    defaultFaction: 'village',
+    jobBonuses: { Guarding: 2, Hunting: 1, Building: 1 },
+    attributeBonuses: { strength: 1, willpower: 1 },
+    practicalBenefit: 'Improves stronghold security and combat response.',
+  },
+  {
+    id: 'monk',
+    name: 'Monk',
+    description: 'Disciplined ascetic with strong will.',
+    defaultFaction: 'clergy',
+    jobBonuses: { Research: 1, Crafting: 1 },
+    attributeBonuses: { willpower: 2 },
+    practicalBenefit: 'Improves loyalty and ritual focus.',
+  },
+  {
+    id: 'scribe',
+    name: 'Scribe',
+    description: 'Literate record keeper and copyist.',
+    defaultFaction: 'clergy',
+    jobBonuses: { Research: 2, Crafting: 1 },
+    attributeBonuses: { intelligence: 2 },
+    practicalBenefit: 'Improves research and codex progress.',
+  },
+];
+
+export const PROFESSIONS_BY_ID = Object.fromEntries(PROFESSIONS.map((profession) => [profession.id, profession]));

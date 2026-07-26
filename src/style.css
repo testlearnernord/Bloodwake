@@ -1,0 +1,157 @@
+:root {
+  color-scheme: dark;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #0b0f13;
+  color: #f1f3f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at top, #17212b 0%, #090b0d 70%);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  background: #18232e;
+  color: #f8f9fa;
+  border: 1px solid #495057;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+}
+
+button:hover,
+button.selected {
+  border-color: #c1121f;
+}
+
+textarea,
+input,
+select {
+  width: 100%;
+}
+
+main {
+  width: 100%;
+}
+
+.title-screen,
+.game-shell {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.title-screen {
+  grid-template-columns: 1.3fr 1fr 1fr;
+}
+
+.game-shell {
+  grid-template-columns: minmax(0, 1fr) 420px;
+  align-items: start;
+}
+
+.panel {
+  background: rgba(9, 13, 18, 0.9);
+  border: 1px solid #343a40;
+  border-radius: 12px;
+  padding: 1rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+
+.hud {
+  grid-column: 1 / -1;
+}
+
+.hud-row,
+.button-row,
+.button-list,
+.control-list {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.button-list {
+  flex-direction: column;
+}
+
+.compact button {
+  padding: 0.35rem 0.65rem;
+}
+
+.play-area {
+  min-width: 0;
+}
+
+#phaser-root canvas {
+  width: 100%;
+  height: auto;
+  border: 1px solid #495057;
+  border-radius: 12px;
+}
+
+.sidebar {
+  display: grid;
+  gap: 1rem;
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
+.preview-grid,
+.priority-grid,
+.build-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.preview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.priority-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.build-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.grid-cell {
+  min-height: 4rem;
+}
+
+.grid-cell.built {
+  background: #214e34;
+}
+
+.grid-cell.under_construction {
+  background: #6c584c;
+}
+
+.hidden {
+  display: none;
+}
+
+.complete {
+  color: #74c69d;
+}
+
+.active {
+  color: #ffd166;
+}
+
+@media (max-width: 1400px) {
+  .title-screen,
+  .game-shell {
+    grid-template-columns: 1fr;
+  }
+}
