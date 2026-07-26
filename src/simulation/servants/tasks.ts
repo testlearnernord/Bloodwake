@@ -17,11 +17,13 @@ export const createTaskCandidates = (
 ): TaskCandidate[] => {
   const profession = PROFESSIONS_BY_ID[servant.professionId];
   const professionBonuses = profession.jobBonuses;
-  const traitBonusFor = (jobType: JobType): number =>
-    servant.traitIds.reduce((score, traitId) => {
+  const traitBonusFor = (jobType: JobType): number => {
+    const tag = jobType === 'Building' ? 'builder' : jobType.toLowerCase();
+    return servant.traitIds.reduce((score, traitId) => {
       const trait = getTraitById(traitId);
-      return score + (trait.tags.includes(jobType.toLowerCase()) ? 1 : 0);
+      return score + (trait.tags.includes(tag) ? 1 : 0);
     }, 0);
+  };
   const tasks: TaskCandidate[] = [];
   const unfinishedRoom = rooms.find((room) => room.status === 'under_construction');
   if (unfinishedRoom) {
