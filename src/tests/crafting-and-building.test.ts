@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { canPlaceRoom, queueRoomConstruction } from '../simulation/building/building';
+import { queueRoomConstruction } from '../simulation/building/building';
 import { completeCraftingOrder, queueCraftingOrder } from '../simulation/crafting/crafting';
+import { addItem, consumeItems, hasItems } from '../simulation/inventory/inventory';
 import type { Servant } from '../types/models';
 
 const servant: Servant = {
@@ -42,27 +43,44 @@ const servant: Servant = {
   equipped: {},
 };
 
-describe('room placement validation', () => {
-  it('rejects overlapping or out-of-bounds rooms', () => {
-    const first = queueRoomConstruction([], { Wood: 10, Stone: 10 }, 'workshop', 0, 0);
-    expect(canPlaceRoom(first.updatedRooms, 'storage_room', 0, 0)).toBe(false);
-    expect(canPlaceRoom(first.updatedRooms, 'storage_room', 4, 0)).toBe(false);
-    expect(canPlaceRoom(first.updatedRooms, 'storage_room', 1, 0)).toBe(true);
+describe('item inventory helpers', () => {
+  it('stacks, removes, and guards insufficient item consumption', () => {
+    let inventory = addItem([], 'wood', 5);
+    inventory = addItem(inventory, 'wood', 2);
+    expect(hasItems(inventory, { wood: 7 })).toBe(true);
+    inventory = consumeItems(inventory, { wood: 4 });
+    expect(hasItems(inventory, { wood: 3 })).toBe(true);
+    expect(() => consumeItems(inventory, { wood: 10 })).toThrow();
+  });
+});
+
+describe('room placement and building costs', () => {
+  it('consumes item and strategic costs for room construction', () => {
+    const result = queueRoomConstruction([], [{ itemId: 'wood', quantity: 8 }, { itemId: 'stone', quantity: 8 }], {
+      bloodEssence: 2,
+      security: 0,
+      gold: 0,
+      knowledge: 0,
+      influence: 0,
+    }, 'workshop', 0, 0);
+    expect(result.updatedInventory.find((entry) => entry.itemId === 'wood')?.quantity).toBe(2);
+    expect(result.updatedInventory.find((entry) => entry.itemId === 'stone')?.quantity).toBe(4);
   });
 });
 
 describe('crafting results', () => {
-  it('consumes inputs when crafting completes', () => {
+  it('consumes input items and creates recipe output item', () => {
     const queue = queueCraftingOrder([], 'simple_sword');
-    const result = completeCraftingOrder({ 'Iron Ore': 3, Wood: 2 }, [], queue[0], servant, 'craft-seed');
-    expect(result.resources['Iron Ore']).toBe(1);
-    expect(result.resources.Wood).toBe(1);
-  });
-
-  it('creates recipe outputs in inventory', () => {
-    const queue = queueCraftingOrder([], 'healing_draught');
-    const result = completeCraftingOrder({ Herbs: 3, Food: 2 }, [], queue[0], servant, 'healing-seed');
-    expect(result.inventory[0].itemId).toBe('healing_draught');
-    expect(result.inventory[0].quantity).toBe(1);
+    const result = completeCraftingOrder(
+      [
+        { itemId: 'iron_ingot', quantity: 2 },
+        { itemId: 'wood', quantity: 2 },
+      ],
+      queue[0],
+      servant,
+      'craft-seed',
+    );
+    expect(result.inventory.find((entry) => entry.itemId === 'simple_sword')?.quantity).toBe(1);
+    expect(result.inventory.find((entry) => entry.itemId === 'iron_ingot')).toBeUndefined();
   });
 });

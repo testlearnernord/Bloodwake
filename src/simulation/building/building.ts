@@ -1,9 +1,12 @@
 import { GRID_HEIGHT, GRID_WIDTH } from '../../config/game';
 import { ROOMS_BY_ID } from '../../data/rooms';
-import type { BuiltRoom, ResourcePool, RoomId } from '../../types/models';
+import type { BuiltRoom, DomainResourcePool, InventoryEntry, RoomId } from '../../types/models';
+import { consumeItems, hasItems } from '../inventory/inventory';
 
-const hasResources = (resources: ResourcePool, cost: ResourcePool): boolean =>
-  Object.entries(cost).every(([resourceId, amount]) => (resources[resourceId] ?? 0) >= amount);
+const hasStrategicResources = (pool: DomainResourcePool, costs: Partial<DomainResourcePool> | undefined): boolean => {
+  if (!costs) return true;
+  return Object.entries(costs).every(([resourceId, amount]) => (pool[resourceId as keyof DomainResourcePool] ?? 0) >= (amount ?? 0));
+};
 
 export const canPlaceRoom = (rooms: BuiltRoom[], roomId: RoomId, x: number, y: number): boolean => {
   const room = ROOMS_BY_ID[roomId];
@@ -23,21 +26,26 @@ export const canPlaceRoom = (rooms: BuiltRoom[], roomId: RoomId, x: number, y: n
 
 export const queueRoomConstruction = (
   rooms: BuiltRoom[],
-  resources: ResourcePool,
+  inventory: InventoryEntry[],
+  strategicResources: DomainResourcePool,
   roomId: RoomId,
   x: number,
   y: number,
-): { updatedRooms: BuiltRoom[]; updatedResources: ResourcePool } => {
+): { updatedRooms: BuiltRoom[]; updatedInventory: InventoryEntry[]; updatedStrategicResources: DomainResourcePool } => {
   const room = ROOMS_BY_ID[roomId];
   if (!canPlaceRoom(rooms, roomId, x, y)) {
     throw new Error('Invalid room placement.');
   }
-  if (!hasResources(resources, room.constructionCost)) {
-    throw new Error('Insufficient resources for room construction.');
+  if (!hasItems(inventory, room.constructionCostItems)) {
+    throw new Error('Insufficient items for room construction.');
   }
-  const updatedResources = { ...resources };
-  for (const [resourceId, amount] of Object.entries(room.constructionCost)) {
-    updatedResources[resourceId] -= amount;
+  if (!hasStrategicResources(strategicResources, room.constructionCostResources)) {
+    throw new Error('Insufficient strategic resources for room construction.');
+  }
+  const updatedInventory = consumeItems(inventory, room.constructionCostItems);
+  const updatedStrategicResources: DomainResourcePool = { ...strategicResources };
+  for (const [resourceId, amount] of Object.entries(room.constructionCostResources ?? {})) {
+    updatedStrategicResources[resourceId as keyof DomainResourcePool] -= amount ?? 0;
   }
   const builtRoom: BuiltRoom = {
     id: `room-${roomId}-${x}-${y}`,
@@ -50,5 +58,5 @@ export const queueRoomConstruction = (
     progress: 0,
     assignedWorkerIds: [],
   };
-  return { updatedRooms: [...rooms, builtRoom], updatedResources };
+  return { updatedRooms: [...rooms, builtRoom], updatedInventory, updatedStrategicResources };
 };

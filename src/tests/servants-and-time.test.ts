@@ -57,23 +57,23 @@ const servant: Servant = {
 
 describe('servant priority selection', () => {
   it('prefers the highest-priority valid task', () => {
-    const task = selectTaskForServant(servant, [room], [] as CraftingOrder[], { Wood: 10, Herbs: 3 }, 'day');
+    const task = selectTaskForServant(servant, [room], [] as CraftingOrder[], [{ itemId: 'wood', quantity: 10 }], 'day');
     expect(task?.type).toBe('construct_room');
   });
 });
 
 describe('resource production', () => {
-  it('gathers resources during a work shift when gathering is needed', () => {
+  it('gathers item inventory during work shifts', () => {
     const shift = runWorkShift(
       [{ ...servant, priorities: { ...servant.priorities, Building: 'Disabled', Gathering: 'Critical' } }],
       [],
       [],
-      { Wood: 2, Herbs: 1, Food: 0 },
-      [],
+      { bloodEssence: 0, security: 0, gold: 0, knowledge: 0, influence: 0 },
+      [{ itemId: 'wood', quantity: 2 }, { itemId: 'food', quantity: 0 }],
       'day',
       'shift-seed',
     );
-    expect(shift.resources.Wood).toBeGreaterThan(2);
+    expect(shift.inventory.find((entry) => entry.itemId === 'wood')?.quantity).toBeGreaterThan(2);
   });
 });
 

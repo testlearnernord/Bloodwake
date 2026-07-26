@@ -33,9 +33,27 @@ export type QuestStepStatus = 'locked' | 'active' | 'complete';
 export type EnemyType = 'bandit' | 'clergy_hunter' | 'elite_knight';
 export type TaskType = 'construct_room' | 'craft_recipe' | 'gather_resource' | 'guard_stronghold';
 export type HumanStatus = 'wandering' | 'fed' | 'drained' | 'turned';
+export type ItemCategory = 'material' | 'weapon' | 'armor' | 'accessory' | 'consumable' | 'quest' | 'relic';
+export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
+export type ItemId =
+  | 'wood'
+  | 'stone'
+  | 'iron_ore'
+  | 'iron_ingot'
+  | 'leather'
+  | 'herbs'
+  | 'food'
+  | 'wood_planks'
+  | 'simple_sword'
+  | 'leather_armor'
+  | 'healing_draught'
+  | 'memory_talisman';
+
+export type DomainResourceId = 'bloodEssence' | 'security' | 'gold' | 'knowledge' | 'influence';
 
 export type AttributeSet = Record<AttributeKey, number>;
-export type ResourcePool = Record<string, number>;
+export type ItemQuantityMap = Partial<Record<ItemId, number>>;
+export type DomainResourcePool = Record<DomainResourceId, number>;
 export type ItemModifier = Partial<Record<AttributeKey | 'damage' | 'armor' | 'healing', number>>;
 
 export interface TraitDefinition {
@@ -93,6 +111,12 @@ export interface HumanCharacter extends CharacterBase {
   relationships: Record<string, number>;
 }
 
+export interface EquipmentLoadout {
+  Weapon?: ItemId;
+  Armor?: ItemId;
+  Accessory?: ItemId;
+}
+
 export interface VampireCharacter extends CharacterBase {
   vitae: number;
   maxVitae: number;
@@ -100,6 +124,7 @@ export interface VampireCharacter extends CharacterBase {
   hunger: number;
   memoryFragments: string[];
   professionSkills: Partial<Record<JobType, number>>;
+  equipment: EquipmentLoadout;
 }
 
 export interface JobPriorityMap {
@@ -120,15 +145,17 @@ export interface Servant extends CharacterBase {
   currentTask: string | null;
   taskReason: string;
   hunger: number;
-  equipped: Partial<Record<ItemSlot, string>>;
+  equipped: Partial<Record<ItemSlot, ItemId>>;
 }
 
 export interface RoomDefinition {
   id: RoomId;
   name: string;
   description: string;
+  iconId: string;
   footprint: { width: number; height: number };
-  constructionCost: ResourcePool;
+  constructionCostItems: ItemQuantityMap;
+  constructionCostResources?: Partial<DomainResourcePool>;
   constructionTime: number;
   requiredRoomId?: RoomId;
   workerSlots: number;
@@ -151,16 +178,23 @@ export interface BuiltRoom {
 }
 
 export interface ItemDefinition {
-  id: string;
+  id: ItemId;
   name: string;
   description: string;
-  slot?: ItemSlot;
-  modifiers: ItemModifier;
+  category: ItemCategory;
+  rarity: ItemRarity;
+  iconId: string;
+  stackLimit: number;
+  baseValue: number;
   tags: string[];
+  equipSlot?: ItemSlot;
+  modifiers: ItemModifier;
+  consumableEffectId?: 'heal_player';
+  questItem?: boolean;
 }
 
 export interface InventoryEntry {
-  itemId: string;
+  itemId: ItemId;
   quantity: number;
   quality?: QualityLevel;
 }
@@ -169,7 +203,8 @@ export interface RecipeDefinition {
   id: string;
   name: string;
   description: string;
-  inputs: ResourcePool;
+  category: 'materials' | 'equipment' | 'alchemy';
+  inputs: ItemQuantityMap;
   outputs: InventoryEntry[];
   requiredRoomId: RoomId;
   requiredProfessionId?: ProfessionId;
@@ -269,10 +304,11 @@ export interface SaveGame {
   version: number;
   title: string;
   seed: string;
+  characterRoll: number;
   player: VampireCharacter;
   npcs: HumanCharacter[];
   servants: Servant[];
-  resources: ResourcePool;
+  strategicResources: DomainResourcePool;
   inventory: InventoryEntry[];
   rooms: BuiltRoom[];
   constructionTasks: ConstructionTask[];
@@ -297,4 +333,5 @@ export interface SaveSlot {
 export interface NewGameOptions {
   playerName?: string;
   seed?: string;
+  characterRoll?: number;
 }

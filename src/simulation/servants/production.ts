@@ -1,13 +1,14 @@
 import { RECIPES_BY_ID } from '../../data/recipes';
 import { SERVANT_EVENTS } from '../../data/servantEvents';
-import type { BuiltRoom, CraftingOrder, DayPhase, InventoryEntry, ResourcePool, Servant } from '../../types/models';
+import type { BuiltRoom, CraftingOrder, DayPhase, DomainResourcePool, InventoryEntry, Servant } from '../../types/models';
 import { completeCraftingOrder } from '../crafting/crafting';
+import { addItem, mergeCompatibleStacks } from '../inventory/inventory';
 import { selectTaskForServant } from './tasks';
 
 export interface WorkShiftResult {
   servants: Servant[];
   rooms: BuiltRoom[];
-  resources: ResourcePool;
+  strategicResources: DomainResourcePool;
   inventory: InventoryEntry[];
   craftingQueue: CraftingOrder[];
   log: string[];
@@ -17,19 +18,19 @@ export const runWorkShift = (
   servants: Servant[],
   rooms: BuiltRoom[],
   craftingQueue: CraftingOrder[],
-  resources: ResourcePool,
+  strategicResources: DomainResourcePool,
   inventory: InventoryEntry[],
   phase: DayPhase,
   seed: string,
 ): WorkShiftResult => {
   let updatedRooms = [...rooms];
-  let updatedResources = { ...resources };
   let updatedInventory = [...inventory];
   let updatedQueue = [...craftingQueue];
+  const updatedStrategicResources = { ...strategicResources };
   const updatedServants: Servant[] = [];
   const log: string[] = [];
   for (const servant of servants) {
-    const task = selectTaskForServant(servant, updatedRooms, updatedQueue, updatedResources, phase);
+    const task = selectTaskForServant(servant, updatedRooms, updatedQueue, updatedInventory, phase);
     const updatedServant = { ...servant, currentJob: task?.jobType ?? null, currentTask: task?.id ?? null, taskReason: task?.reason ?? 'Idle.' };
     if (!task || task.score < 0) {
       updatedServants.push(updatedServant);
@@ -42,9 +43,7 @@ export const runWorkShift = (
               ...room,
               progress: room.progress + 1,
               status: room.progress + 1 >= 3 ? 'built' : room.status,
-              assignedWorkerIds: room.assignedWorkerIds.includes(servant.id)
-                ? room.assignedWorkerIds
-                : [...room.assignedWorkerIds, servant.id],
+              assignedWorkerIds: room.assignedWorkerIds.includes(servant.id) ? room.assignedWorkerIds : [...room.assignedWorkerIds, servant.id],
             }
           : room,
       );
@@ -53,21 +52,20 @@ export const runWorkShift = (
       const order = updatedQueue.find((entry) => entry.id === task.id);
       if (order) {
         const recipe = RECIPES_BY_ID[order.recipeId];
-        const completed = completeCraftingOrder(updatedResources, updatedInventory, order, updatedServant, `${seed}-${order.id}`);
-        updatedResources = completed.resources;
+        const completed = completeCraftingOrder(updatedInventory, order, updatedServant, `${seed}-${order.id}`);
         updatedInventory = completed.inventory;
         updatedQueue = updatedQueue.map((entry) => (entry.id === order.id ? completed.order : entry));
         log.push(`${servant.name} crafts ${recipe.name}.`);
       }
     } else if (task.type === 'gather_resource') {
-      const resourceId = task.id === 'gather-herbs' ? 'Herbs' : 'Wood';
-      updatedResources[resourceId] = (updatedResources[resourceId] ?? 0) + 3;
-      if (resourceId === 'Wood') {
-        updatedResources.Food = (updatedResources.Food ?? 0) + 1;
+      const itemId = task.id === 'gather-herbs' ? 'herbs' : 'wood';
+      updatedInventory = addItem(updatedInventory, itemId, 3);
+      if (itemId === 'wood') {
+        updatedInventory = addItem(updatedInventory, 'food', 1);
       }
-      log.push(`${servant.name} gathers ${resourceId}.`);
+      log.push(`${servant.name} gathers ${itemId === 'wood' ? 'Wood' : 'Herbs'}.`);
     } else {
-      updatedResources.Security = (updatedResources.Security ?? 0) + 1;
+      updatedStrategicResources.security += 1;
       log.push(`${servant.name} stands guard.`);
     }
     const triggeredEvent = SERVANT_EVENTS.find((event) => {
@@ -89,8 +87,8 @@ export const runWorkShift = (
   return {
     servants: updatedServants,
     rooms: updatedRooms,
-    resources: updatedResources,
-    inventory: updatedInventory,
+    strategicResources: updatedStrategicResources,
+    inventory: mergeCompatibleStacks(updatedInventory),
     craftingQueue: updatedQueue,
     log,
   };

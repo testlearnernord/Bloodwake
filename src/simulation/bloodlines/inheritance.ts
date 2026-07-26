@@ -91,6 +91,7 @@ export const inheritVampire = (
     hunger: 1,
     memoryFragments: [],
     professionSkills,
+    equipment: {},
   };
   return {
     vampire,
