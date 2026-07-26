@@ -1,12 +1,8 @@
 import Phaser from 'phaser';
 import { DRAIN_ESSENCE_GAIN, FEED_VITAE_GAIN, TURN_COST_VITAE } from '../config/balancing';
-import { GAME_TITLE } from '../config/game';
 import { COLLECTIBLES_BY_ID } from '../data/collectibles';
 import { ITEMS_BY_ID } from '../data/items';
-import { QUESTS_BY_ID } from '../data/quests';
-import { RECIPES, RECIPES_BY_ID } from '../data/recipes';
-import { ROOMS } from '../data/rooms';
-import { createNewGameState, getActiveQuestStepText, getHumanById } from './state';
+import { createNewGameState, deriveCharacterSeed, getActiveQuestStepText, getHumanById } from './state';
 import { queueCraftingOrder } from '../simulation/crafting/crafting';
 import { inheritVampire } from '../simulation/bloodlines/inheritance';
 import { queueRoomConstruction } from '../simulation/building/building';
@@ -15,14 +11,22 @@ import { applyDayRestriction, togglePhase } from '../simulation/time/dayNight';
 import { runWorkShift } from '../simulation/servants/production';
 import { saveSettings } from '../persistence/settings';
 import { deleteSlot, exportSaveGame, importSaveGame, listSaveSlots, loadFromSlot, saveToSlot } from '../persistence/saveStore';
-import type { JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
+import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
 import { createDefaultSeed } from '../utilities/rng';
 import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
 import { getTraitById } from '../simulation/traits/traitUtils';
+import { addItem, canEquipItem, equipItem, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
+import { calculatePlayerCombatStats, useHealingDraught } from '../simulation/combat/stats';
+import { renderBottomHud } from '../ui/hud/hud';
+import { renderOverlay } from '../ui/overlays/overlays';
+import { ToastManager } from '../ui/notifications/toasts';
+import { renderGameShell, renderTitleScreen as renderTitleLayout } from '../ui/shell/layout';
+import { TOPBAR_RESOURCES, renderTopBar } from '../ui/topbar/topbar';
+import { TooltipManager } from '../ui/tooltips/tooltips';
+import { isTypingTarget, type MenuId } from '../ui/uiState';
 
 const SLOT_IDS = ['slot-1', 'slot-2', 'slot-3'];
-const PRIORITIES: JobPriority[] = ['Disabled', 'Low', 'Normal', 'High', 'Critical'];
 
 export class BloodwakeApp {
   private readonly root: HTMLElement;
@@ -31,7 +35,13 @@ export class BloodwakeApp {
   private focusedHumanId: string | null = null;
   private selectedRoomId: RoomId = 'workshop';
   private activeZone = 'Ruined Stronghold';
-  private pauseVisible = false;
+  private activeMenu: MenuId | null = null;
+  private selectedItemId: ItemId | null = null;
+  private selectedFilter: 'all' | ItemCategory = 'all';
+  private dodgeReadyAt = 0;
+  private toastManager: ToastManager | null = null;
+  private tooltipManager: TooltipManager | null = null;
+  private previousResourceSnapshot: Record<string, number> | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -42,58 +52,58 @@ export class BloodwakeApp {
   }
 
   private async renderTitleScreen(): Promise<void> {
-    const previewSeed = createDefaultSeed();
-    const preview = createNewGameState({ seed: previewSeed });
+    this.tooltipManager?.dispose();
+    this.tooltipManager = null;
+    this.toastManager = null;
+    this.activeMenu = null;
+
+    let worldSeed = createDefaultSeed();
+    let characterRoll = 0;
+    const renderPreview = (): void => {
+      const preview = createNewGameState({ seed: worldSeed, characterRoll, playerName: nameInput.value });
+      characterRollInput.value = String(characterRoll);
+      seedInput.value = worldSeed;
+      previewPanel.replaceChildren(this.createPreviewContent(preview));
+    };
+
     const slots = await listSaveSlots();
-    this.root.innerHTML = `
-      <main class="title-screen">
-        <section class="panel hero-panel">
-          <h1>${GAME_TITLE}</h1>
-          <p class="subtitle">A free, static browser-based vampire action RPG vertical slice built for GitHub Pages.</p>
-          <div class="control-list">
-            <span>Controls: WASD move, mouse attacks, Space dodge, E interact, F feed, Tab menu, Escape pause</span>
-          </div>
-        </section>
-        <section class="panel generator-panel">
-          <h2>New Game Generation</h2>
-          <label>Player name <input id="player-name" type="text" placeholder="The Forgotten Lord" /></label>
-          <label>World seed <input id="world-seed" type="text" value="${preview.seed}" /></label>
-          <div class="button-row">
-            <button id="randomize-seed">Randomize</button>
-            <button id="reroll-vampire">Reroll</button>
-            <button id="start-game">Start Game</button>
-          </div>
-          <div id="preview-panel"></div>
-        </section>
-        <section class="panel saves-panel">
-          <h2>Save Slots</h2>
-          <div id="save-slot-list">${this.renderSaveSlots(slots)}</div>
-          <label>Import save JSON<textarea id="import-json" rows="6" placeholder="Paste exported save JSON here"></textarea></label>
-          <button id="import-save">Import Save Into Slot 1</button>
-        </section>
-      </main>
-    `;
+    this.root.innerHTML = renderTitleLayout(worldSeed, characterRoll, this.renderSaveSlots(slots));
+
     const nameInput = this.query<HTMLInputElement>('#player-name');
     const seedInput = this.query<HTMLInputElement>('#world-seed');
+    const characterRollInput = this.query<HTMLInputElement>('#character-roll');
     const previewPanel = this.query<HTMLDivElement>('#preview-panel');
-    previewPanel.replaceChildren(this.createPreviewContent(preview));
-    const refreshPreview = (): void => {
-      const state = createNewGameState({ playerName: nameInput.value, seed: seedInput.value || createDefaultSeed() });
-      previewPanel.replaceChildren(this.createPreviewContent(state));
-    };
+
+    renderPreview();
+
     this.query<HTMLButtonElement>('#randomize-seed').onclick = () => {
-      seedInput.value = createDefaultSeed();
-      refreshPreview();
+      worldSeed = createDefaultSeed();
+      characterRoll = 0;
+      renderPreview();
     };
+
     this.query<HTMLButtonElement>('#reroll-vampire').onclick = () => {
-      refreshPreview();
+      characterRoll += 1;
+      renderPreview();
     };
-    seedInput.onchange = refreshPreview;
-    nameInput.onchange = refreshPreview;
+
+    seedInput.onchange = () => {
+      worldSeed = seedInput.value.trim() || createDefaultSeed();
+      renderPreview();
+    };
+
+    characterRollInput.onchange = () => {
+      characterRoll = Math.max(0, Number.parseInt(characterRollInput.value, 10) || 0);
+      renderPreview();
+    };
+
+    nameInput.onchange = renderPreview;
+
     this.query<HTMLButtonElement>('#start-game').onclick = async () => {
-      this.state = createNewGameState({ playerName: nameInput.value, seed: seedInput.value });
+      this.state = createNewGameState({ playerName: nameInput.value, seed: worldSeed, characterRoll });
       await this.startGameShell();
     };
+
     for (const slot of slots) {
       const loadButton = this.root.querySelector<HTMLButtonElement>(`[data-load-slot="${slot.id}"]`);
       if (loadButton) {
@@ -112,6 +122,7 @@ export class BloodwakeApp {
         };
       }
     }
+
     this.query<HTMLButtonElement>('#import-save').onclick = async () => {
       try {
         const raw = this.query<HTMLTextAreaElement>('#import-json').value;
@@ -119,7 +130,7 @@ export class BloodwakeApp {
         await saveToSlot(SLOT_IDS[0], imported);
         await this.renderTitleScreen();
       } catch (error) {
-        alert(error instanceof Error ? error.message : 'Failed to import save.');
+        this.showError(error, 'Failed to import save.');
       }
     };
   }
@@ -128,44 +139,16 @@ export class BloodwakeApp {
     if (!this.state) {
       return;
     }
-    this.root.innerHTML = `
-      <main class="game-shell">
-        <section class="hud panel">
-          <div class="hud-row">
-            <div><strong>${GAME_TITLE}</strong></div>
-            <div id="phase-indicator"></div>
-            <div id="zone-indicator"></div>
-          </div>
-          <div id="vitals"></div>
-          <div id="quest-step"></div>
-          <div class="button-row compact">
-            <button id="advance-phase">Advance Phase</button>
-            <button id="manual-save">Manual Save</button>
-            <button id="toggle-pause">Pause</button>
-            <button id="export-save">Export Save</button>
-          </div>
-          <textarea id="export-output" rows="4" readonly></textarea>
-        </section>
-        <section class="play-area">
-          <div id="phaser-root"></div>
-        </section>
-        <aside class="sidebar">
-          <section class="panel" id="action-panel"></section>
-          <section class="panel" id="character-panel"></section>
-          <section class="panel" id="inventory-panel"></section>
-          <section class="panel" id="servant-panel"></section>
-          <section class="panel" id="building-panel"></section>
-          <section class="panel" id="crafting-panel"></section>
-          <section class="panel" id="quest-panel"></section>
-          <section class="panel" id="memory-panel"></section>
-          <section class="panel pause-panel hidden" id="pause-panel"></section>
-        </aside>
-      </main>
-    `;
+    this.root.innerHTML = renderGameShell();
+    this.toastManager = new ToastManager(this.query('#toast-root'));
+    this.tooltipManager = new TooltipManager(this.root);
+    this.tooltipManager.install();
     this.installGlobalShortcuts();
     this.mountPhaser();
+    this.previousResourceSnapshot = null;
     this.renderGame();
     await this.autoSave('slot-1');
+    this.notify('Save completed.');
   }
 
   private mountPhaser(): void {
@@ -179,6 +162,13 @@ export class BloodwakeApp {
         }
         return this.state;
       },
+      getCombatStats: () => {
+        if (!this.state) {
+          throw new Error('Game state is unavailable.');
+        }
+        return calculatePlayerCombatStats(this.state.player);
+      },
+      isInputBlocked: () => this.activeMenu !== null,
       onHumanFocused: (humanId) => {
         this.focusedHumanId = humanId;
         this.renderGame();
@@ -186,19 +176,16 @@ export class BloodwakeApp {
       onFeedShortcut: (humanId) => {
         void this.feedHuman(humanId, 'feed');
       },
-      onCollectResource: (resourceId, amount) => {
-        if (!this.state) {
-          return;
-        }
-        this.state.resources[resourceId] = (this.state.resources[resourceId] ?? 0) + amount;
-        this.state.lastEventLog.unshift(`Collected ${amount} ${resourceId} in ${this.activeZone}.`);
+      onCollectItem: (itemId, amount) => {
+        if (!this.state) return;
+        this.state.inventory = addItem(this.state.inventory, itemId, amount);
+        this.state.lastEventLog.unshift(`Collected ${amount} ${ITEMS_BY_ID[itemId].name} in ${this.activeZone}.`);
         this.completeStepForEvent('travel');
+        this.notify(`Collected ${amount} ${ITEMS_BY_ID[itemId].name}.`);
         this.renderGame();
       },
       onCollectMemory: (collectibleId) => {
-        if (!this.state) {
-          return;
-        }
+        if (!this.state) return;
         const collectible = COLLECTIBLES_BY_ID[collectibleId];
         this.state.collectibles = this.state.collectibles.map((entry) =>
           entry.collectibleId === collectibleId ? { ...entry, discovered: true } : entry,
@@ -210,14 +197,14 @@ export class BloodwakeApp {
         this.state.lastEventLog.unshift(`Recovered ${collectible.name}.`);
         this.completeStepForEvent('memory');
         void this.autoSave('slot-1');
+        this.notify('Memory recovered.');
         this.renderGame();
       },
       onEnemyDefeated: (enemyId) => {
-        if (!this.state) {
-          return;
-        }
-        this.state.resources['Blood Essence'] = (this.state.resources['Blood Essence'] ?? 0) + 1;
+        if (!this.state) return;
+        this.state.strategicResources.bloodEssence += 1;
         this.state.lastEventLog.unshift(`Defeated a ${enemyId} and harvested Blood Essence.`);
+        this.notify('Blood Essence increased.');
         this.renderGame();
       },
       onZoneChanged: (zone) => {
@@ -230,24 +217,27 @@ export class BloodwakeApp {
         this.renderGame();
       },
       onPlayerVitalsChanged: (nextHealth, nextVitae) => {
-        if (!this.state) {
-          return;
+        if (!this.state) return;
+        if (nextHealth < this.state.player.health) {
+          this.notify('You were hit.');
         }
         this.state.player.health = nextHealth;
         this.state.player.vitae = nextVitae;
         this.renderGame();
       },
       onRespawn: () => {
-        if (!this.state) {
-          return;
-        }
+        if (!this.state) return;
         this.state.player.health = this.state.player.maxHealth;
         this.state.player.vitae = Math.max(2, this.state.player.vitae);
         this.state.lastEventLog.unshift('You collapse and reform beside the coffin.');
+        this.notify('You reformed at the coffin.');
         this.renderGame();
       },
       onPauseRequested: () => {
-        this.pauseVisible = !this.pauseVisible;
+        this.openOrCloseMenu(this.activeMenu === 'pause' ? null : 'pause');
+      },
+      onDodgeUsed: (nextReadyAt) => {
+        this.dodgeReadyAt = nextReadyAt;
         this.renderGame();
       },
     };
@@ -257,6 +247,10 @@ export class BloodwakeApp {
       width: 1280,
       height: 720,
       scene: [new WorldScene(bridge)],
+      scale: {
+        mode: Phaser.Scale.FIT,
+        autoCenter: Phaser.Scale.CENTER_BOTH,
+      },
       physics: {
         default: 'arcade',
         arcade: {
@@ -272,21 +266,49 @@ export class BloodwakeApp {
     if (!this.state) {
       return;
     }
-    this.query('#phase-indicator').textContent = `Day ${this.state.time.day} · ${this.state.time.phase.toUpperCase()}`;
-    this.query('#zone-indicator').textContent = this.activeZone;
-    this.query('#vitals').innerHTML = `Health ${this.state.player.health}/${this.state.player.maxHealth} · Vitae ${this.state.player.vitae}/${this.state.player.maxVitae} · Blood Essence ${this.state.resources['Blood Essence'] ?? 0} · Hunger ${this.state.player.hunger}`;
-    this.query('#quest-step').textContent = `Current objective: ${getActiveQuestStepText(this.state)}`;
-    this.query('#action-panel').innerHTML = this.renderActionPanel();
-    this.query('#character-panel').innerHTML = this.renderCharacterPanel();
-    this.query('#inventory-panel').innerHTML = this.renderInventoryPanel();
-    this.query('#servant-panel').innerHTML = this.renderServantPanel();
-    this.query('#building-panel').innerHTML = this.renderBuildingPanel();
-    this.query('#crafting-panel').innerHTML = this.renderCraftingPanel();
-    this.query('#quest-panel').innerHTML = this.renderQuestPanel();
-    this.query('#memory-panel').innerHTML = this.renderMemoryPanel();
-    const pausePanel = this.query('#pause-panel');
-    pausePanel.classList.toggle('hidden', !this.pauseVisible);
-    pausePanel.innerHTML = this.renderPausePanel();
+    const objective = getActiveQuestStepText(this.state);
+    const resourceSnapshot = Object.fromEntries(TOPBAR_RESOURCES.map((resource) => [resource.id, resource.readAmount(this.state!)]));
+    const delta = this.previousResourceSnapshot
+      ? Object.fromEntries(Object.entries(resourceSnapshot).map(([id, amount]) => [id, amount - (this.previousResourceSnapshot?.[id] ?? 0)]))
+      : {};
+    this.previousResourceSnapshot = resourceSnapshot;
+
+    this.query('#topbar').innerHTML = renderTopBar(this.state, this.activeZone, objective, this.activeMenu, this.activeMenu === 'pause', delta);
+    this.query('#bottom-hud').innerHTML = renderBottomHud(this.state, 'Unarmed', this.dodgeReadyAt <= Date.now());
+
+    const contextPanel = this.query('#context-panel');
+    const human = this.focusedHumanId ? getHumanById(this.state, this.focusedHumanId) : null;
+    if (human) {
+      contextPanel.classList.remove('hidden');
+      contextPanel.innerHTML = `
+        <h3>${human.name} ${human.familyName}</h3>
+        <p>${human.professionId} · blood quality ${human.bloodQuality}</p>
+        <p>Traits: ${human.traitIds.join(', ') || 'none'}</p>
+        <div class="button-row compact">
+          <button data-human-action="feed">Feed</button>
+          <button data-human-action="drain">Drain</button>
+          <button data-human-action="turn">Turn</button>
+        </div>
+        <p class="hint">F to feed, open overlays with C I V B K J.</p>
+      `;
+    } else {
+      contextPanel.classList.add('hidden');
+      contextPanel.innerHTML = '';
+    }
+
+    const overlayRoot = this.query('#overlay-root');
+    if (this.activeMenu) {
+      overlayRoot.classList.remove('hidden');
+      overlayRoot.innerHTML = renderOverlay(this.activeMenu, this.state, this.selectedItemId, this.selectedFilter);
+      this.phaserGame?.scene.pause('world');
+      const closeButton = overlayRoot.querySelector<HTMLButtonElement>('[data-close-overlay]');
+      closeButton?.focus();
+    } else {
+      overlayRoot.classList.add('hidden');
+      overlayRoot.innerHTML = '';
+      this.phaserGame?.scene.resume('world');
+    }
+
     this.bindGameActions();
   }
 
@@ -299,10 +321,10 @@ export class BloodwakeApp {
     const summaryTitle = document.createElement('h3');
     summaryTitle.textContent = state.player.name;
     const summarySeed = document.createElement('p');
-    summarySeed.textContent = `Seed: ${state.seed}`;
-    const summaryProfession = document.createElement('p');
-    summaryProfession.textContent = `Starting profession: ${state.player.professionId}`;
-    summary.append(summaryTitle, summarySeed, summaryProfession);
+    summarySeed.textContent = `World Seed: ${state.seed}`;
+    const summaryCharacterRoll = document.createElement('p');
+    summaryCharacterRoll.textContent = `Vampire Roll: ${state.characterRoll} (${deriveCharacterSeed(state.seed, state.characterRoll)})`;
+    summary.append(summaryTitle, summarySeed, summaryCharacterRoll);
 
     const attributes = document.createElement('div');
     const attributesTitle = document.createElement('h3');
@@ -357,186 +379,30 @@ export class BloodwakeApp {
       .join('');
   }
 
-  private renderActionPanel(): string {
-    const human = this.focusedHumanId ? getHumanById(this.state!, this.focusedHumanId) : null;
-    const actions = human
-      ? `
-        <p>Focused human: <strong>${human.name} ${human.familyName}</strong> (${human.professionId})</p>
-        <p>Blood quality ${human.bloodQuality} · Traits: ${human.traitIds.join(', ') || 'none'}</p>
-        <div class="button-row compact">
-          <button data-human-action="feed">Feed and leave alive</button>
-          <button data-human-action="drain">Drain completely</button>
-          <button data-human-action="turn">Turn into vampire</button>
-        </div>
-      `
-      : '<p>Approach a human in the village and press F or use these commands once one is in range.</p>';
-    return `<h2>Action Panel</h2>${actions}`;
-  }
-
-  private renderCharacterPanel(): string {
-    const traits = this.state!.player.traitIds
-      .map((traitId) => {
-        const trait = getTraitById(traitId);
-        return `<li><strong>${trait.name}</strong> (${trait.rarity}) — ${trait.description}</li>`;
-      })
-      .join('');
-    return `
-      <h2>Character Sheet</h2>
-      <p>${this.state!.player.name} · Vitae ${this.state!.player.vitae}/${this.state!.player.maxVitae} · Hunger ${this.state!.player.hunger}</p>
-      <ul>${Object.entries(this.state!.player.attributes).map(([key, value]) => `<li>${key}: ${value}</li>`).join('')}</ul>
-      <details open>
-        <summary>Trait Details</summary>
-        <ul>${traits || '<li>No traits</li>'}</ul>
-      </details>
-    `;
-  }
-
-  private renderInventoryPanel(): string {
-    const equipment = this.state!.player.memoryFragments.length > 0 ? 'Memory codex unlocked' : 'No codex bonuses yet';
-    return `
-      <h2>Inventory & Equipment</h2>
-      <p>${equipment}</p>
-      <ul>${this.state!.inventory
-        .map((entry) => `<li>${ITEMS_BY_ID[entry.itemId]?.name ?? entry.itemId} × ${entry.quantity}${entry.quality ? ` (${entry.quality})` : ''}</li>`)
-        .join('')}</ul>
-    `;
-  }
-
-  private renderServantPanel(): string {
-    const servants = this.state!.servants
-      .map(
-        (servant) => `
-          <article class="servant-card">
-            <h3>${servant.name} (${servant.type})</h3>
-            <p>${servant.professionId} · morale ${servant.morale} · loyalty ${servant.loyalty} · ambition ${servant.ambition}</p>
-            <p>Current task: ${servant.currentTask ?? 'none'} — ${servant.taskReason}</p>
-            <div class="priority-grid">
-              ${(['Building', 'Crafting', 'Gathering', 'Guarding', 'Research', 'Hunting'] as const)
-                .map(
-                  (jobType) => `
-                    <label>${jobType}
-                      <select data-servant-id="${servant.id}" data-job-type="${jobType}">
-                        ${PRIORITIES.map((priority) => `<option value="${priority}" ${servant.priorities[jobType] === priority ? 'selected' : ''}>${priority}</option>`).join('')}
-                      </select>
-                    </label>
-                  `,
-                )
-                .join('')}
-            </div>
-          </article>
-        `,
-      )
-      .join('');
-    return `<h2>Servant Management</h2>${servants}`;
-  }
-
-  private renderBuildingPanel(): string {
-    const roomCards = ROOMS.filter((room) => room.id !== 'coffin_chamber')
-      .map(
-        (room) => `
-          <button data-room-select="${room.id}" class="${this.selectedRoomId === room.id ? 'selected' : ''}">
-            ${room.name} (${Object.entries(room.constructionCost)
-              .map(([resourceId, amount]) => `${amount} ${resourceId}`)
-              .join(', ')})
-          </button>
-        `,
-      )
-      .join('');
-    const cells = Array.from({ length: 16 }, (_, index) => {
-      const x = index % 4;
-      const y = Math.floor(index / 4);
-      const room = this.state!.rooms.find((entry) => entry.x === x && entry.y === y);
-      return `<button class="grid-cell ${room ? room.status : 'empty'}" data-build-x="${x}" data-build-y="${y}">${room ? room.roomId.replaceAll('_', ' ') : '+'}</button>`;
-    }).join('');
-    return `
-      <h2>Base Building</h2>
-      <p>Select a room, then click a grid cell. Invalid placements are rejected.</p>
-      <div class="button-list">${roomCards}</div>
-      <div class="build-grid">${cells}</div>
-      <ul>${this.state!.rooms.map((room) => `<li>${room.roomId} at ${room.x},${room.y} — ${room.status} (${room.progress})</li>`).join('')}</ul>
-    `;
-  }
-
-  private renderCraftingPanel(): string {
-    const queue = this.state!.craftingQueue.map((order) => `<li>${RECIPES_BY_ID[order.recipeId].name} — ${order.status}</li>`).join('');
-    return `
-      <h2>Crafting</h2>
-      <div class="button-list">
-        ${RECIPES.map((recipe) => `<button data-recipe-id="${recipe.id}">${recipe.name}</button>`).join('')}
-      </div>
-      <p>Queue crafting orders once the required room exists. Work resolves when phases advance.</p>
-      <ul>${queue || '<li>No crafting orders yet.</li>'}</ul>
-    `;
-  }
-
-  private renderQuestPanel(): string {
-    const quest = QUESTS_BY_ID.awakening;
-    const questState = this.state!.quests[0];
-    return `
-      <h2>Quest Log</h2>
-      <ol>
-        ${quest.steps
-          .map((step) => {
-            const done = questState.completedStepIds.includes(step.id);
-            const active = questState.activeStepId === step.id;
-            return `<li class="${done ? 'complete' : active ? 'active' : ''}">${step.text}</li>`;
-          })
-          .join('')}
-      </ol>
-    `;
-  }
-
-  private renderMemoryPanel(): string {
-    const entries = this.state!.collectibles
-      .filter((entry) => entry.discovered)
-      .map((entry) => {
-        const collectible = COLLECTIBLES_BY_ID[entry.collectibleId];
-        return `<li><strong>${collectible.name}</strong> — ${collectible.lore}</li>`;
-      })
-      .join('');
-    return `<h2>Memory Codex</h2><ul>${entries || '<li>No fragments recovered yet.</li>'}</ul><h3>Recent Log</h3><ul>${this.state!.lastEventLog.slice(0, 6).map((line) => `<li>${line}</li>`).join('')}</ul>`;
-  }
-
-  private renderPausePanel(): string {
-    return `
-      <h2>Pause Menu</h2>
-      <p>Use manual save, export, or return to the title screen.</p>
-      <div class="button-row compact">
-        <button id="resume-game">Resume</button>
-        <button id="return-title">Return to Title</button>
-      </div>
-      <p>Save slots are preserved in IndexedDB. Refreshing the page should allow the game to be loaded again.</p>
-    `;
-  }
-
   private bindGameActions(): void {
-    this.query<HTMLButtonElement>('#advance-phase').onclick = async () => {
-      await this.advancePhase();
-    };
-    this.query<HTMLButtonElement>('#manual-save').onclick = async () => {
-      await this.autoSave('slot-1');
-    };
-    this.query<HTMLButtonElement>('#toggle-pause').onclick = () => {
-      this.pauseVisible = !this.pauseVisible;
-      this.renderGame();
-    };
-    this.query<HTMLButtonElement>('#export-save').onclick = () => {
-      this.query<HTMLTextAreaElement>('#export-output').value = exportSaveGame(this.state!);
-    };
-    const resumeButton = this.root.querySelector<HTMLButtonElement>('#resume-game');
-    if (resumeButton) {
-      resumeButton.onclick = () => {
-        this.pauseVisible = false;
-        this.renderGame();
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>("[data-global-action]")) {
+      button.onclick = async () => {
+        const action = button.dataset.globalAction;
+        if (action === 'advance-phase') {
+          await this.advancePhase();
+        } else if (action === 'manual-save') {
+          await this.autoSave('slot-1');
+          this.notify('Save completed.');
+        } else if (action === 'export-save' && this.state) {
+          const exported = exportSaveGame(this.state);
+          await navigator.clipboard.writeText(exported).catch(() => undefined);
+          this.notify('Save exported to clipboard.');
+        }
       };
     }
-    const returnTitleButton = this.root.querySelector<HTMLButtonElement>('#return-title');
-    if (returnTitleButton) {
-      returnTitleButton.onclick = async () => {
-        this.pauseVisible = false;
-        await this.renderTitleScreen();
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-menu-id]')) {
+      button.onclick = () => {
+        this.openOrCloseMenu(button.dataset.menuId as MenuId);
       };
     }
+
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-human-action]')) {
       button.onclick = async () => {
         if (this.focusedHumanId) {
@@ -544,11 +410,10 @@ export class BloodwakeApp {
         }
       };
     }
+
     for (const select of this.root.querySelectorAll<HTMLSelectElement>('select[data-servant-id]')) {
       select.onchange = () => {
-        if (!this.state) {
-          return;
-        }
+        if (!this.state) return;
         const servantId = select.dataset.servantId;
         const jobType = select.dataset.jobType as keyof Servant['priorities'];
         this.state.servants = this.state.servants.map((servant) =>
@@ -559,57 +424,177 @@ export class BloodwakeApp {
         this.renderGame();
       };
     }
+
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-room-select]')) {
       button.onclick = () => {
         this.selectedRoomId = button.dataset.roomSelect as RoomId;
-        this.renderGame();
+        this.notify(`Selected ${this.selectedRoomId.replaceAll('_', ' ')}.`);
       };
     }
+
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-build-x]')) {
       button.onclick = async () => {
-        if (!this.state) {
-          return;
-        }
+        if (!this.state) return;
         try {
           const result = queueRoomConstruction(
             this.state.rooms,
-            this.state.resources,
+            this.state.inventory,
+            this.state.strategicResources,
             this.selectedRoomId,
             Number(button.dataset.buildX),
             Number(button.dataset.buildY),
           );
           this.state.rooms = result.updatedRooms;
-          this.state.resources = result.updatedResources;
+          this.state.inventory = result.updatedInventory;
+          this.state.strategicResources = result.updatedStrategicResources;
           this.state.lastEventLog.unshift(`Construction starts on ${this.selectedRoomId}.`);
           this.completeStepForEvent('build');
+          this.notify('Construction queued.');
           await this.autoSave('slot-1');
           this.renderGame();
         } catch (error) {
-          alert(error instanceof Error ? error.message : 'Failed to place room.');
+          this.showError(error, 'Failed to place room.');
         }
       };
     }
+
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-recipe-id]')) {
       button.onclick = async () => {
-        if (!this.state) {
-          return;
-        }
+        if (!this.state) return;
         this.state.craftingQueue = queueCraftingOrder(this.state.craftingQueue, button.dataset.recipeId ?? '');
         this.state.lastEventLog.unshift(`Queued ${button.textContent?.trim() ?? 'recipe'}.`);
+        this.notify('Crafting queued.');
         await this.autoSave('slot-1');
         this.renderGame();
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-item-id]')) {
+      button.onclick = () => {
+        this.selectedItemId = button.dataset.itemId as ItemId;
+        this.renderGame();
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-item-filter]')) {
+      button.onclick = () => {
+        this.selectedFilter = button.dataset.itemFilter as 'all' | ItemCategory;
+        this.renderGame();
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-equip-item]')) {
+      button.onclick = () => {
+        if (!this.state) return;
+        const itemId = button.dataset.equipItem as ItemId;
+        const check = canEquipItem(itemId);
+        if (!check.ok) {
+          this.notify(check.reason ?? 'Cannot equip item.');
+          return;
+        }
+        try {
+          const equipped = equipItem(this.state.player, this.state.inventory, itemId);
+          this.state.player = equipped.player;
+          this.state.inventory = equipped.inventory;
+          this.notify(`${ITEMS_BY_ID[itemId].name} equipped.`);
+          this.renderGame();
+        } catch (error) {
+          this.showError(error, 'Failed to equip item.');
+        }
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-unequip-slot]')) {
+      button.onclick = () => {
+        if (!this.state) return;
+        try {
+          const result = unequipItem(this.state.player, this.state.inventory, button.dataset.unequipSlot as 'Weapon' | 'Armor' | 'Accessory');
+          this.state.player = result.player;
+          this.state.inventory = result.inventory;
+          this.notify('Item unequipped.');
+          this.renderGame();
+        } catch (error) {
+          this.showError(error, 'Failed to unequip item.');
+        }
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-use-item]')) {
+      button.onclick = () => {
+        if (!this.state) return;
+        const itemId = button.dataset.useItem as ItemId;
+        if (itemId !== 'healing_draught') {
+          this.notify('That item cannot be used directly.');
+          return;
+        }
+        try {
+          const result = useHealingDraught(this.state.player, this.state.inventory);
+          this.state.player = result.player;
+          this.state.inventory = mergeCompatibleStacks(result.inventory);
+          this.notify(`Healing Draught used (+${result.healed} health).`);
+          this.renderGame();
+        } catch (error) {
+          this.showError(error, 'Unable to use item.');
+        }
+      };
+    }
+
+    const closeOverlay = this.root.querySelector<HTMLButtonElement>('[data-close-overlay]');
+    if (closeOverlay) {
+      closeOverlay.onclick = () => this.openOrCloseMenu(null);
+    }
+
+    const returnTitleButton = this.root.querySelector<HTMLButtonElement>('#return-title');
+    if (returnTitleButton) {
+      returnTitleButton.onclick = async () => {
+        this.openOrCloseMenu(null);
+        await this.renderTitleScreen();
+      };
+    }
+
+    const saveOverlayButton = this.root.querySelector<HTMLButtonElement>('#manual-save-overlay');
+    if (saveOverlayButton) {
+      saveOverlayButton.onclick = async () => {
+        await this.autoSave('slot-1');
+        this.notify('Save completed.');
       };
     }
   }
 
   private installGlobalShortcuts(): void {
     window.onkeydown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' || event.key === 'Tab') {
+      if (isTypingTarget(event.target)) {
+        return;
+      }
+      const key = event.key.toLowerCase();
+      const map: Partial<Record<string, MenuId>> = {
+        c: 'character',
+        i: 'inventory',
+        v: 'servants',
+        b: 'stronghold',
+        k: 'crafting',
+        j: 'journal',
+      };
+      if (event.key === 'Escape') {
         event.preventDefault();
-        this.pauseVisible = !this.pauseVisible;
-        this.renderGame();
+        if (this.activeMenu) {
+          this.openOrCloseMenu(null);
+        } else {
+          this.openOrCloseMenu('pause');
+        }
+        return;
+      }
+      const menu = map[key];
+      if (menu) {
+        event.preventDefault();
+        this.openOrCloseMenu(this.activeMenu === menu ? null : menu);
       }
     };
+  }
+
+  private openOrCloseMenu(menu: MenuId | null): void {
+    this.activeMenu = menu;
+    this.renderGame();
   }
 
   private async advancePhase(): Promise<void> {
@@ -628,26 +613,17 @@ export class BloodwakeApp {
       this.state.servants,
       this.state.rooms,
       this.state.craftingQueue,
-      this.state.resources,
+      this.state.strategicResources,
       this.state.inventory,
       nextPhase,
       this.state.seed,
     );
     this.state.servants = shift.servants;
     this.state.rooms = shift.rooms;
-    this.state.resources = shift.resources;
+    this.state.strategicResources = shift.strategicResources;
     this.state.inventory = shift.inventory;
     this.state.craftingQueue = shift.craftingQueue;
     this.state.lastEventLog = [...shift.log.reverse(), ...this.state.lastEventLog].slice(0, 12);
-    if (shift.rooms.some((room) => room.roomId === 'workshop' && room.status === 'built')) {
-      this.completeStepForEvent('build');
-    }
-    if (shift.servants.some((servant) => servant.currentTask && servant.currentTask !== 'idle')) {
-      this.completeStepForEvent('assign');
-    }
-    if (shift.craftingQueue.some((order) => order.recipeId === 'simple_sword' && order.status === 'complete')) {
-      this.completeStepForEvent('craft');
-    }
     saveSettings(this.state.settings);
     await this.autoSave('slot-1');
     this.renderGame();
@@ -662,7 +638,7 @@ export class BloodwakeApp {
       return;
     }
     if (mode === 'turn' && this.state.player.vitae < TURN_COST_VITAE) {
-      alert('Turning requires more Vitae.');
+      this.notify('Turning requires more Vitae.');
       return;
     }
     if (mode === 'feed') {
@@ -670,15 +646,17 @@ export class BloodwakeApp {
       this.state.npcs = this.state.npcs.map((npc) => (npc.id === humanId ? { ...npc, status: 'fed' } : npc));
       this.completeStepForEvent('feed');
       this.state.lastEventLog.unshift(`Fed on ${human.name} and left them alive.`);
+      this.notify('Vitae restored by feeding.');
     }
     if (mode === 'drain') {
       this.state.player.vitae = Math.min(this.state.player.maxVitae, this.state.player.vitae + FEED_VITAE_GAIN);
-      this.state.resources['Blood Essence'] = (this.state.resources['Blood Essence'] ?? 0) + DRAIN_ESSENCE_GAIN;
+      this.state.strategicResources.bloodEssence += DRAIN_ESSENCE_GAIN;
       this.state.npcs = this.state.npcs.map((npc) => (npc.id === humanId ? { ...npc, status: 'drained' } : npc));
       this.state.lastEventLog.unshift(`Drained ${human.name} for Blood Essence.`);
+      this.notify('Blood Essence increased.');
     }
     if (mode === 'turn') {
-      const result = inheritVampire(this.state.player, human, this.state.seed);
+      const result = inheritVampire(this.state.player, human, `${this.state.seed}-${this.state.characterRoll}`);
       this.state.player.vitae -= TURN_COST_VITAE;
       this.state.npcs = this.state.npcs.map((npc) => (npc.id === humanId ? { ...npc, status: 'turned' } : npc));
       const servant: Servant = {
@@ -701,25 +679,12 @@ export class BloodwakeApp {
       this.state.servants = [...this.state.servants, servant];
       this.state.inheritanceHistory = [result.report, ...this.state.inheritanceHistory];
       this.completeStepForEvent('turn');
-      alert(this.renderInheritanceSummary(result.report));
       this.state.lastEventLog.unshift(`Turned ${human.name} into a fledgling vampire.`);
+      this.notify('A new vampire servant has joined your bloodline.');
     }
     this.focusedHumanId = null;
     await this.autoSave('slot-1');
     this.renderGame();
-  }
-
-  private renderInheritanceSummary(report: SaveGame['inheritanceHistory'][number]): string {
-    return [
-      'Inheritance Result',
-      `Human traits: ${report.originalHumanTraits.join(', ') || 'none'}`,
-      `Sire traits: ${report.sireTraits.join(', ') || 'none'}`,
-      `Final traits: ${report.finalTraits.join(', ') || 'none'}`,
-      `Inherited: ${report.inheritedTraits.join(', ') || 'none'}`,
-      `Retained: ${report.retainedTraits.join(', ') || 'none'}`,
-      `Mutations: ${report.mutations.join(', ') || 'none'}`,
-      `Removed incompatibilities: ${report.removedIncompatibleTraits.join(', ') || 'none'}`,
-    ].join('\n');
   }
 
   private completeStepForEvent(stepId: string): void {
@@ -734,6 +699,16 @@ export class BloodwakeApp {
       return;
     }
     await saveToSlot(slotId, this.state);
+  }
+
+  private notify(message: string): void {
+    this.toastManager?.show(message);
+  }
+
+  private showError(error: unknown, fallback: string): void {
+    const message = error instanceof Error ? error.message : fallback;
+    this.notify(message || fallback);
+    console.error(error);
   }
 
   private query<T extends Element>(selector: string): T {

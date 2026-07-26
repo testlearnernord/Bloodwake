@@ -30,6 +30,7 @@ const sire: VampireCharacter = {
   hunger: 0,
   memoryFragments: [],
   professionSkills: { Crafting: 2, Research: 2 },
+  equipment: {},
 };
 
 const human: HumanCharacter = {
@@ -69,6 +70,7 @@ describe('vampire inheritance', () => {
     expect(result.vampire.professionId).toBe('blacksmith');
     expect(result.report.finalTraits.length).toBeGreaterThan(0);
     expect(result.report.retainedTraits.length).toBeGreaterThanOrEqual(1);
+    expect(result.vampire.equipment).toEqual({});
   });
 
   it('can generate deterministic mutations from the configured algorithm', () => {

@@ -1,0 +1,40 @@
+const icon = (path: string, cls = ''): string =>
+  `<svg class="ui-icon ${cls}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${path}" /></svg>`;
+
+const ICON_PATHS: Record<string, string> = {
+  bloodEssence: 'M12 2C9 6 6 9 6 13a6 6 0 1012 0c0-4-3-7-6-11z',
+  wood: 'M5 19l7-14 7 14H5z',
+  stone: 'M12 3l8 6-8 12L4 9l8-6z',
+  iron_ore: 'M12 2l9 5v10l-9 5-9-5V7l9-5z',
+  food: 'M6 3h2v8H6V3zm10 0h2v8h-2V3zM5 13h14v8H5v-8z',
+  character: 'M12 2a5 5 0 110 10 5 5 0 010-10zm-8 18a8 8 0 0116 0H4z',
+  inventory: 'M4 7h16v13H4V7zm2-3h12v3H6V4z',
+  servants: 'M7 8a3 3 0 100 6 3 3 0 000-6zm10 0a3 3 0 100 6 3 3 0 000-6zM2 20a5 5 0 0110 0H2zm10 0a5 5 0 0110 0h-10z',
+  stronghold: 'M3 21V9l9-6 9 6v12h-6v-7H9v7H3z',
+  crafting: 'M3 17l5-5 3 3 6-6 4 4-10 10-8-6z',
+  journal: 'M5 3h13a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zm2 4h9v2H7V7zm0 4h9v2H7v-2z',
+  pause: 'M7 4h4v16H7V4zm6 0h4v16h-4V4z',
+  close: 'M5 5l14 14M19 5L5 19',
+  weapon: 'M4 20l7-7 2 2-7 7H4v-2zm9-11l2-2 4 4-2 2-4-4z',
+  armor: 'M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z',
+  accessory: 'M12 4a8 8 0 110 16 8 8 0 010-16z',
+  material: 'M4 19l8-15 8 15H4z',
+  consumable: 'M9 3h6v4l-1 1v11H10V8L9 7V3z',
+  quest: 'M12 2l3 6 7 1-5 5 1 8-6-4-6 4 1-8-5-5 7-1 3-6z',
+  relic: 'M12 3l2 5h5l-4 3 2 5-5-3-5 3 2-5-4-3h5l2-5z',
+  healing_draught: 'M10 2h4v4l3 5c2 3 0 9-5 9s-7-6-5-9l3-5V2z',
+  memory_talisman: 'M12 2l8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V6l8-4z',
+  coffin_chamber: 'M8 3h8l3 6v7l-3 5H8l-3-5V9l3-6z',
+  storage_room: 'M3 8h18v12H3V8zm2-4h14v4H5V4z',
+  workshop: 'M2 16l5-5 2 2-5 5H2v-2zm9-9l4-4 6 6-4 4-6-6z',
+  servant_quarters: 'M4 20v-7l8-6 8 6v7h-5v-4H9v4H4z',
+  blood_cellar: 'M12 2C9 6 6 9 6 13a6 6 0 1012 0c0-4-3-7-6-11z',
+  herbs: 'M12 2C8 5 6 9 6 13a6 6 0 0012 0c0-4-2-8-6-11zm0 6c2 1 3 3 3 5a3 3 0 01-6 0c0-2 1-4 3-5z',
+  leather: 'M5 4h14l2 8-2 8H5l-2-8 2-8z',
+  iron_ingot: 'M4 9h16l-2 6H6L4 9z',
+  wood_planks: 'M4 6h16v3H4V6zm0 5h16v3H4v-3zm0 5h16v3H4v-3z',
+  simple_sword: 'M4 20l7-7 2 2-7 7H4v-2zm8-12l4-4 4 4-4 4-4-4z',
+  leather_armor: 'M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z',
+};
+
+export const renderIcon = (iconId: string, cls = ''): string => icon(ICON_PATHS[iconId] ?? ICON_PATHS.material, cls);

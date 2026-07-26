@@ -1,16 +1,23 @@
 # Balancing
 
-Core balancing lives in `src/config/balancing.ts`.
+Core balancing values live in `src/config/balancing.ts`.
 
-## Current configurable groups
+## Current tuning groups
 
 - Starting trait and attribute rules
 - Inheritance and mutation chances
 - Vitae gains, turn cost, and bite range
-- Job priority weights
-- Quality thresholds
+- Job priority weighting
+- Crafting quality thresholds
 - Day/night work restrictions
 
-## Adding or adjusting values
+## Milestone 0.2 gameplay-impact additions
 
-Prefer updating shared constants instead of scattering numbers into gameplay modules.
+- Equipment now contributes to combat stats via deterministic aggregation.
+- Armor reduces incoming damage with a minimum-damage rule.
+- Healing Draught provides consumable health restoration.
+- Building and crafting consume inventory items instead of generic resource keys.
+
+## Editing guidance
+
+Prefer central constants and deterministic formulas over scattered inline values.
