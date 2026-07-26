@@ -64,6 +64,7 @@ export const inheritVampire = (
   const traitIds = resolveTraitSet([...chosenTraitIds, ...mutations]);
   const attemptedTraitIds = [...new Set([...chosenTraitIds, ...mutations])];
   const removedIncompatibleTraits = attemptedTraitIds.filter((traitId) => !traitIds.includes(traitId));
+  const baseAttributes = applyAttributeDelta(human.attributes, sire.attributes);
   const traitModifiers = calculateTraitModifiers(traitIds);
   const finalAttributes = Object.fromEntries(
     Object.entries(baseAttributes).map(([key, value]) => [key, Math.max(1, Math.round(value / 2))]),
