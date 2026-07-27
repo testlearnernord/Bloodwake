@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.1 - Milestone 0.4.1 Layout Hotfix
+
+- Repaired oversized overlay headers: the previous overlay renderer returned `<header>` and `<div class="overlay-body">` as separate direct children of `#overlay-root`; the CSS rule `.overlay-root > *` applied full panel dimensions (≈86dvh height) to every direct child, causing the header alone to fill nearly the entire viewport. Fixed by introducing a `renderOverlayPanel` helper that wraps header and body inside a single `<div class="overlay-panel">`, and replacing `.overlay-root > *` with a targeted `.overlay-panel` rule.
+- Repaired clipped overlay bodies: inventory, crafting, servant, stronghold, and other content is no longer pushed below the viewport. The overlay panel uses `grid-template-rows: auto minmax(0, 1fr)` with `overflow: hidden`; only the body scrolls.
+- Repaired bottom HUD clipping: the game shell previously used fixed pixel heights (`--topbar-h`, `--hud-h`) for the top and bottom grid rows. When HUD content (ability slots, target panel, vitals) exceeded the fixed row height the shell's `overflow: hidden` silently clipped it. Changed `.game-app` to `grid-template-rows: auto minmax(0, 1fr) auto` so rows size to their content.
+- Improved desktop viewport scaling: overlay dimensions are now viewport-relative (`clamp`, `dvh`, `min()`), UI scales 90%–125% remain usable, and changing scale while an overlay is open immediately produces a valid layout.
+- Added compact-height media queries (`max-height: 800px` and `max-height: 700px`) to reduce HUD padding, slot height, and non-critical secondary text at low viewport heights without hiding critical state.
+- Expanded regression tests: panel structure, aria attributes, close button presence, header-before-body ordering, panel wrapper identity, UI scale option validation, and CSS layout invariants.
+- No new gameplay systems added.
+
 ## 0.4.0 - Milestone 0.4 Playability and Core-Loop Integration
 
 - Added Tab / Shift+Tab target cycling, middle-mouse cursor lock, stronger target ring readability, and more predictable angular lock order.
