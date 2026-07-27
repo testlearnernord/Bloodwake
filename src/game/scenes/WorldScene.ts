@@ -686,7 +686,6 @@ export class WorldScene extends Phaser.Scene {
   private updateEnemyMovement(enemy: SceneEnemy): void {
     const definition = ENEMIES_BY_ID[enemy.runtime.type];
     const attack = ENEMY_ATTACKS_BY_ID[enemy.runtime.attackId];
-    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.sprite.x, enemy.sprite.y);
     if (enemy.runtime.state === 'approach') {
       if (enemy.runtime.type === 'bandit') {
         const angle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y) + 0.35;
