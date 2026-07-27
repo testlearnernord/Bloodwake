@@ -57,6 +57,8 @@ describe('combat movement', () => {
     const overlap = computeLockedMovement({ up: true, down: false, left: false, right: false }, { x: 0, y: 0 }, { x: 0, y: 0 }, 12);
     expect(Number.isNaN(overlap.velocity.x)).toBe(false);
     expect(Number.isNaN(overlap.velocity.y)).toBe(false);
+    expect(overlap.velocity.x).toBeCloseTo(0, 5);
+    expect(overlap.velocity.y).toBeCloseTo(12, 5);
   });
 
   it('maintains minimum separation when locked movement presses inward', () => {

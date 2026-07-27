@@ -1,5 +1,6 @@
 import { MIN_ORBIT_RADIUS } from '../../config/balancing';
 import type { VectorLike } from '../../game/combat/combatTypes';
+import { DEFAULT_FACING_VECTOR, ZERO_VECTOR, addVectors, normalizeOr, scaleVector } from './vectors';
 
 export interface MovementInput {
   up: boolean;
@@ -14,25 +15,14 @@ export interface MovementResult {
   minimumSeparation: number;
 }
 
-const normalize = (vector: VectorLike): VectorLike => {
-  const length = Math.hypot(vector.x, vector.y);
-  if (length === 0) {
-    return { x: 0, y: 0 };
-  }
-  return { x: vector.x / length, y: vector.y / length };
-};
-
-const scale = (vector: VectorLike, factor: number): VectorLike => ({ x: vector.x * factor, y: vector.y * factor });
-const add = (left: VectorLike, right: VectorLike): VectorLike => ({ x: left.x + right.x, y: left.y + right.y });
-
 export const getInputVector = (input: MovementInput): VectorLike =>
-  normalize({ x: (input.right ? 1 : 0) - (input.left ? 1 : 0), y: (input.down ? 1 : 0) - (input.up ? 1 : 0) });
+  normalizeOr({ x: (input.right ? 1 : 0) - (input.left ? 1 : 0), y: (input.down ? 1 : 0) - (input.up ? 1 : 0) }, ZERO_VECTOR);
 
 export const computeFreeMovement = (input: MovementInput, speed: number, facing: VectorLike): MovementResult => {
   const direction = getInputVector(input);
   return {
-    velocity: scale(direction, speed),
-    facing: normalize(facing),
+    velocity: scaleVector(direction, speed),
+    facing: normalizeOr(facing, DEFAULT_FACING_VECTOR),
     minimumSeparation: 0,
   };
 };
@@ -46,14 +36,14 @@ export const computeLockedMovement = (
 ): MovementResult => {
   const toTargetRaw = { x: targetPosition.x - playerPosition.x, y: targetPosition.y - playerPosition.y };
   const distance = Math.hypot(toTargetRaw.x, toTargetRaw.y);
-  const toTarget = distance === 0 ? { x: 1, y: 0 } : { x: toTargetRaw.x / distance, y: toTargetRaw.y / distance };
+  const toTarget = normalizeOr(toTargetRaw, DEFAULT_FACING_VECTOR);
   const tangent = { x: -toTarget.y, y: toTarget.x };
   const radialInput = (input.up ? 1 : 0) - (input.down ? 1 : 0);
   const tangentialInput = (input.right ? 1 : 0) - (input.left ? 1 : 0);
-  const base = add(scale(toTarget, radialInput), scale(tangent, tangentialInput));
-  let velocity = scale(normalize(base), speed);
+  const base = addVectors(scaleVector(toTarget, radialInput), scaleVector(tangent, tangentialInput));
+  let velocity = scaleVector(normalizeOr(base, ZERO_VECTOR), speed);
   if (distance <= minimumOrbitRadius && radialInput > 0) {
-    velocity = scale(normalize(scale(tangent, tangentialInput || 1)), speed);
+    velocity = scaleVector(normalizeOr(scaleVector(tangent, tangentialInput || 1), ZERO_VECTOR), speed);
   }
   return {
     velocity,

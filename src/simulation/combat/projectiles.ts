@@ -1,5 +1,6 @@
 import { PROJECTILES_BY_ID } from '../../data/abilities';
 import type { ProjectileDefinition, VectorLike } from '../../game/combat/combatTypes';
+import { DEFAULT_FACING_VECTOR, normalizeOr } from './vectors';
 
 export interface CombatProjectile {
   id: string;
@@ -17,16 +18,8 @@ export interface CombatProjectile {
   destroyed: boolean;
 }
 
-const normalize = (vector: VectorLike): VectorLike => {
-  const length = Math.hypot(vector.x, vector.y);
-  if (length === 0) {
-    return { x: 1, y: 0 };
-  }
-  return { x: vector.x / length, y: vector.y / length };
-};
-
 export const resolveProjectileDirection = (origin: VectorLike, target: VectorLike | null, pointer: VectorLike): VectorLike =>
-  normalize(target ? { x: target.x - origin.x, y: target.y - origin.y } : { x: pointer.x - origin.x, y: pointer.y - origin.y });
+  normalizeOr(target ? { x: target.x - origin.x, y: target.y - origin.y } : { x: pointer.x - origin.x, y: pointer.y - origin.y }, DEFAULT_FACING_VECTOR);
 
 export const createProjectile = (
   projectileId: string,
@@ -37,7 +30,7 @@ export const createProjectile = (
   targetId: string | null,
 ): CombatProjectile => {
   const definition = PROJECTILES_BY_ID[projectileId];
-  const normalizedDirection = normalize(direction);
+  const normalizedDirection = normalizeOr(direction, DEFAULT_FACING_VECTOR);
   return {
     id: `${projectileId}-${now}-${sourceId}`,
     projectileId,
@@ -61,10 +54,10 @@ export const stepProjectile = (projectile: CombatProjectile, now: number, deltaM
   }
   const definition: ProjectileDefinition = PROJECTILES_BY_ID[projectile.projectileId];
   const nextDirection = homingTarget && definition.homingStrength
-    ? normalize({
+    ? normalizeOr({
         x: projectile.direction.x * (1 - definition.homingStrength) + (homingTarget.x - projectile.position.x) * definition.homingStrength,
         y: projectile.direction.y * (1 - definition.homingStrength) + (homingTarget.y - projectile.position.y) * definition.homingStrength,
-      })
+      }, DEFAULT_FACING_VECTOR)
     : projectile.direction;
   const distanceStep = definition.speed * (deltaMs / 1000);
   const nextPosition = {

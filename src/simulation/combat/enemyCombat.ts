@@ -4,6 +4,7 @@ import { PLAYER_ACTIONS_BY_ID } from '../../data/combatActions';
 import { applyIncomingDamage } from './stats';
 import type { CombatDamageEvent, EnemyCombatState, VectorLike } from '../../game/combat/combatTypes';
 import type { EnemyType } from '../../types/models';
+import { DEFAULT_FACING_VECTOR, distanceBetween, normalizeOr } from './vectors';
 
 export interface EnemyRuntimeState {
   id: string;
@@ -31,16 +32,6 @@ export interface EnemyStepResult {
   shouldFireProjectile: boolean;
   shouldCleanupTelegraph: boolean;
 }
-
-const normalize = (vector: VectorLike): VectorLike => {
-  const length = Math.hypot(vector.x, vector.y);
-  if (length === 0) {
-    return { x: 1, y: 0 };
-  }
-  return { x: vector.x / length, y: vector.y / length };
-};
-
-const distance = (left: VectorLike, right: VectorLike): number => Math.hypot(left.x - right.x, left.y - right.y);
 
 export const createEnemyRuntime = (id: string, type: EnemyType, position: VectorLike): EnemyRuntimeState => {
   const enemy = ENEMIES_BY_ID[type];
@@ -80,8 +71,8 @@ export const stepEnemyCombat = (
   const definition = ENEMIES_BY_ID[enemy.type];
   const attack = ENEMY_ATTACKS_BY_ID[enemy.attackId];
   const toPlayer = { x: playerPosition.x - enemy.position.x, y: playerPosition.y - enemy.position.y };
-  const nextFacing = normalize(toPlayer);
-  const rangeToPlayer = distance(playerPosition, enemy.position);
+  const nextFacing = normalizeOr(toPlayer, DEFAULT_FACING_VECTOR);
+  const rangeToPlayer = distanceBetween(playerPosition, enemy.position);
   if (enemy.state === 'windup' && now >= enemy.phaseEndsAt) {
     const lockedFacing = enemy.directionLock ?? nextFacing;
     const damageEvents: CombatDamageEvent[] = attack.projectileId

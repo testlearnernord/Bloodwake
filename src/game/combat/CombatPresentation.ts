@@ -174,12 +174,15 @@ export class CombatPresentation {
   }
 
   static flashSprite(scene: Phaser.Scene, sprite: Phaser.GameObjects.Sprite | Phaser.GameObjects.Image, color: number, player = false): void {
+    const existingTimer = sprite.getData('flash-timer') as Phaser.Time.TimerEvent | undefined;
+    existingTimer?.remove(false);
     sprite.setTint(color);
-    scene.time.delayedCall(player ? PLAYER_HURT_FLASH_MS : HIT_FLASH_MS, () => {
+    const timer = scene.time.delayedCall(player ? PLAYER_HURT_FLASH_MS : HIT_FLASH_MS, () => {
       if (sprite.active) {
         sprite.clearTint();
       }
     });
+    sprite.setData('flash-timer', timer);
   }
 
   static showAfterimage(scene: Phaser.Scene, sprite: Phaser.GameObjects.Image): void {

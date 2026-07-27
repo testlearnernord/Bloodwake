@@ -5,7 +5,8 @@ import { renderIcon } from '../icons/registry';
 import { htmlEscape } from '../../utilities/html';
 
 const renderAbilitySlot = (ability: NonNullable<CombatUiSnapshot>['abilities'][number]): string => {
-  const cooldownPct = ability.cooldownMs <= 0 ? 0 : Math.max(0, Math.min(100, (ability.cooldownRemainingMs / ability.cooldownMs) * 100));
+  const safeCooldownMs = Math.max(0, ability.cooldownMs);
+  const cooldownPct = safeCooldownMs === 0 ? 0 : Math.max(0, Math.min(100, (ability.cooldownRemainingMs / safeCooldownMs) * 100));
   const disabledReason = ability.disabledReason ? `<span class="ability-reason">${htmlEscape(ability.disabledReason)}</span>` : '';
   return `
     <div class="ability-slot ${ability.active ? 'active' : ''} ${ability.disabledReason ? 'disabled' : ''}" data-tooltip="${htmlEscape(`${ability.label} (${ability.shortcut})`)}">

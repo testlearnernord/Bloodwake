@@ -1,5 +1,6 @@
 import { LOCK_BREAK_RANGE, LOCK_RANGE } from '../../config/balancing';
 import type { CombatTargetSnapshot, VectorLike } from '../../game/combat/combatTypes';
+import { DEFAULT_FACING_VECTOR, normalizeOr } from './vectors';
 
 const EPSILON = 0.0001;
 
@@ -9,13 +10,7 @@ const distanceSquared = (left: VectorLike, right: VectorLike): number => {
   return dx * dx + dy * dy;
 };
 
-export const normalizeVector = (vector: VectorLike): VectorLike => {
-  const length = Math.hypot(vector.x, vector.y);
-  if (length <= EPSILON) {
-    return { x: 1, y: 0 };
-  }
-  return { x: vector.x / length, y: vector.y / length };
-};
+export const normalizeVector = (vector: VectorLike): VectorLike => normalizeOr(vector, DEFAULT_FACING_VECTOR);
 
 const dot = (left: VectorLike, right: VectorLike): number => left.x * right.x + left.y * right.y;
 

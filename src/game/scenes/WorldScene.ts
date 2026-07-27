@@ -620,7 +620,16 @@ export class WorldScene extends Phaser.Scene {
     CombatPresentation.flashSprite(this, enemy.sprite, 0xff6b81);
     CombatPresentation.spawnFloatingDamage(this, enemy.sprite.x, enemy.sprite.y - 24, event.mitigatedDamage, '#ffe3e3');
     CombatPresentation.spawnBloodBurst(this, enemy.sprite.x, enemy.sprite.y);
-    this.cameras.main.shake(this.reducedMotion ? 40 : PLAYER_ACTIONS_BY_ID[event.actionId as 'light' | 'heavy' | 'blood_lance']?.hitStopMs ?? 40, event.actionId === 'heavy' ? 0.003 : 0.0015, false);
+    const shakeDurationByAction: Partial<Record<CombatActionId, number>> = {
+      light: 45,
+      heavy: 85,
+      blood_lance: 55,
+    };
+    const shakeActionId: CombatActionId | null =
+      event.actionId === 'light' || event.actionId === 'heavy' || event.actionId === 'blood_lance' ? event.actionId : null;
+    const shakeDuration = shakeActionId ? shakeDurationByAction[shakeActionId] ?? 40 : 40;
+    const shakeIntensity = shakeActionId === 'heavy' ? 0.003 : 0.0015;
+    this.cameras.main.shake(this.reducedMotion ? 40 : shakeDuration, shakeIntensity, false);
     if (enemy.runtime.health <= 0) {
       enemy.runtime.state = 'dead';
       enemy.runtime.telegraphVisible = false;
