@@ -1,8 +1,13 @@
 import { ITEMS_BY_ID } from '../../data/items';
+import { PROFESSIONS_BY_ID } from '../../data/professions';
 import { QUESTS_BY_ID } from '../../data/quests';
 import { RECIPES, RECIPES_BY_ID } from '../../data/recipes';
-import { ROOMS } from '../../data/rooms';
+import { ROOMS, ROOMS_BY_ID } from '../../data/rooms';
 import { getTraitById } from '../../simulation/traits/traitUtils';
+import { canCraftRecipe } from '../../simulation/crafting/crafting';
+import { getItemQuantity, hasItems } from '../../simulation/inventory/inventory';
+import { calculatePlayerCombatStats } from '../../simulation/combat/stats';
+import { selectTaskForServant } from '../../simulation/servants/tasks';
 import type { BuiltRoom, InventoryEntry, ItemCategory, ItemId, SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
 import type { MenuId } from '../uiState';
@@ -32,14 +37,59 @@ const roomGridCell = (rooms: BuiltRoom[], x: number, y: number): string => {
   return `<button class="grid-cell ${room.status}" data-build-x="${x}" data-build-y="${y}" aria-label="${room.roomId} at ${x},${y}">${room.roomId.replaceAll('_', ' ')}</button>`;
 };
 
+export const getRoomReadiness = (state: SaveGame, roomId: keyof typeof ROOMS_BY_ID): { ready: boolean; reason: string } => {
+  const room = ROOMS_BY_ID[roomId];
+  if (room.requiredRoomId && !state.rooms.some((entry) => entry.roomId === room.requiredRoomId && entry.status === 'built')) {
+    return { ready: false, reason: `Requires ${ROOMS_BY_ID[room.requiredRoomId].name}.` };
+  }
+  if (!hasItems(state.inventory, room.constructionCostItems)) {
+    const missing = Object.entries(room.constructionCostItems)
+      .filter(([itemId, amount]) => getItemQuantity(state.inventory, itemId as ItemId) < (amount ?? 0))
+      .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
+      .join(', ');
+    return { ready: false, reason: `Missing ${missing}.` };
+  }
+  const missingResource = Object.entries(room.constructionCostResources ?? {}).find(
+    ([resourceId, amount]) => (state.strategicResources[resourceId as keyof SaveGame['strategicResources']] ?? 0) < (amount ?? 0),
+  );
+  if (missingResource) {
+    return { ready: false, reason: `Needs more ${missingResource[0]}.` };
+  }
+  return { ready: true, reason: 'Ready to place on an empty valid slot.' };
+};
+
+export const getRecipeReadiness = (state: SaveGame, recipeId: string): { ready: boolean; reason: string } => {
+  const recipe = RECIPES_BY_ID[recipeId];
+  if (!recipe) {
+    return { ready: false, reason: 'Unknown recipe.' };
+  }
+  if (!state.rooms.some((room) => room.roomId === recipe.requiredRoomId && room.status === 'built')) {
+    return { ready: false, reason: `Requires ${ROOMS_BY_ID[recipe.requiredRoomId].name}.` };
+  }
+  if (!canCraftRecipe(state.inventory, recipeId)) {
+    const missing = Object.entries(recipe.inputs)
+      .filter(([itemId, amount]) => getItemQuantity(state.inventory, itemId as ItemId) < (amount ?? 0))
+      .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
+      .join(', ');
+    return { ready: false, reason: `Missing ${missing}.` };
+  }
+  const hasCrafter = state.servants.some((servant) => servant.priorities.Crafting !== 'Disabled');
+  if (!hasCrafter) {
+    return { ready: false, reason: 'Need a servant with Crafting enabled.' };
+  }
+  return { ready: true, reason: 'Ready to queue.' };
+};
+
 export const renderOverlay = (
   menu: MenuId,
   state: SaveGame,
   selectedItemId: ItemId | null,
   selectedFilter: 'all' | ItemCategory,
+  selectedRoomId: keyof typeof ROOMS_BY_ID,
 ): string => {
   if (menu === 'character') {
     const traits = state.player.traitIds.map((traitId) => getTraitById(traitId));
+    const combatStats = calculatePlayerCombatStats(state.player);
     return `
       <header class="overlay-header"><h2 id="overlay-title">Character & Bloodline</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
       <div class="overlay-body columns two">
@@ -47,14 +97,27 @@ export const renderOverlay = (
           <h3>${htmlEscape(state.player.name)}</h3>
           <p>Profession: ${htmlEscape(state.player.professionId)}</p>
           <p>Vitae Capacity: ${state.player.maxVitae} · Hunger: ${state.player.hunger}</p>
+          <p>Attack ${combatStats.attackDamage} · Armor ${combatStats.armor} · Healing ${combatStats.healingPower}</p>
           <h4>Attributes</h4>
-          <ul>${Object.entries(state.player.attributes).map(([key, value]) => `<li>${htmlEscape(key)}: base ${value}, item bonus pending, final ${value}</li>`).join('')}</ul>
+          <ul>${Object.entries(combatStats.finalAttributes)
+            .map(([key, value]) => {
+              const base = combatStats.baseAttributes[key as keyof typeof combatStats.baseAttributes];
+              const bonus = combatStats.equipmentBonuses[key as keyof typeof combatStats.equipmentBonuses] ?? 0;
+              return `<li>${htmlEscape(key)}: ${value}${bonus ? ` (${base} base + ${bonus} gear)` : ` (${base} base)`}</li>`;
+            })
+            .join('')}</ul>
         </section>
         <section>
           <h4>Traits</h4>
           <ul>${traits.map((trait) => `<li>${trait.name} (${trait.rarity}) — ${trait.description}</li>`).join('')}</ul>
           <h4>Inheritance History</h4>
-          <ul>${state.inheritanceHistory.slice(0, 6).map((entry) => `<li>Final traits: ${entry.finalTraits.map(htmlEscape).join(', ') || 'none'}</li>`).join('') || '<li>No inheritance events yet.</li>'}</ul>
+          <ul>${state.inheritanceHistory
+            .slice(0, 6)
+            .map(
+              (entry) =>
+                `<li><strong>Final:</strong> ${entry.finalTraits.map(htmlEscape).join(', ') || 'none'}<br /><small>Inherited: ${entry.inheritedTraits.map(htmlEscape).join(', ') || 'none'} · Retained: ${entry.retainedTraits.map(htmlEscape).join(', ') || 'none'} · Mutations: ${entry.mutations.map(htmlEscape).join(', ') || 'none'}</small></li>`,
+            )
+            .join('') || '<li>No inheritance events yet.</li>'}</ul>
         </section>
       </div>
     `;
@@ -129,7 +192,11 @@ export const renderOverlay = (
               ? '<p>Once recruited, servants can gather, build, and craft for your stronghold.</p>'
               : state.servants
                   .map(
-                    (servant) => `<article><h4>${htmlEscape(servant.name)}</h4><p>${htmlEscape(servant.professionId)}</p><p>Health ${servant.health}/${servant.maxHealth} · Morale ${servant.morale} · Loyalty ${servant.loyalty}</p><p>Ambition ${servant.ambition} · Stress ${servant.stress}</p><p>Task: ${htmlEscape(servant.currentTask ?? 'none')} — ${htmlEscape(servant.taskReason)}</p></article>`,
+                    (servant) => {
+                      const profession = PROFESSIONS_BY_ID[servant.professionId];
+                      const predictedTask = selectTaskForServant(servant, state.rooms, state.craftingQueue, state.inventory, state.time.phase);
+                      return `<article><h4>${htmlEscape(servant.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>Health ${servant.health}/${servant.maxHealth} · Morale ${servant.morale} · Loyalty ${servant.loyalty}</p><p>Ambition ${servant.ambition} · Stress ${servant.stress}</p><p>Current task: ${htmlEscape(servant.currentTask ?? 'none')} — ${htmlEscape(servant.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTask?.reason ?? 'No enabled work is available.')}</p></article>`;
+                    },
                   )
                   .join('')
           }
@@ -165,15 +232,19 @@ export const renderOverlay = (
           <div class="button-list">
             ${ROOMS.filter((room) => room.id !== 'coffin_chamber')
               .map(
-                (room) => `<button data-room-select="${room.id}">${renderIcon(room.iconId)} ${room.name}<small>${Object.entries(room.constructionCostItems)
-                  .map(([itemId, qty]) => `${qty} ${ITEMS_BY_ID[itemId as ItemId].name}`)
-                  .join(', ') || 'No item cost'}</small></button>`,
+                (room) => {
+                  const readiness = getRoomReadiness(state, room.id);
+                  return `<button class="${selectedRoomId === room.id ? 'selected' : ''}" data-room-select="${room.id}">${renderIcon(room.iconId)} ${room.name}<small>${Object.entries(room.constructionCostItems)
+                    .map(([itemId, qty]) => `${qty} ${ITEMS_BY_ID[itemId as ItemId].name}`)
+                    .join(', ') || 'No item cost'}</small><small>${htmlEscape(readiness.reason)}</small></button>`;
+                },
               )
               .join('')}
           </div>
         </section>
         <section>
           <h3>Build Grid</h3>
+          <p>Selected room: ${htmlEscape(ROOMS_BY_ID[selectedRoomId].name)}. Empty cells build only when placement and costs are valid.</p>
           <div class="build-grid">${Array.from({ length: 16 }, (_, index) => roomGridCell(state.rooms, index % 4, Math.floor(index / 4))).join('')}</div>
           <h4>Current Rooms</h4>
           <ul>${state.rooms.map((room) => `<li>${room.roomId} at ${room.x},${room.y} · ${room.status} · progress ${room.progress}</li>`).join('')}</ul>
@@ -189,7 +260,10 @@ export const renderOverlay = (
         <section><h3>Categories</h3><div class="button-list"><button disabled>Materials</button><button disabled>Equipment</button><button disabled>Alchemy</button></div></section>
         <section>
           <h3>Recipes</h3>
-          <div class="button-list">${RECIPES.map((recipe) => `<button data-recipe-id="${recipe.id}">${recipe.name}</button>`).join('')}</div>
+          <div class="button-list">${RECIPES.map((recipe) => {
+            const readiness = getRecipeReadiness(state, recipe.id);
+            return `<button data-recipe-id="${recipe.id}" ${readiness.ready ? '' : 'disabled'}>${recipe.name}<small>${htmlEscape(readiness.reason)}</small></button>`;
+          }).join('')}</div>
         </section>
         <section>
           <h3>Queue</h3>
@@ -234,10 +308,18 @@ export const renderOverlay = (
       <p>Use save/export controls from the top bar or resume to continue.</p>
       <h3>Combat controls</h3>
       <ul>
-        <li>WASD move, mouse aim, Ctrl lock-on, mouse wheel cycle targets</li>
+        <li>WASD move, mouse aim, Ctrl lock-on toggle, Tab next target, Shift+Tab previous target</li>
+        <li>Mouse wheel also cycles targets, middle mouse locks the enemy nearest the cursor</li>
         <li>Left Mouse light attack, Right Mouse heavy attack, Q Blood Lance, Space dodge</li>
         <li>E interact, F bite/feed, Escape close overlay or pause</li>
       </ul>
+      <label>UI Scale
+        <select data-setting-ui-scale>
+          ${[0.9, 1, 1.1, 1.25]
+            .map((scale) => `<option value="${scale}" ${state.settings.uiScale === scale ? 'selected' : ''}>${Math.round(scale * 100)}%</option>`)
+            .join('')}
+        </select>
+      </label>
       <div class="button-row"><button id="manual-save-overlay">Manual Save</button><button id="return-title">Return to Title</button></div>
     </div>
   `;

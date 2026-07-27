@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeFreeMovement, computeLockedMovement } from '../simulation/combat/movement';
-import { cycleLockTarget, selectLockTarget, shouldBreakLock } from '../simulation/combat/targeting';
+import { cycleLockTarget, selectLockTarget, selectTargetNearPoint, shouldBreakLock } from '../simulation/combat/targeting';
 import type { CombatTargetSnapshot } from '../game/combat/combatTypes';
 
 const targets: CombatTargetSnapshot[] = [
@@ -29,6 +29,12 @@ describe('combat targeting', () => {
     expect(selectLockTarget(invalidTargets, { x: 0, y: 0 }, { x: 1, y: 0 })?.id).toBe('knight-1');
     expect(cycleLockTarget(invalidTargets, 'bandit-2', { x: 0, y: 0 }, 1)?.id).toBe('knight-1');
     expect(cycleLockTarget(invalidTargets, 'bandit-2', { x: 0, y: 0 }, -1)?.id).toBe('knight-1');
+  });
+
+  it('cycles in stable angular order and can lock near the cursor', () => {
+    expect(cycleLockTarget(targets, 'bandit-1', { x: 0, y: 0 }, 1)?.id).toBe('knight-1');
+    expect(cycleLockTarget(targets, 'bandit-1', { x: 0, y: 0 }, -1)?.id).toBe('bandit-2');
+    expect(selectTargetNearPoint(targets, { x: 0, y: 0 }, { x: 110, y: 8 }, 24)?.id).toBe('bandit-1');
   });
 
   it('automatically unlocks invalid or distant targets', () => {

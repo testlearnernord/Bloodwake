@@ -32,7 +32,7 @@ import {
 import { createEnemyRuntime, applyEnemyStagger, stepEnemyCombat, type EnemyRuntimeState } from '../../simulation/combat/enemyCombat';
 import { computeFreeMovement, computeLockedMovement, type MovementInput } from '../../simulation/combat/movement';
 import { createProjectile, registerProjectileImpact, resolveProjectileDirection, stepProjectile, type CombatProjectile } from '../../simulation/combat/projectiles';
-import { cycleLockTarget, selectLockTarget, shouldBreakLock } from '../../simulation/combat/targeting';
+import { cycleLockTarget, selectLockTarget, selectTargetNearPoint, shouldBreakLock } from '../../simulation/combat/targeting';
 import { applyIncomingDamage } from '../../simulation/combat/stats';
 
 interface SceneEnemy {
@@ -42,6 +42,7 @@ interface SceneEnemy {
   label: Phaser.GameObjects.Text;
   runtime: EnemyRuntimeState;
   telegraph: Phaser.GameObjects.Container | null;
+  aimAngle: number;
 }
 
 interface SceneHuman {
@@ -83,6 +84,7 @@ export class WorldScene extends Phaser.Scene {
   private biteKey!: Phaser.Input.Keyboard.Key;
   private rangedKey!: Phaser.Input.Keyboard.Key;
   private tabKey!: Phaser.Input.Keyboard.Key;
+  private shiftKey!: Phaser.Input.Keyboard.Key;
   private lockKey!: Phaser.Input.Keyboard.Key;
   private activeZone = 'Ruined Stronghold';
   private hintText!: Phaser.GameObjects.Text;
@@ -93,6 +95,7 @@ export class WorldScene extends Phaser.Scene {
   private lastUiEmitAt = 0;
   private reducedMotion = false;
   private followOffset = new Phaser.Math.Vector2(0, 0);
+  private playerAimAngle = 0;
 
   constructor(bridge: GameBridge) {
     super('world');
@@ -214,6 +217,7 @@ export class WorldScene extends Phaser.Scene {
         label,
         runtime: createEnemyRuntime(spawn.id, spawn.type, { x: spawn.x, y: spawn.y }),
         telegraph: null,
+        aimAngle: 0,
       };
     });
   }
@@ -237,7 +241,7 @@ export class WorldScene extends Phaser.Scene {
 
   private createUiHints(): void {
     this.hintText = this.add
-      .text(24, 680, 'WASD move · Ctrl lock · Wheel cycle · LMB/RMB attacks · Q Blood Lance · F bite · Space dodge', {
+      .text(24, 680, 'WASD move · Ctrl lock · Tab next · Shift+Tab prev · MMB cursor lock · Q Blood Lance · F feed', {
         color: '#f8f9fa',
         fontSize: '16px',
       })
@@ -261,10 +265,15 @@ export class WorldScene extends Phaser.Scene {
     this.biteKey = keyboard.addKey('F');
     this.rangedKey = keyboard.addKey('Q');
     this.tabKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.TAB);
+    this.shiftKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT);
     this.lockKey = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.CTRL);
     this.input.mouse?.disableContextMenu();
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (this.bridge.isGameplayInputBlocked()) return;
+      if (pointer.middleButtonDown()) {
+        this.lockTargetNearCursor();
+        return;
+      }
       if (pointer.rightButtonDown()) {
         this.tryStartPlayerAction('heavy', this.time.now);
       } else {
@@ -319,12 +328,12 @@ export class WorldScene extends Phaser.Scene {
     const actionMultiplier = this.playerAction.actionId ? PLAYER_ACTIONS_BY_ID[this.playerAction.actionId].movementMultiplier : 1;
     this.player.setVelocity(movement.velocity.x * actionMultiplier, movement.velocity.y * actionMultiplier);
     if (lockedEnemy) {
-      this.player.rotation = Phaser.Math.Angle.Between(this.player.x, this.player.y, lockedEnemy.sprite.x, lockedEnemy.sprite.y);
+      this.playerAimAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, lockedEnemy.sprite.x, lockedEnemy.sprite.y);
       if (this.playerAction.state === 'idle' || this.playerAction.state === 'moving') {
         this.playerStatePreview = moving ? 'locked_moving' : 'idle';
       }
     } else {
-      this.player.rotation = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.worldX, pointer.worldY);
+      this.playerAimAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, pointer.worldX, pointer.worldY);
       if (this.playerAction.state === 'idle') {
         this.playerStatePreview = moving ? 'moving' : 'idle';
       }
@@ -374,7 +383,7 @@ export class WorldScene extends Phaser.Scene {
       this.tryStartPlayerAction('blood_lance', time);
     }
     if (Phaser.Input.Keyboard.JustDown(this.tabKey)) {
-      this.bridge.onPauseRequested();
+      this.cycleTargetLock(this.shiftKey.isDown ? -1 : 1);
     }
   }
 
@@ -417,7 +426,7 @@ export class WorldScene extends Phaser.Scene {
     if (free.velocity.x !== 0 || free.velocity.y !== 0) {
       return new Phaser.Math.Vector2(free.velocity.x, free.velocity.y).normalize();
     }
-    return new Phaser.Math.Vector2(Math.cos(this.player.rotation), Math.sin(this.player.rotation)).normalize();
+    return new Phaser.Math.Vector2(Math.cos(this.playerAimAngle), Math.sin(this.playerAimAngle)).normalize();
   }
 
   private stepPlayerAction(time: number): void {
@@ -457,14 +466,14 @@ export class WorldScene extends Phaser.Scene {
   private onPlayerActionBecameActive(actionId: 'light' | 'heavy' | 'blood_lance' | 'dodge' | 'bite', time: number): void {
     const definition = PLAYER_ACTIONS_BY_ID[actionId];
     if (actionId === 'light' || actionId === 'heavy') {
-      const direction = new Phaser.Math.Vector2(Math.cos(this.player.rotation), Math.sin(this.player.rotation));
+      const direction = new Phaser.Math.Vector2(Math.cos(this.playerAimAngle), Math.sin(this.playerAimAngle));
       this.player.setVelocity(direction.x * (definition.lungeDistance * 9), direction.y * (definition.lungeDistance * 9));
-      CombatPresentation.showSlash(this, this.player.x, this.player.y, this.player.rotation, definition.range, definition.attackArc, actionId === 'light' ? 0xf8f9fa : 0xb91c3c, this.reducedMotion);
+      CombatPresentation.showSlash(this, this.player.x, this.player.y, this.playerAimAngle, definition.range, definition.attackArc, actionId === 'light' ? 0xf8f9fa : 0xb91c3c, this.reducedMotion);
       this.damageEnemiesInArc(actionId, time);
     }
     if (actionId === 'blood_lance') {
       this.spawnPlayerProjectile(time);
-      CombatPresentation.spawnBloodBurst(this, this.player.x + Math.cos(this.player.rotation) * 16, this.player.y + Math.sin(this.player.rotation) * 16);
+      CombatPresentation.spawnBloodBurst(this, this.player.x + Math.cos(this.playerAimAngle) * 16, this.player.y + Math.sin(this.playerAimAngle) * 16);
     }
   }
 
@@ -472,7 +481,7 @@ export class WorldScene extends Phaser.Scene {
     const state = this.bridge.getState();
     const combatStats = this.bridge.getCombatStats();
     const definition = PLAYER_ACTIONS_BY_ID[actionId];
-    const facing = new Phaser.Math.Vector2(Math.cos(this.player.rotation), Math.sin(this.player.rotation)).normalize();
+    const facing = new Phaser.Math.Vector2(Math.cos(this.playerAimAngle), Math.sin(this.playerAimAngle)).normalize();
     for (const enemy of this.enemies) {
       if (!enemy.sprite.active || enemy.runtime.health <= 0) continue;
       const toEnemy = new Phaser.Math.Vector2(enemy.sprite.x - this.player.x, enemy.sprite.y - this.player.y);
@@ -662,7 +671,7 @@ export class WorldScene extends Phaser.Scene {
           attack.telegraphShape,
           enemy.sprite.x,
           enemy.sprite.y,
-          enemy.sprite.rotation,
+          enemy.aimAngle,
           attack.range,
           attack.width ?? attack.arc ?? 22,
           enemy.runtime.type === 'clergy_hunter' ? 0xf8e16c : enemy.runtime.type === 'elite_knight' ? 0xe9ecef : 0xff758f,
@@ -708,13 +717,18 @@ export class WorldScene extends Phaser.Scene {
       enemy.sprite.setVelocity(0, 0);
     }
     if (enemy.runtime.state === 'windup' && attack.trackingDuringWindup) {
-      enemy.sprite.rotation = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y);
-      enemy.telegraph?.setRotation(enemy.sprite.rotation);
+      enemy.aimAngle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y);
+      enemy.telegraph?.setRotation(enemy.aimAngle);
       enemy.telegraph?.setPosition(enemy.sprite.x, enemy.sprite.y);
     } else if (enemy.runtime.directionLock) {
-      enemy.sprite.rotation = Phaser.Math.Angle.Between(0, 0, enemy.runtime.directionLock.x, enemy.runtime.directionLock.y);
-      enemy.telegraph?.setRotation(enemy.sprite.rotation);
+      enemy.aimAngle = Phaser.Math.Angle.Between(0, 0, enemy.runtime.directionLock.x, enemy.runtime.directionLock.y);
+      enemy.telegraph?.setRotation(enemy.aimAngle);
       enemy.telegraph?.setPosition(enemy.sprite.x, enemy.sprite.y);
+    } else if (enemy.runtime.state === 'approach' || enemy.runtime.state === 'reposition' || enemy.runtime.state === 'return_home') {
+      const velocity = enemy.sprite.body?.velocity;
+      if (velocity && (velocity.x !== 0 || velocity.y !== 0)) {
+        enemy.aimAngle = Phaser.Math.Angle.Between(0, 0, velocity.x, velocity.y);
+      }
     }
   }
 
@@ -736,17 +750,26 @@ export class WorldScene extends Phaser.Scene {
       this.releaseTargetLock();
       return;
     }
-    const mouseDirection = { x: this.input.activePointer.worldX - this.player.x, y: this.input.activePointer.worldY - this.player.y };
+    const mouseDirection = { x: Math.cos(this.playerAimAngle), y: Math.sin(this.playerAimAngle) };
     const target = selectLockTarget(
       this.enemies.filter((enemy) => enemy.sprite.active && enemy.runtime.health > 0).map((enemy) => this.toTargetSnapshot(enemy)),
       { x: this.player.x, y: this.player.y },
       mouseDirection,
       LOCK_RANGE,
     );
-    this.lockedTargetId = target?.id ?? null;
+    if (target) {
+      this.lockedTargetId = target.id;
+      this.hintText.setText(`Locked onto ${target.name}.`);
+    } else {
+      this.hintText.setText('No enemy is in lock range.');
+    }
   }
 
   private cycleTargetLock(direction: 1 | -1): void {
+    if (!this.lockedTargetId) {
+      this.toggleTargetLock();
+      return;
+    }
     const next = cycleLockTarget(
       this.enemies.filter((enemy) => enemy.sprite.active && enemy.runtime.health > 0).map((enemy) => this.toTargetSnapshot(enemy)),
       this.lockedTargetId,
@@ -754,7 +777,26 @@ export class WorldScene extends Phaser.Scene {
       direction,
       LOCK_RANGE,
     );
-    this.lockedTargetId = next?.id ?? this.lockedTargetId;
+    if (next) {
+      this.lockedTargetId = next.id;
+      this.hintText.setText(`Locked onto ${next.name}.`);
+    }
+  }
+
+  private lockTargetNearCursor(): void {
+    const target = selectTargetNearPoint(
+      this.enemies.filter((enemy) => enemy.sprite.active && enemy.runtime.health > 0).map((enemy) => this.toTargetSnapshot(enemy)),
+      { x: this.player.x, y: this.player.y },
+      { x: this.input.activePointer.worldX, y: this.input.activePointer.worldY },
+      110,
+      LOCK_RANGE,
+    );
+    if (!target) {
+      this.hintText.setText('No enemy is close enough to the cursor.');
+      return;
+    }
+    this.lockedTargetId = target.id;
+    this.hintText.setText(`Locked onto ${target.name} near the cursor.`);
   }
 
   private releaseTargetLock(): void {
@@ -762,6 +804,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.targetIndicator) {
       CombatPresentation.clearTargetIndicator(this.targetIndicator);
     }
+    this.hintText.setText('Target lock released.');
   }
 
   private updateCameraFraming(): void {
@@ -775,11 +818,15 @@ export class WorldScene extends Phaser.Scene {
     if (this.playerShadow) {
       this.playerShadow.setPosition(this.player.x, this.player.y + 14);
     }
+    this.player.setRotation(0);
+    this.player.setFlipX(Math.cos(this.playerAimAngle) < 0);
     this.player.setScale(this.playerStatePreview === 'moving' || this.playerStatePreview === 'locked_moving' ? 1.04 : this.playerStatePreview === 'heavy_windup' ? 1.12 : 1);
     this.player.setAlpha(this.playerStatePreview === 'dead' ? 0.3 : 1);
     for (const human of this.humans) {
       human.shadow.setPosition(human.sprite.x, human.sprite.y + 13);
       human.label.setPosition(human.sprite.x, human.sprite.y - 28);
+      human.sprite.setRotation(0);
+      human.sprite.setFlipX(human.sprite.x < this.player.x);
       if (human.human.id === this.nearbyHumanId) {
         human.sprite.setScale(1 + Math.sin(time / 120) * 0.02);
       } else {
@@ -790,6 +837,8 @@ export class WorldScene extends Phaser.Scene {
       if (!enemy.sprite.active) continue;
       enemy.shadow.setPosition(enemy.sprite.x, enemy.sprite.y + 14);
       enemy.label.setPosition(enemy.sprite.x, enemy.sprite.y - 34);
+      enemy.sprite.setRotation(0);
+      enemy.sprite.setFlipX(Math.cos(enemy.aimAngle) < 0);
       if (enemy.runtime.state === 'windup') {
         enemy.sprite.setScale(enemy.runtime.type === 'elite_knight' ? 1.16 : 1.08);
       } else if (enemy.runtime.state === 'stagger') {
@@ -822,7 +871,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerStatePreview = 'bite_approach';
     const targetHuman = this.humans.find((entry) => entry.human.id === humanId);
     if (targetHuman) {
-      this.player.rotation = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetHuman.sprite.x, targetHuman.sprite.y);
+      this.playerAimAngle = Phaser.Math.Angle.Between(this.player.x, this.player.y, targetHuman.sprite.x, targetHuman.sprite.y);
       this.physics.moveToObject(this.player, targetHuman.sprite, 180);
       targetHuman.sprite.setTint(mode === 'turn' ? 0xb91c3c : 0xf8f9fa);
       this.time.delayedCall(180, () => targetHuman.sprite.clearTint());
@@ -914,15 +963,28 @@ export class WorldScene extends Phaser.Scene {
   private buildTargetHudState(enemy: SceneEnemy): LockedTargetHudState {
     const definition = ENEMIES_BY_ID[enemy.runtime.type];
     const stateLabel =
-      enemy.runtime.state === 'windup'
-        ? 'Winding Up'
-        : enemy.runtime.state === 'recovery'
-          ? 'Recovering'
-          : enemy.runtime.state === 'stagger'
-            ? 'Staggered'
-            : enemy.runtime.state === 'active_attack'
-              ? 'Attacking'
-              : 'Positioning';
+      enemy.runtime.state === 'idle'
+        ? 'Idle'
+        : enemy.runtime.state === 'patrol'
+          ? 'Patrolling'
+          : enemy.runtime.state === 'notice'
+            ? 'Alert'
+            : enemy.runtime.state === 'approach'
+              ? 'Closing In'
+              : enemy.runtime.state === 'reposition'
+                ? 'Repositioning'
+                : enemy.runtime.state === 'windup'
+                  ? 'Winding Up'
+                  : enemy.runtime.state === 'active_attack'
+                    ? 'Attacking'
+                    : enemy.runtime.state === 'recovery'
+                      ? 'Recovering'
+                      : enemy.runtime.state === 'stagger'
+                        ? 'Staggered'
+                        : enemy.runtime.state === 'return_home'
+                          ? 'Breaking Off'
+                          : 'Defeated';
+    const distance = Math.round(Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.sprite.x, enemy.sprite.y));
     return {
       id: enemy.id,
       name: definition.name,
@@ -931,7 +993,7 @@ export class WorldScene extends Phaser.Scene {
       maxHealth: enemy.runtime.maxHealth,
       elite: Boolean(definition.elite),
       stateLabel,
-      statusText: stateLabel,
+      statusText: `${stateLabel} · ${distance}u`,
     };
   }
 

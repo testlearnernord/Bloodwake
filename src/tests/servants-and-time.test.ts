@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { createNewGameState } from '../app/state';
 import { runWorkShift } from '../simulation/servants/production';
 import { selectTaskForServant } from '../simulation/servants/tasks';
 import { canPlayerExplore, servantCanWork } from '../simulation/time/dayNight';
+import { applyHumanAction } from '../simulation/combat/bite';
 import type { BuiltRoom, CraftingOrder, Servant } from '../types/models';
 
 const room: BuiltRoom = {
@@ -74,6 +76,36 @@ describe('resource production', () => {
       'shift-seed',
     );
     expect(shift.inventory.find((entry) => entry.itemId === 'wood')?.quantity).toBeGreaterThan(2);
+  });
+
+  it('lets a newly turned servant contribute to the stronghold loop', () => {
+    const state = createNewGameState({ seed: 'turn-loop' });
+    state.player.vitae = 5;
+    const turned = applyHumanAction(state, state.npcs[0]?.id ?? '', 'turn').state;
+    turned.rooms.push({
+      id: 'room-workshop-1-0',
+      roomId: 'workshop',
+      x: 1,
+      y: 0,
+      width: 1,
+      height: 1,
+      status: 'under_construction',
+      progress: 0,
+      assignedWorkerIds: [],
+    });
+    const shift = runWorkShift(
+      turned.servants,
+      turned.rooms,
+      turned.craftingQueue,
+      turned.strategicResources,
+      turned.inventory,
+      'night',
+      turned.seed,
+    );
+    expect(shift.servants).toHaveLength(1);
+    expect(shift.servants[0]?.currentJob).toBe('Building');
+    expect(shift.rooms.find((entry) => entry.id === 'room-workshop-1-0')?.progress).toBe(1);
+    expect(shift.log[0]).toContain(shift.servants[0]?.name ?? '');
   });
 });
 

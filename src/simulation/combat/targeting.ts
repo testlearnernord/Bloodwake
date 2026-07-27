@@ -14,6 +14,23 @@ export const normalizeVector = (vector: VectorLike): VectorLike => normalizeOr(v
 
 const dot = (left: VectorLike, right: VectorLike): number => left.x * right.x + left.y * right.y;
 
+const angleFromPlayer = (playerPosition: VectorLike, target: CombatTargetSnapshot): number =>
+  Math.atan2(target.y - playerPosition.y, target.x - playerPosition.x);
+
+const compareAngularOrder = (left: CombatTargetSnapshot, right: CombatTargetSnapshot, playerPosition: VectorLike): number => {
+  const leftAngle = angleFromPlayer(playerPosition, left);
+  const rightAngle = angleFromPlayer(playerPosition, right);
+  if (Math.abs(leftAngle - rightAngle) > EPSILON) {
+    return leftAngle - rightAngle;
+  }
+  const leftDistance = distanceSquared(playerPosition, left);
+  const rightDistance = distanceSquared(playerPosition, right);
+  if (Math.abs(leftDistance - rightDistance) > EPSILON) {
+    return leftDistance - rightDistance;
+  }
+  return left.id.localeCompare(right.id);
+};
+
 export const isValidLockTarget = (
   target: CombatTargetSnapshot,
   playerPosition: VectorLike,
@@ -67,7 +84,7 @@ export const cycleLockTarget = (
 ): CombatTargetSnapshot | null => {
   const validTargets = targets
     .filter((target) => isValidLockTarget(target, playerPosition, maxRange))
-    .sort((left, right) => left.id.localeCompare(right.id));
+    .sort((left, right) => compareAngularOrder(left, right, playerPosition));
   if (validTargets.length === 0) {
     return null;
   }
@@ -75,3 +92,22 @@ export const cycleLockTarget = (
   const nextIndex = currentIndex === -1 ? 0 : (currentIndex + direction + validTargets.length) % validTargets.length;
   return validTargets[nextIndex] ?? null;
 };
+
+export const selectTargetNearPoint = (
+  targets: CombatTargetSnapshot[],
+  playerPosition: VectorLike,
+  point: VectorLike,
+  cursorRadius: number,
+  maxRange = LOCK_RANGE,
+): CombatTargetSnapshot | null =>
+  targets
+    .filter((target) => isValidLockTarget(target, playerPosition, maxRange))
+    .filter((target) => distanceSquared(target, point) <= cursorRadius * cursorRadius)
+    .sort((left, right) => {
+      const leftCursorDistance = distanceSquared(left, point);
+      const rightCursorDistance = distanceSquared(right, point);
+      if (Math.abs(leftCursorDistance - rightCursorDistance) > EPSILON) {
+        return leftCursorDistance - rightCursorDistance;
+      }
+      return compareAngularOrder(left, right, playerPosition);
+    })[0] ?? null;

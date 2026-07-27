@@ -8,7 +8,8 @@ export const renderTitleScreen = (seed: string, characterRoll: number, saveSlots
       <p class="hint">No backend, no telemetry, no paid services. Everything runs locally in your browser.</p>
       <h2>Controls</h2>
       <ul>
-        <li>WASD move, mouse aim, Ctrl lock-on, mouse wheel cycle targets</li>
+        <li>WASD move, mouse aim, Ctrl lock-on toggle, Tab next target, Shift+Tab previous target</li>
+        <li>Mouse wheel cycles targets, middle mouse locks the enemy nearest the cursor</li>
         <li>Left Mouse light attack, Right Mouse heavy attack, Q Blood Lance, Space dodge</li>
         <li>E interact, F bite/feed, Escape pause or close overlays, C I V B K J management shortcuts</li>
       </ul>

@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
 import { exportSaveGame, importSaveGame, loadFromSlot, migrateSaveGame, saveToSlot, validateSaveGame } from '../persistence/saveStore';
+import { applyHumanAction } from '../simulation/combat/bite';
 
 describe('save serialization and validation', () => {
   beforeEach(() => {
@@ -87,5 +88,15 @@ describe('save serialization and validation', () => {
     const state = createNewGameState({ seed: 'fractional' });
     const malformed = { ...state, inventory: [{ itemId: 'wood', quantity: 0.5 }] };
     expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
+  });
+
+  it('preserves turned servants across save export and reload', () => {
+    const state = createNewGameState({ seed: 'turned-save' });
+    state.player.vitae = 5;
+    const turned = applyHumanAction(state, state.npcs[0]?.id ?? '', 'turn').state;
+    const loaded = importSaveGame(exportSaveGame(turned));
+    expect(loaded.servants).toHaveLength(1);
+    expect(loaded.servants[0]?.type).toBe('vampire');
+    expect(loaded.inheritanceHistory).toHaveLength(1);
   });
 });
