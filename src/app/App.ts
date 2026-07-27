@@ -1,10 +1,8 @@
 import Phaser from 'phaser';
-import { DRAIN_ESSENCE_GAIN, FEED_VITAE_GAIN, TURN_COST_VITAE } from '../config/balancing';
 import { COLLECTIBLES_BY_ID } from '../data/collectibles';
 import { ITEMS_BY_ID } from '../data/items';
 import { createNewGameState, deriveCharacterSeed, getActiveQuestStepText, getHumanById } from './state';
 import { queueCraftingOrder } from '../simulation/crafting/crafting';
-import { inheritVampire } from '../simulation/bloodlines/inheritance';
 import { queueRoomConstruction } from '../simulation/building/building';
 import { completeQuestStep } from '../simulation/quests/quests';
 import { applyDayRestriction, togglePhase } from '../simulation/time/dayNight';
@@ -15,9 +13,11 @@ import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Ser
 import { createDefaultSeed } from '../utilities/rng';
 import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
+import type { CombatUiSnapshot, HumanActionMode, WorldSceneApi } from '../game/combat/combatTypes';
 import { getTraitById } from '../simulation/traits/traitUtils';
 import { addItem, canEquipItem, equipItem, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
 import { calculatePlayerCombatStats, useHealingDraught } from '../simulation/combat/stats';
+import { applyHumanAction } from '../simulation/combat/bite';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
@@ -25,6 +25,7 @@ import { renderGameShell, renderTitleScreen as renderTitleLayout } from '../ui/s
 import { TOPBAR_RESOURCES, renderTopBar } from '../ui/topbar/topbar';
 import { TooltipManager } from '../ui/tooltips/tooltips';
 import { isTypingTarget, type MenuId } from '../ui/uiState';
+import { htmlEscape } from '../utilities/html';
 
 const SLOT_IDS = ['slot-1', 'slot-2', 'slot-3'];
 
@@ -42,6 +43,9 @@ export class BloodwakeApp {
   private toastManager: ToastManager | null = null;
   private tooltipManager: TooltipManager | null = null;
   private previousResourceSnapshot: Record<string, number> | null = null;
+  private sceneApi: WorldSceneApi | null = null;
+  private combatUi: CombatUiSnapshot | null = null;
+  private hudInterval: number | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -56,6 +60,12 @@ export class BloodwakeApp {
     this.tooltipManager = null;
     this.toastManager = null;
     this.activeMenu = null;
+    this.sceneApi = null;
+    this.combatUi = null;
+    if (this.hudInterval !== null) {
+      window.clearInterval(this.hudInterval);
+      this.hudInterval = null;
+    }
 
     let worldSeed = createDefaultSeed();
     let characterRoll = 0;
@@ -147,6 +157,7 @@ export class BloodwakeApp {
     this.mountPhaser();
     this.previousResourceSnapshot = null;
     this.renderGame();
+    this.hudInterval = window.setInterval(() => this.renderCombatHud(), 100);
     await this.autoSave('slot-1');
     this.notify('Save completed.');
   }
@@ -169,12 +180,41 @@ export class BloodwakeApp {
         return calculatePlayerCombatStats(this.state.player);
       },
       isInputBlocked: () => this.activeMenu !== null,
+      isGameplayInputBlocked: () =>
+        this.activeMenu !== null || !document.hasFocus() || isTypingTarget(document.activeElement),
+      getReducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      registerWorldSceneApi: (api) => {
+        this.sceneApi = api;
+      },
+      onCombatUiStateChanged: (snapshot) => {
+        this.combatUi = snapshot;
+        this.renderCombatHud();
+      },
+      commitHumanAction: (humanId, mode) => {
+        if (!this.state) {
+          return { ok: false, message: 'Game state is unavailable.' };
+        }
+        const result = applyHumanAction(this.state, humanId, mode);
+        if (result.state === this.state) {
+          return { ok: false, message: result.message };
+        }
+        this.state = result.state;
+        this.focusedHumanId = null;
+        void this.autoSave('slot-1');
+        this.notify(result.message);
+        if (result.inheritanceSummary) {
+          this.notify(result.inheritanceSummary);
+        }
+        this.renderGame();
+        return { ok: true, message: result.message, inheritanceSummary: result.inheritanceSummary };
+      },
       onHumanFocused: (humanId) => {
         this.focusedHumanId = humanId;
-        this.renderGame();
+        this.renderContextPanel();
+        this.bindGameActions();
       },
       onFeedShortcut: (humanId) => {
-        void this.feedHuman(humanId, 'feed');
+        this.sceneApi?.startHumanActionSequence(humanId, 'feed');
       },
       onCollectItem: (itemId, amount) => {
         if (!this.state) return;
@@ -223,7 +263,7 @@ export class BloodwakeApp {
         }
         this.state.player.health = nextHealth;
         this.state.player.vitae = nextVitae;
-        this.renderGame();
+        this.renderCombatHud();
       },
       onRespawn: () => {
         if (!this.state) return;
@@ -274,27 +314,8 @@ export class BloodwakeApp {
     this.previousResourceSnapshot = resourceSnapshot;
 
     this.query('#topbar').innerHTML = renderTopBar(this.state, this.activeZone, objective, this.activeMenu, this.activeMenu === 'pause', delta);
-    this.query('#bottom-hud').innerHTML = renderBottomHud(this.state, 'Unarmed', this.dodgeReadyAt <= Date.now());
-
-    const contextPanel = this.query('#context-panel');
-    const human = this.focusedHumanId ? getHumanById(this.state, this.focusedHumanId) : null;
-    if (human) {
-      contextPanel.classList.remove('hidden');
-      contextPanel.innerHTML = `
-        <h3>${human.name} ${human.familyName}</h3>
-        <p>${human.professionId} · blood quality ${human.bloodQuality}</p>
-        <p>Traits: ${human.traitIds.join(', ') || 'none'}</p>
-        <div class="button-row compact">
-          <button data-human-action="feed">Feed</button>
-          <button data-human-action="drain">Drain</button>
-          <button data-human-action="turn">Turn</button>
-        </div>
-        <p class="hint">F to feed, open overlays with C I V B K J.</p>
-      `;
-    } else {
-      contextPanel.classList.add('hidden');
-      contextPanel.innerHTML = '';
-    }
+    this.renderCombatHud();
+    this.renderContextPanel();
 
     const overlayRoot = this.query('#overlay-root');
     if (this.activeMenu) {
@@ -379,6 +400,44 @@ export class BloodwakeApp {
       .join('');
   }
 
+  private renderCombatHud(): void {
+    if (!this.state) {
+      return;
+    }
+    const combatUi = this.combatUi;
+    this.query('#bottom-hud').innerHTML = renderBottomHud(
+      this.state,
+      'Unarmed',
+      (combatUi?.abilities.find((ability) => ability.id === 'dodge')?.cooldownRemainingMs ?? (this.dodgeReadyAt > Date.now() ? 1 : 0)) <= 0,
+      combatUi,
+    );
+  }
+
+  private renderContextPanel(): void {
+    if (!this.state) {
+      return;
+    }
+    const contextPanel = this.query('#context-panel');
+    const human = this.focusedHumanId ? getHumanById(this.state, this.focusedHumanId) : null;
+    if (!human) {
+      contextPanel.classList.add('hidden');
+      contextPanel.innerHTML = '';
+      return;
+    }
+    contextPanel.classList.remove('hidden');
+    contextPanel.innerHTML = `
+      <h3>${htmlEscape(human.name)} ${htmlEscape(human.familyName)}</h3>
+      <p>${htmlEscape(human.professionId)} · blood quality ${human.bloodQuality}</p>
+      <p>Traits: ${human.traitIds.map((traitId) => htmlEscape(traitId)).join(', ') || 'none'}</p>
+      <div class="button-row compact">
+        <button data-human-action="feed">Feed</button>
+        <button data-human-action="drain">Drain</button>
+        <button data-human-action="turn">Turn</button>
+      </div>
+      <p class="hint">F to bite, Q Blood Lance, Ctrl lock target, wheel cycle targets.</p>
+    `;
+  }
+
   private bindGameActions(): void {
 
     for (const button of this.root.querySelectorAll<HTMLButtonElement>("[data-global-action]")) {
@@ -406,7 +465,7 @@ export class BloodwakeApp {
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-human-action]')) {
       button.onclick = async () => {
         if (this.focusedHumanId) {
-          await this.feedHuman(this.focusedHumanId, button.dataset.humanAction as 'feed' | 'drain' | 'turn');
+          this.sceneApi?.startHumanActionSequence(this.focusedHumanId, button.dataset.humanAction as HumanActionMode);
         }
       };
     }
@@ -625,64 +684,6 @@ export class BloodwakeApp {
     this.state.craftingQueue = shift.craftingQueue;
     this.state.lastEventLog = [...shift.log.reverse(), ...this.state.lastEventLog].slice(0, 12);
     saveSettings(this.state.settings);
-    await this.autoSave('slot-1');
-    this.renderGame();
-  }
-
-  private async feedHuman(humanId: string, mode: 'feed' | 'drain' | 'turn'): Promise<void> {
-    if (!this.state) {
-      return;
-    }
-    const human = getHumanById(this.state, humanId);
-    if (!human) {
-      return;
-    }
-    if (mode === 'turn' && this.state.player.vitae < TURN_COST_VITAE) {
-      this.notify('Turning requires more Vitae.');
-      return;
-    }
-    if (mode === 'feed') {
-      this.state.player.vitae = Math.min(this.state.player.maxVitae, this.state.player.vitae + FEED_VITAE_GAIN);
-      this.state.npcs = this.state.npcs.map((npc) => (npc.id === humanId ? { ...npc, status: 'fed' } : npc));
-      this.completeStepForEvent('feed');
-      this.state.lastEventLog.unshift(`Fed on ${human.name} and left them alive.`);
-      this.notify('Vitae restored by feeding.');
-    }
-    if (mode === 'drain') {
-      this.state.player.vitae = Math.min(this.state.player.maxVitae, this.state.player.vitae + FEED_VITAE_GAIN);
-      this.state.strategicResources.bloodEssence += DRAIN_ESSENCE_GAIN;
-      this.state.npcs = this.state.npcs.map((npc) => (npc.id === humanId ? { ...npc, status: 'drained' } : npc));
-      this.state.lastEventLog.unshift(`Drained ${human.name} for Blood Essence.`);
-      this.notify('Blood Essence increased.');
-    }
-    if (mode === 'turn') {
-      const result = inheritVampire(this.state.player, human, `${this.state.seed}-${this.state.characterRoll}`);
-      this.state.player.vitae -= TURN_COST_VITAE;
-      this.state.npcs = this.state.npcs.map((npc) => (npc.id === humanId ? { ...npc, status: 'turned' } : npc));
-      const servant: Servant = {
-        ...result.vampire,
-        type: 'vampire',
-        priorities: {
-          Building: 'Normal',
-          Crafting: 'High',
-          Gathering: 'Low',
-          Guarding: 'Normal',
-          Research: 'Low',
-          Hunting: 'Low',
-        },
-        currentJob: null,
-        currentTask: null,
-        taskReason: 'Newly turned and awaiting direction.',
-        hunger: result.vampire.hunger,
-        equipped: {},
-      };
-      this.state.servants = [...this.state.servants, servant];
-      this.state.inheritanceHistory = [result.report, ...this.state.inheritanceHistory];
-      this.completeStepForEvent('turn');
-      this.state.lastEventLog.unshift(`Turned ${human.name} into a fledgling vampire.`);
-      this.notify('A new vampire servant has joined your bloodline.');
-    }
-    this.focusedHumanId = null;
     await this.autoSave('slot-1');
     this.renderGame();
   }

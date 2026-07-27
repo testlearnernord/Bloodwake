@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 - Milestone 0.3 Tactical Combat Overhaul
+
+- Added Ctrl target lock, mouse-wheel target cycling, and target-relative orbital movement.
+- Replaced placeholder combat with visible Light Attack, Heavy Attack, Blood Lance, dodge, and shared bite/feed/drain/turn sequences.
+- Added deterministic combat modules for targeting, movement, action-state timing, projectile stepping, bite commits, and enemy combat.
+- Added real Blood Lance and holy projectiles with cleanup on impact, expiration, and scene shutdown.
+- Added readable enemy telegraphs and distinct bandit, clergy hunter, and elite knight behaviors with no contact damage.
+- Added combat HUD ability slots, locked-target status, delayed health feedback, damage numbers, hit flashes, blood bursts, and target rings.
+- Replaced primary world tokens with generated silhouettes and combat presentation helpers.
+- Preserved save format version 2, overlay input blocking, Pages smoke validation, and deterministic inventory/import safeguards.
+
 ## 0.2.0 - Milestone 0.2 UI/Inventory Overhaul
 
 - Rebranded core user-facing title references to **Bloodwake**.

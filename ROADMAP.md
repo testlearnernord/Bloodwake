@@ -1,27 +1,22 @@
 # Roadmap
 
-## Milestone 0.2 (current)
+## Milestone 0.3 (current)
 
-- Fullscreen shell with top bar, world viewport, and bottom HUD
-- Overlay-driven management UI
-- Deterministic world seed + character roll new-game generation
-- Item inventory foundation and strategic resource split
-- Equipment loadout + basic stat application
-- Save format version 2 migration
-- GitHub Pages reliability smoke checks and startup fatal-error fallback
+- Tactical lock-on combat with Ctrl toggle and mouse-wheel cycling
+- Target-relative orbital movement
+- Light/Heavy/Blood Lance combat actions with visible timings
+- Shared bite/feed/drain/turn animation pipeline
+- Enemy telegraphs, projectiles, stagger, and distinct enemy behavior
+- Combat HUD cooldowns, locked-target presentation, and impact feedback
+- Deterministic combat regression coverage
 
-## Milestone 0.3 (explicitly deferred scope)
+## Milestone 0.4 (next)
 
-- Ctrl target lock toggle
-- Target selection and cycling
-- Target-relative orbital WASD movement
-- Ranged projectiles against selected target
-- Proper light attack animation
-- Proper heavy attack animation
-- Proper bite animation
-- Enemy telegraphs and attack animations
-- Advanced hit feedback and hit stop
-- Camera shake and camera effects
-- Improved animated world characters and sprite-sheet combat presentation
-
-Milestone 0.2 intentionally does **not** claim these features as implemented.
+- Replace the three rectangular zones with a real compact world map
+- Environmental art and collisions
+- Expanded stronghold
+- More locations and interiors
+- More quests and enemies
+- Loot drops
+- Additional weapons and vampire abilities
+- Broader progression

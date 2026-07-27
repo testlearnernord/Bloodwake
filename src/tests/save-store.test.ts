@@ -82,4 +82,10 @@ describe('save serialization and validation', () => {
     const malformed = { ...state, inventory: [{ itemId: 'wood', quantity: -2 }] };
     expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
   });
+
+  it('rejects non-positive imported quantities after flooring', () => {
+    const state = createNewGameState({ seed: 'fractional' });
+    const malformed = { ...state, inventory: [{ itemId: 'wood', quantity: 0.5 }] };
+    expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
+  });
 });

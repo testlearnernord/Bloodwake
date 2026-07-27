@@ -6,6 +6,12 @@ export const renderTitleScreen = (seed: string, characterRoll: number, saveSlots
       <h1>${GAME_TITLE}</h1>
       <p class="subtitle">A browser-only gothic strategy-action RPG with deterministic simulation and static GitHub Pages deployment.</p>
       <p class="hint">No backend, no telemetry, no paid services. Everything runs locally in your browser.</p>
+      <h2>Controls</h2>
+      <ul>
+        <li>WASD move, mouse aim, Ctrl lock-on, mouse wheel cycle targets</li>
+        <li>Left Mouse light attack, Right Mouse heavy attack, Q Blood Lance, Space dodge</li>
+        <li>E interact, F bite/feed, Escape pause or close overlays, C I V B K J management shortcuts</li>
+      </ul>
     </section>
     <section class="panel generator-panel">
       <h2>New Game</h2>

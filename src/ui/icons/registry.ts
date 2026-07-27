@@ -18,6 +18,7 @@ const ICON_PATHS: Record<string, string> = {
   weapon: 'M4 20l7-7 2 2-7 7H4v-2zm9-11l2-2 4 4-2 2-4-4z',
   armor: 'M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z',
   accessory: 'M12 4a8 8 0 110 16 8 8 0 010-16z',
+  status: 'M12 2l8 4v6c0 5-3 8-8 10-5-2-8-5-8-10V6l8-4zm0 5a3 3 0 100 6 3 3 0 000-6zm-4 10h8v-1a4 4 0 00-8 0v1z',
   material: 'M4 19l8-15 8 15H4z',
   consumable: 'M9 3h6v4l-1 1v11H10V8L9 7V3z',
   quest: 'M12 2l3 6 7 1-5 5 1 8-6-4-6 4 1-8-5-5 7-1 3-6z',
@@ -35,6 +36,11 @@ const ICON_PATHS: Record<string, string> = {
   wood_planks: 'M4 6h16v3H4V6zm0 5h16v3H4v-3zm0 5h16v3H4v-3z',
   simple_sword: 'M4 20l7-7 2 2-7 7H4v-2zm8-12l4-4 4 4-4 4-4-4z',
   leather_armor: 'M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z',
+  light_attack: 'M3 18l8-10 4 4-8 10H3v-4zm10-11l3-3 4 4-3 3-4-4z',
+  heavy_attack: 'M4 20l7-7 4 4-7 7H4v-4zm8-12l5-5 3 3-5 5-3-3z',
+  blood_lance: 'M12 2l2 5 5 2-5 2-2 8-2-8-5-2 5-2 2-5z',
+  bite: 'M8 5l2 6 2-3 2 3 2-6 2 15H6L8 5z',
+  dodge: 'M4 14l6-8 2 4 8-2-6 8-2-4-8 2z',
 };
 
 export const renderIcon = (iconId: string, cls = ''): string => icon(ICON_PATHS[iconId] ?? ICON_PATHS.material, cls);
