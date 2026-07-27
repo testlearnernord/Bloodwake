@@ -153,7 +153,7 @@ export const stepEnemyCombat = (
   };
 };
 
-export const applyEnemyStagger = (enemy: EnemyRuntimeState, stagger: number, now: number, _actionId: 'light' | 'heavy' | 'blood_lance'): EnemyRuntimeState => {
+export const applyEnemyStagger = (enemy: EnemyRuntimeState, stagger: number, now: number): EnemyRuntimeState => {
   if (stagger < enemy.poise) {
     return enemy;
   }

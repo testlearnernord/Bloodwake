@@ -39,7 +39,7 @@ describe('enemy combat state machine', () => {
   it('cleans telegraphs when interrupted', () => {
     const enemy = createEnemyRuntime('bandit-1', 'bandit', { x: 0, y: 0 });
     const windup = stepEnemyCombat(enemy, { x: 30, y: 0 }, 0, 0);
-    const staggered = applyEnemyStagger(windup.enemy, PLAYER_ACTIONS_BY_ID.heavy.stagger, 40, 'heavy');
+    const staggered = applyEnemyStagger(windup.enemy, PLAYER_ACTIONS_BY_ID.heavy.stagger, 40);
     expect(staggered.telegraphVisible).toBe(false);
   });
 });

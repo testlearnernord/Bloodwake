@@ -495,7 +495,7 @@ export class WorldScene extends Phaser.Scene {
         worldPosition: { x: enemy.sprite.x, y: enemy.sprite.y },
       };
       this.applyDamageEvent(event, time);
-      enemy.runtime = applyEnemyStagger(enemy.runtime, event.stagger, time, actionId);
+      enemy.runtime = applyEnemyStagger(enemy.runtime, event.stagger, time);
     }
     const weaponName = state.player.equipment.Weapon ? 'Simple Sword' : 'Claws';
     this.hintText.setText(`${weaponName} lashes out during the ${actionId === 'light' ? 'quick' : 'heavy'} opening.`);
@@ -557,7 +557,7 @@ export class WorldScene extends Phaser.Scene {
                   },
                   time,
                 );
-                enemy.runtime = applyEnemyStagger(enemy.runtime, BLOOD_LANCE_PROJECTILE.stagger, time, 'blood_lance');
+                enemy.runtime = applyEnemyStagger(enemy.runtime, BLOOD_LANCE_PROJECTILE.stagger, time);
               }
               break;
             }
