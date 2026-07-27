@@ -524,31 +524,32 @@ export class BloodwakeApp {
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-build-x]')) {
       button.onclick = async () => {
         if (!this.state) return;
+        const state = this.state;
         try {
           const selectedRoom = ROOMS_BY_ID[this.selectedRoomId];
-          if (selectedRoom.requiredRoomId && !this.state.rooms.some((room) => room.roomId === selectedRoom.requiredRoomId && room.status === 'built')) {
+          if (selectedRoom.requiredRoomId && !state.rooms.some((room) => room.roomId === selectedRoom.requiredRoomId && room.status === 'built')) {
             this.notify(`Build ${ROOMS_BY_ID[selectedRoom.requiredRoomId].name} first.`);
             return;
           }
-          if (!hasItems(this.state.inventory, selectedRoom.constructionCostItems)) {
+          if (!hasItems(state.inventory, selectedRoom.constructionCostItems)) {
             const missing = Object.entries(selectedRoom.constructionCostItems)
-              .filter(([itemId, amount]) => getItemQuantity(this.state.inventory, itemId as ItemId) < (amount ?? 0))
-              .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(this.state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
+              .filter(([itemId, amount]) => getItemQuantity(state.inventory, itemId as ItemId) < (amount ?? 0))
+              .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
               .join(', ');
             this.notify(`Missing ${missing}.`);
             return;
           }
           const missingStrategic = Object.entries(selectedRoom.constructionCostResources ?? {}).find(
-            ([resourceId, amount]) => (this.state?.strategicResources[resourceId as keyof SaveGame['strategicResources']] ?? 0) < (amount ?? 0),
+            ([resourceId, amount]) => (state.strategicResources[resourceId as keyof SaveGame['strategicResources']] ?? 0) < (amount ?? 0),
           );
           if (missingStrategic) {
             this.notify(`Need more ${missingStrategic[0]}.`);
             return;
           }
           const result = queueRoomConstruction(
-            this.state.rooms,
-            this.state.inventory,
-            this.state.strategicResources,
+            state.rooms,
+            state.inventory,
+            state.strategicResources,
             this.selectedRoomId,
             Number(button.dataset.buildX),
             Number(button.dataset.buildY),
@@ -570,21 +571,22 @@ export class BloodwakeApp {
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-recipe-id]')) {
       button.onclick = async () => {
         if (!this.state) return;
+        const state = this.state;
         const recipeId = button.dataset.recipeId ?? '';
         const recipe = RECIPES_BY_ID[recipeId];
-        if (!this.state.rooms.some((room) => room.roomId === recipe.requiredRoomId && room.status === 'built')) {
+        if (!state.rooms.some((room) => room.roomId === recipe.requiredRoomId && room.status === 'built')) {
           this.notify(`Requires ${ROOMS_BY_ID[recipe.requiredRoomId].name}.`);
           return;
         }
-        if (!canCraftRecipe(this.state.inventory, recipeId)) {
+        if (!canCraftRecipe(state.inventory, recipeId)) {
           const missing = Object.entries(recipe.inputs)
-            .filter(([itemId, amount]) => getItemQuantity(this.state.inventory, itemId as ItemId) < (amount ?? 0))
-            .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(this.state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
+            .filter(([itemId, amount]) => getItemQuantity(state.inventory, itemId as ItemId) < (amount ?? 0))
+            .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
             .join(', ');
           this.notify(`Missing ${missing}.`);
           return;
         }
-        if (!this.state.servants.some((servant) => servant.priorities.Crafting !== 'Disabled')) {
+        if (!state.servants.some((servant) => servant.priorities.Crafting !== 'Disabled')) {
           this.notify('Need a servant with Crafting enabled.');
           return;
         }

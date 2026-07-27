@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 - Milestone 0.4 Playability and Core-Loop Integration
+
+- Added Tab / Shift+Tab target cycling, middle-mouse cursor lock, stronger target ring readability, and more predictable angular lock order.
+- Stopped combat silhouettes from visually rotating upside down by keeping presentation upright while preserving gameplay aiming logic.
+- Added browser-safe gameplay input guards for Ctrl/Cmd+S, Ctrl/Cmd+P, Tab focus stealing, wheel scrolling, and context-menu conflicts while gameplay owns focus.
+- Added local UI scale settings plus safer fullscreen shell spacing for desktop play and internal-only overlay scrolling.
+- Made human context actions truthful by showing turn eligibility, blocked reasons, profession value, and candidate trait summaries before the player commits.
+- Expanded servant, crafting, stronghold, and inheritance UI so visible actions explain readiness, usefulness, and next likely work instead of looking active without support.
+- Added deterministic regression tests for blocked turns, exactly-once servant creation state, save persistence of turned servants, shortcut capture rules, cursor-lock targeting, and servant productivity flow.
+
 ## 0.3.0 - Milestone 0.3 Tactical Combat Overhaul
 
 - Added Ctrl target lock, mouse-wheel target cycling, and target-relative orbital movement.

@@ -17,11 +17,14 @@ Core balancing values live in `src/config/balancing.ts`.
 - Enemy detection ranges, preferred distances, attack timings, poise, and direction-lock timing
 - Feedback timings for damage numbers, delayed health bars, and death fades
 
-## Milestone 0.3 combat notes
+## Milestone 0.4 playability notes
 
 - **Light Attack** is the quick zero-Vitae option with short windup/recovery and light stagger.
 - **Heavy Attack** spends Vitae once on commit, lunges farther, and applies much stronger stagger.
 - **Blood Lance** is the ranged pressure tool with higher cooldown and no neutral-human damage.
+- **Target lock** should be reachable without browser-hostile inputs: Ctrl toggles, Tab advances, Shift+Tab reverses, and wheel/middle-mouse remain available.
+- **Turning** should feel expensive but reliable: blocked turns must explain the real requirement before commit, and successful turns must create exactly one servant.
+- **Servant value** should stay readable through profession benefits, task reasons, and visible build/craft/gather outcomes.
 - **Bandits** close aggressively and can be interrupted often.
 - **Clergy Hunters** try to maintain range and rely on dodgeable holy projectiles.
 - **Elite Knights** have higher poise, longer windups, and direction-lock before release so flanking matters.

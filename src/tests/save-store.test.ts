@@ -90,14 +90,13 @@ describe('save serialization and validation', () => {
     expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
   });
 
-  it('preserves turned servants across save export and reload', async () => {
+  it('preserves turned servants across save export and reload', () => {
     const state = createNewGameState({ seed: 'turned-save' });
     state.player.vitae = 5;
     const turned = applyHumanAction(state, state.npcs[0]?.id ?? '', 'turn').state;
-    await saveToSlot('slot-turned', turned);
-    const loaded = await loadFromSlot('slot-turned');
-    expect(loaded?.servants).toHaveLength(1);
-    expect(loaded?.servants[0]?.type).toBe('vampire');
-    expect(loaded?.inheritanceHistory).toHaveLength(1);
+    const loaded = importSaveGame(exportSaveGame(turned));
+    expect(loaded.servants).toHaveLength(1);
+    expect(loaded.servants[0]?.type).toBe('vampire');
+    expect(loaded.inheritanceHistory).toHaveLength(1);
   });
 });
