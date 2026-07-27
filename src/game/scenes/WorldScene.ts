@@ -398,7 +398,7 @@ export class WorldScene extends Phaser.Scene {
     if (actionId === 'dodge') {
       const dodgeDirection = this.resolveDodgeDirection();
       this.player.setVelocity(dodgeDirection.x * DODGE_SPEED, dodgeDirection.y * DODGE_SPEED);
-      this.bridge.onDodgeUsed(now + DODGE_COOLDOWN_MS);
+      this.bridge.onDodgeUsed(Date.now() + DODGE_COOLDOWN_MS);
       this.hintText.setText('You become untouchable for a brief instant.');
     }
   }
@@ -699,7 +699,8 @@ export class WorldScene extends Phaser.Scene {
       this.physics.moveTo(enemy.sprite, enemy.sprite.x + Math.cos(away) * 40, enemy.sprite.y + Math.sin(away) * 40, definition.speed);
     } else if (enemy.runtime.state === 'return_home') {
       this.physics.moveTo(enemy.sprite, enemy.runtime.homePosition.x, enemy.runtime.homePosition.y, definition.speed * 0.7);
-      if (distance < 8) {
+      const homeDistance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, enemy.runtime.homePosition.x, enemy.runtime.homePosition.y);
+      if (homeDistance < 8) {
         enemy.sprite.setVelocity(0, 0);
       }
     } else if (enemy.runtime.state === 'windup' || enemy.runtime.state === 'recovery' || enemy.runtime.state === 'active_attack' || enemy.runtime.state === 'stagger') {

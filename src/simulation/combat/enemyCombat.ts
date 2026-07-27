@@ -1,6 +1,5 @@
 import { ENEMY_ATTACKS_BY_ID } from '../../data/enemyAttacks';
 import { ENEMIES_BY_ID } from '../../data/enemies';
-import { PLAYER_ACTIONS_BY_ID } from '../../data/combatActions';
 import { applyIncomingDamage } from './stats';
 import type { CombatDamageEvent, EnemyCombatState, VectorLike } from '../../game/combat/combatTypes';
 import type { EnemyType } from '../../types/models';
@@ -154,9 +153,8 @@ export const stepEnemyCombat = (
   };
 };
 
-export const applyEnemyStagger = (enemy: EnemyRuntimeState, stagger: number, now: number, actionId: 'light' | 'heavy' | 'blood_lance'): EnemyRuntimeState => {
-  const bonus = actionId === 'heavy' ? PLAYER_ACTIONS_BY_ID.heavy.stagger : 0;
-  if (stagger + bonus < enemy.poise) {
+export const applyEnemyStagger = (enemy: EnemyRuntimeState, stagger: number, now: number, _actionId: 'light' | 'heavy' | 'blood_lance'): EnemyRuntimeState => {
+  if (stagger < enemy.poise) {
     return enemy;
   }
   return {
