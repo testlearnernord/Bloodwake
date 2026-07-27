@@ -35,6 +35,100 @@ export const FEED_VITAE_GAIN = 2;
 export const DRAIN_ESSENCE_GAIN = 1;
 export const BITE_RANGE = 60;
 
+export const PLAYER_MOVE_SPEED = 168;
+export const LOCK_RANGE = 280;
+export const LOCK_BREAK_RANGE = 360;
+export const MIN_ORBIT_RADIUS = 42;
+
+export const DODGE_SPEED = 320;
+export const DODGE_DURATION_MS = 220;
+export const DODGE_COOLDOWN_MS = 1150;
+export const DODGE_INVULNERABLE_MS = 150;
+
+export const LIGHT_WINDUP_MS = 110;
+export const LIGHT_ACTIVE_MS = 110;
+export const LIGHT_RECOVERY_MS = 180;
+export const LIGHT_COOLDOWN_MS = 420;
+export const LIGHT_DAMAGE_MULTIPLIER = 1;
+export const LIGHT_RANGE = 66;
+export const LIGHT_ATTACK_ARC = 92;
+export const LIGHT_LUNGE_DISTANCE = 18;
+export const LIGHT_STAGGER = 1;
+export const LIGHT_HIT_STOP_MS = 40;
+
+export const HEAVY_WINDUP_MS = 280;
+export const HEAVY_ACTIVE_MS = 160;
+export const HEAVY_RECOVERY_MS = 340;
+export const HEAVY_COOLDOWN_MS = 920;
+export const HEAVY_DAMAGE_MULTIPLIER = 1.8;
+export const HEAVY_DAMAGE_BONUS = 3;
+export const HEAVY_RANGE = 82;
+export const HEAVY_ATTACK_ARC = 132;
+export const HEAVY_LUNGE_DISTANCE = 28;
+export const HEAVY_VITAE_COST = 1;
+export const HEAVY_STAGGER = 3;
+export const HEAVY_HIT_STOP_MS = 80;
+export const HEAVY_CAMERA_SHAKE = 0.004;
+
+export const RANGED_WINDUP_MS = 240;
+export const RANGED_RELEASE_MS = 70;
+export const RANGED_RECOVERY_MS = 220;
+export const BLOOD_LANCE_VITAE_COST = 2;
+export const BLOOD_LANCE_COOLDOWN_MS = 1800;
+export const BLOOD_LANCE_SPEED = 360;
+export const BLOOD_LANCE_LIFETIME_MS = 1200;
+export const BLOOD_LANCE_MAX_RANGE = 360;
+export const BLOOD_LANCE_COLLISION_RADIUS = 18;
+export const BLOOD_LANCE_DAMAGE = 7;
+export const BLOOD_LANCE_STAGGER = 1;
+export const BLOOD_LANCE_HIT_STOP_MS = 25;
+export const BLOOD_LANCE_SHAKE = 0.002;
+
+export const HIT_FLASH_MS = 120;
+export const DAMAGE_NUMBER_LIFETIME_MS = 750;
+export const PLAYER_HURT_FLASH_MS = 180;
+export const PLAYER_HEALTH_LAG_MS = 380;
+export const TARGET_HEALTH_LAG_MS = 240;
+export const VITAE_PULSE_MS = 260;
+export const DEATH_FADE_MS = 900;
+export const COFFIN_RESPAWN_FADE_MS = 520;
+
+export const BANDIT_RANGE = 62;
+export const BANDIT_PREFERRED_DISTANCE = 54;
+export const BANDIT_WINDUP_MS = 260;
+export const BANDIT_ACTIVE_MS = 130;
+export const BANDIT_RECOVERY_MS = 280;
+export const BANDIT_COOLDOWN_MS = 820;
+export const BANDIT_DAMAGE = 3;
+export const BANDIT_DETECTION_RANGE = 220;
+export const BANDIT_SPEED = 78;
+export const BANDIT_STAGGER_RESISTANCE = 0;
+
+export const CLERGY_RANGE = 230;
+export const CLERGY_PREFERRED_DISTANCE = 180;
+export const CLERGY_WINDUP_MS = 420;
+export const CLERGY_ACTIVE_MS = 40;
+export const CLERGY_RECOVERY_MS = 340;
+export const CLERGY_COOLDOWN_MS = 1200;
+export const CLERGY_DAMAGE = 4;
+export const CLERGY_DETECTION_RANGE = 260;
+export const CLERGY_SPEED = 70;
+export const CLERGY_RETREAT_RANGE = 118;
+export const CLERGY_STAGGER_RESISTANCE = 1;
+
+export const ELITE_RANGE = 94;
+export const ELITE_PREFERRED_DISTANCE = 80;
+export const ELITE_WINDUP_MS = 560;
+export const ELITE_ACTIVE_MS = 180;
+export const ELITE_RECOVERY_MS = 420;
+export const ELITE_COOLDOWN_MS = 1350;
+export const ELITE_DAMAGE = 7;
+export const ELITE_DETECTION_RANGE = 240;
+export const ELITE_SPEED = 58;
+export const ELITE_DIRECTION_LOCK_MS = 180;
+export const ELITE_STAGGER_RESISTANCE = 3;
+export const ELITE_HEAVY_STAGGER_BONUS = 2;
+
 export const JOB_PRIORITY_WEIGHT: Record<JobPriority, number> = {
   Disabled: 0,
   Low: 1,
