@@ -64,14 +64,17 @@ export class CombatPresentation {
   }
 
   static updateTargetIndicator(indicator: TargetIndicator, x: number, y: number, radius: number, time: number, elite: boolean): void {
+    const pulse = 1 + ((Math.sin(time / 110) + 1) * 0.5 - 0.5) * 0.18;
     indicator.ring.clear();
-    indicator.ring.lineStyle(elite ? 3 : 2, elite ? 0xf8e16c : 0xb91c3c, 0.9);
-    indicator.ring.strokeCircle(x, y + 14, radius + Math.sin(time / 120) * 2);
-    indicator.ring.lineStyle(1, 0xf8f9fa, 0.7);
-    indicator.ring.strokeCircle(x, y + 14, Math.max(6, radius - 4));
+    indicator.ring.lineStyle(elite ? 4 : 3, elite ? 0xf8e16c : 0xb91c3c, 0.95);
+    indicator.ring.strokeCircle(x, y + 14, radius * pulse);
+    indicator.ring.lineStyle(2, 0xf8f9fa, 0.8);
+    indicator.ring.strokeCircle(x, y + 14, Math.max(6, radius - 5));
     indicator.marker.clear();
     indicator.marker.fillStyle(elite ? 0xf8e16c : 0xff758f, 1);
-    indicator.marker.fillTriangle(x, y - radius - 18, x - 6, y - radius - 8, x + 6, y - radius - 8);
+    indicator.marker.fillTriangle(x, y - radius - 24, x - 8, y - radius - 10, x + 8, y - radius - 10);
+    indicator.marker.lineStyle(2, 0xf8f9fa, 0.9);
+    indicator.marker.strokeTriangle(x, y - radius - 24, x - 8, y - radius - 10, x + 8, y - radius - 10);
   }
 
   static clearTargetIndicator(indicator: TargetIndicator): void {

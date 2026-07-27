@@ -68,5 +68,22 @@ describe('bite pipeline', () => {
     const turned = applyHumanAction(turnState, turnState.npcs[0]?.id ?? '', 'turn');
     expect(turned.state.servants).toHaveLength(1);
     expect(turned.state.player.vitae).toBe(2);
+    expect(turned.state.inheritanceHistory).toHaveLength(1);
+    expect(turned.state.npcs[0]?.status).toBe('turned');
+    expect(turned.state.servants[0]?.taskReason).toContain('awaiting direction');
+  });
+
+  it('reports blocked turn attempts without mutating state', () => {
+    const state = createNewGameState({ seed: 'blocked-turn' });
+    state.player.vitae = 2;
+    const blocked = validateHumanAction(state, state.npcs[0], 'turn');
+    expect(blocked.ok).toBe(false);
+    if (!blocked.ok) {
+      expect(blocked.reason).toContain('Vitae');
+    }
+    const result = applyHumanAction(state, state.npcs[0]?.id ?? '', 'turn');
+    expect(result.state).toBe(state);
+    expect(result.message).toContain('Vitae');
+    expect(state.servants).toHaveLength(0);
   });
 });

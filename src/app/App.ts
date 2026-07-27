@@ -1,13 +1,17 @@
 import Phaser from 'phaser';
 import { COLLECTIBLES_BY_ID } from '../data/collectibles';
+import { PROFESSIONS_BY_ID } from '../data/professions';
 import { ITEMS_BY_ID } from '../data/items';
+import { RECIPES_BY_ID } from '../data/recipes';
+import { ROOMS_BY_ID } from '../data/rooms';
 import { createNewGameState, deriveCharacterSeed, getActiveQuestStepText, getHumanById } from './state';
 import { queueCraftingOrder } from '../simulation/crafting/crafting';
+import { canCraftRecipe } from '../simulation/crafting/crafting';
 import { queueRoomConstruction } from '../simulation/building/building';
 import { completeQuestStep } from '../simulation/quests/quests';
 import { applyDayRestriction, togglePhase } from '../simulation/time/dayNight';
 import { runWorkShift } from '../simulation/servants/production';
-import { saveSettings } from '../persistence/settings';
+import { loadSettings, saveSettings } from '../persistence/settings';
 import { deleteSlot, exportSaveGame, importSaveGame, listSaveSlots, loadFromSlot, saveToSlot } from '../persistence/saveStore';
 import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
 import { createDefaultSeed } from '../utilities/rng';
@@ -15,19 +19,20 @@ import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
 import type { CombatUiSnapshot, HumanActionMode, WorldSceneApi } from '../game/combat/combatTypes';
 import { getTraitById } from '../simulation/traits/traitUtils';
-import { addItem, canEquipItem, equipItem, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
+import { addItem, canEquipItem, equipItem, getItemQuantity, hasItems, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
 import { calculatePlayerCombatStats, useHealingDraught } from '../simulation/combat/stats';
-import { applyHumanAction } from '../simulation/combat/bite';
+import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
 import { renderGameShell, renderTitleScreen as renderTitleLayout } from '../ui/shell/layout';
 import { TOPBAR_RESOURCES, renderTopBar } from '../ui/topbar/topbar';
 import { TooltipManager } from '../ui/tooltips/tooltips';
-import { isTypingTarget, type MenuId } from '../ui/uiState';
+import { isTypingTarget, shouldCaptureGameplayKey, type MenuId } from '../ui/uiState';
 import { htmlEscape } from '../utilities/html';
 
 const SLOT_IDS = ['slot-1', 'slot-2', 'slot-3'];
+const UI_SCALE_OPTIONS = [0.9, 1, 1.1, 1.25] as const;
 
 export class BloodwakeApp {
   private readonly root: HTMLElement;
@@ -149,11 +154,14 @@ export class BloodwakeApp {
     if (!this.state) {
       return;
     }
+    this.state.settings = { ...this.state.settings, ...loadSettings() };
+    this.applyUiScale();
     this.root.innerHTML = renderGameShell();
     this.toastManager = new ToastManager(this.query('#toast-root'));
     this.tooltipManager = new TooltipManager(this.root);
     this.tooltipManager.install();
     this.installGlobalShortcuts();
+    this.installGameplayGuards();
     this.mountPhaser();
     this.previousResourceSnapshot = null;
     this.renderGame();
@@ -320,7 +328,7 @@ export class BloodwakeApp {
     const overlayRoot = this.query('#overlay-root');
     if (this.activeMenu) {
       overlayRoot.classList.remove('hidden');
-      overlayRoot.innerHTML = renderOverlay(this.activeMenu, this.state, this.selectedItemId, this.selectedFilter);
+      overlayRoot.innerHTML = renderOverlay(this.activeMenu, this.state, this.selectedItemId, this.selectedFilter, this.selectedRoomId);
       this.phaserGame?.scene.pause('world');
       const closeButton = overlayRoot.querySelector<HTMLButtonElement>('[data-close-overlay]');
       closeButton?.focus();
@@ -425,16 +433,36 @@ export class BloodwakeApp {
       return;
     }
     contextPanel.classList.remove('hidden');
+    const humanActions = (['feed', 'drain', 'turn'] as const).map((mode) => ({
+      mode,
+      validation: validateHumanAction(this.state!, human, mode),
+    }));
+    const profession = PROFESSIONS_BY_ID[human.professionId];
+    const traitNames = human.traitIds.map((traitId) => getTraitById(traitId).name);
+    const turnValidation = humanActions.find((action) => action.mode === 'turn')?.validation;
+    const turnStatus = turnValidation?.ok ? 'Eligible for turning now.' : turnValidation?.reason ?? 'Not eligible for turning.';
     contextPanel.innerHTML = `
       <h3>${htmlEscape(human.name)} ${htmlEscape(human.familyName)}</h3>
-      <p>${htmlEscape(human.professionId)} · blood quality ${human.bloodQuality}</p>
-      <p>Traits: ${human.traitIds.map((traitId) => htmlEscape(traitId)).join(', ') || 'none'}</p>
+      <p>${htmlEscape(profession.name)} · blood quality ${human.bloodQuality} · recruitability ${human.recruitability}</p>
+      <p>${htmlEscape(profession.practicalBenefit)}</p>
+      <p>Traits: ${traitNames.map(htmlEscape).join(', ') || 'none'}</p>
+      <p class="hint">${htmlEscape(turnStatus)}</p>
       <div class="button-row compact">
-        <button data-human-action="feed">Feed</button>
-        <button data-human-action="drain">Drain</button>
-        <button data-human-action="turn">Turn</button>
+        ${humanActions
+          .map(
+            ({ mode, validation }) => `<button data-human-action="${mode}" ${validation.ok ? '' : 'disabled'}>${mode === 'turn' ? 'Turn to Servant' : mode[0].toUpperCase() + mode.slice(1)}</button>`,
+          )
+          .join('')}
       </div>
-      <p class="hint">F to bite, Q Blood Lance, Ctrl lock target, wheel cycle targets.</p>
+      <ul class="context-reasons">
+        ${humanActions
+          .map(
+            ({ mode, validation }) =>
+              `<li>${mode === 'turn' ? 'Turn' : mode[0].toUpperCase() + mode.slice(1)}: ${htmlEscape(validation.ok ? 'Ready.' : validation.reason)}</li>`,
+          )
+          .join('')}
+      </ul>
+      <p class="hint">F feeds nearby humans. Tab cycles targets, Shift+Tab cycles back, middle mouse locks near cursor.</p>
     `;
   }
 
@@ -480,6 +508,8 @@ export class BloodwakeApp {
             ? { ...servant, priorities: { ...servant.priorities, [jobType]: select.value as JobPriority } }
             : servant,
         );
+        this.completeStepForEvent('assign');
+        this.notify('Servant priorities updated.');
         this.renderGame();
       };
     }
@@ -495,6 +525,26 @@ export class BloodwakeApp {
       button.onclick = async () => {
         if (!this.state) return;
         try {
+          const selectedRoom = ROOMS_BY_ID[this.selectedRoomId];
+          if (selectedRoom.requiredRoomId && !this.state.rooms.some((room) => room.roomId === selectedRoom.requiredRoomId && room.status === 'built')) {
+            this.notify(`Build ${ROOMS_BY_ID[selectedRoom.requiredRoomId].name} first.`);
+            return;
+          }
+          if (!hasItems(this.state.inventory, selectedRoom.constructionCostItems)) {
+            const missing = Object.entries(selectedRoom.constructionCostItems)
+              .filter(([itemId, amount]) => getItemQuantity(this.state.inventory, itemId as ItemId) < (amount ?? 0))
+              .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(this.state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
+              .join(', ');
+            this.notify(`Missing ${missing}.`);
+            return;
+          }
+          const missingStrategic = Object.entries(selectedRoom.constructionCostResources ?? {}).find(
+            ([resourceId, amount]) => (this.state?.strategicResources[resourceId as keyof SaveGame['strategicResources']] ?? 0) < (amount ?? 0),
+          );
+          if (missingStrategic) {
+            this.notify(`Need more ${missingStrategic[0]}.`);
+            return;
+          }
           const result = queueRoomConstruction(
             this.state.rooms,
             this.state.inventory,
@@ -520,7 +570,25 @@ export class BloodwakeApp {
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-recipe-id]')) {
       button.onclick = async () => {
         if (!this.state) return;
-        this.state.craftingQueue = queueCraftingOrder(this.state.craftingQueue, button.dataset.recipeId ?? '');
+        const recipeId = button.dataset.recipeId ?? '';
+        const recipe = RECIPES_BY_ID[recipeId];
+        if (!this.state.rooms.some((room) => room.roomId === recipe.requiredRoomId && room.status === 'built')) {
+          this.notify(`Requires ${ROOMS_BY_ID[recipe.requiredRoomId].name}.`);
+          return;
+        }
+        if (!canCraftRecipe(this.state.inventory, recipeId)) {
+          const missing = Object.entries(recipe.inputs)
+            .filter(([itemId, amount]) => getItemQuantity(this.state.inventory, itemId as ItemId) < (amount ?? 0))
+            .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(this.state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
+            .join(', ');
+          this.notify(`Missing ${missing}.`);
+          return;
+        }
+        if (!this.state.servants.some((servant) => servant.priorities.Crafting !== 'Disabled')) {
+          this.notify('Need a servant with Crafting enabled.');
+          return;
+        }
+        this.state.craftingQueue = queueCraftingOrder(this.state.craftingQueue, recipeId);
         this.state.lastEventLog.unshift(`Queued ${button.textContent?.trim() ?? 'recipe'}.`);
         this.notify('Crafting queued.');
         await this.autoSave('slot-1');
@@ -618,10 +686,29 @@ export class BloodwakeApp {
         this.notify('Save completed.');
       };
     }
+
+    const uiScaleSelect = this.root.querySelector<HTMLSelectElement>('[data-setting-ui-scale]');
+    if (uiScaleSelect) {
+      uiScaleSelect.onchange = () => {
+        if (!this.state) return;
+        const nextScale = Number(uiScaleSelect.value);
+        if (!UI_SCALE_OPTIONS.includes(nextScale as (typeof UI_SCALE_OPTIONS)[number])) {
+          return;
+        }
+        this.state.settings = { ...this.state.settings, uiScale: nextScale };
+        saveSettings(this.state.settings);
+        this.applyUiScale();
+        this.renderGame();
+      };
+    }
   }
 
   private installGlobalShortcuts(): void {
     window.onkeydown = (event: KeyboardEvent) => {
+      const gameplayFocused = Boolean(this.state) && this.root.querySelector('.game-app') !== null;
+      if (shouldCaptureGameplayKey(event, gameplayFocused)) {
+        event.preventDefault();
+      }
       if (isTypingTarget(event.target)) {
         return;
       }
@@ -651,6 +738,26 @@ export class BloodwakeApp {
     };
   }
 
+  private installGameplayGuards(): void {
+    const gameplayRoot = this.root.querySelector<HTMLElement>('#phaser-root');
+    if (!gameplayRoot) {
+      return;
+    }
+    gameplayRoot.oncontextmenu = (event) => {
+      event.preventDefault();
+    };
+    gameplayRoot.onwheel = (event) => {
+      if (!this.activeMenu && !isTypingTarget(document.activeElement)) {
+        event.preventDefault();
+      }
+    };
+  }
+
+  private applyUiScale(): void {
+    const scale = this.state ? this.state.settings.uiScale : 1;
+    document.documentElement.style.setProperty('--ui-scale', String(scale));
+  }
+
   private openOrCloseMenu(menu: MenuId | null): void {
     this.activeMenu = menu;
     this.renderGame();
@@ -661,6 +768,7 @@ export class BloodwakeApp {
       return;
     }
     const nextPhase = togglePhase(this.state.time.phase);
+    const wasQueuedSimpleSword = this.state.craftingQueue.some((order) => order.recipeId === 'simple_sword' && order.status === 'queued');
     if (nextPhase === 'day') {
       this.state.player = applyDayRestriction(this.state.player, nextPhase);
     }
@@ -683,6 +791,13 @@ export class BloodwakeApp {
     this.state.inventory = shift.inventory;
     this.state.craftingQueue = shift.craftingQueue;
     this.state.lastEventLog = [...shift.log.reverse(), ...this.state.lastEventLog].slice(0, 12);
+    if (shift.servants.some((servant) => servant.currentJob && servant.currentTask)) {
+      this.completeStepForEvent('assign');
+    }
+    if (wasQueuedSimpleSword && this.state.craftingQueue.some((order) => order.recipeId === 'simple_sword' && order.status === 'complete')) {
+      this.completeStepForEvent('craft');
+      this.notify('Your servants completed a Simple Sword.');
+    }
     saveSettings(this.state.settings);
     await this.autoSave('slot-1');
     this.renderGame();

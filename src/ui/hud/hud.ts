@@ -62,7 +62,7 @@ export const renderBottomHud = (
       <div class="target-panel ${target ? '' : 'hidden'}">
         ${
           target
-            ? `<div class="target-header"><strong>${htmlEscape(target.name)}</strong><span>${target.elite ? 'Elite' : target.typeLabel}</span></div>
+           ? `<div class="target-header"><strong>Locked: ${htmlEscape(target.name)}</strong><span>${target.elite ? 'Elite' : target.typeLabel}</span></div>
                <div class="hud-bar compact-target" aria-label="Target ${target.health} of ${target.maxHealth}">
                  <div class="hud-bar-track"><div class="hud-bar-fill target-fill" style="width:${Math.max(0, Math.min(100, (target.health / target.maxHealth) * 100))}%"></div></div>
                  <div class="hud-bar-label">${target.health}/${target.maxHealth}</div>

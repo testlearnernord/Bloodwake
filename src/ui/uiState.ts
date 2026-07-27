@@ -26,3 +26,20 @@ export const isTypingTarget = (target: EventTarget | null): boolean => {
   const tag = candidate.tagName?.toUpperCase();
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || candidate.isContentEditable === true;
 };
+
+export const shouldCaptureGameplayKey = (
+  event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'target'>,
+  gameplayFocused: boolean,
+): boolean => {
+  if (!gameplayFocused || isTypingTarget(event.target)) {
+    return false;
+  }
+  const key = event.key.toLowerCase();
+  if (key === 'tab') {
+    return true;
+  }
+  if (!(event.ctrlKey || event.metaKey)) {
+    return false;
+  }
+  return key === 's' || key === 'p';
+};
