@@ -281,7 +281,9 @@ export class WorldScene extends Phaser.Scene {
       }
     });
     this.input.on('wheel', (_pointer: Phaser.Input.Pointer, _over: Phaser.GameObjects.GameObject[], _dx: number, dy: number, _dz: number, event: WheelEvent) => {
-      event.preventDefault();
+      if (event.cancelable) {
+        event.preventDefault();
+      }
       if (this.bridge.isGameplayInputBlocked()) {
         return;
       }

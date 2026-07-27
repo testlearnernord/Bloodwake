@@ -37,7 +37,7 @@ const roomGridCell = (rooms: BuiltRoom[], x: number, y: number): string => {
   return `<button class="grid-cell ${room.status}" data-build-x="${x}" data-build-y="${y}" aria-label="${room.roomId} at ${x},${y}">${room.roomId.replaceAll('_', ' ')}</button>`;
 };
 
-const getRoomReadiness = (state: SaveGame, roomId: keyof typeof ROOMS_BY_ID): { ready: boolean; reason: string } => {
+export const getRoomReadiness = (state: SaveGame, roomId: keyof typeof ROOMS_BY_ID): { ready: boolean; reason: string } => {
   const room = ROOMS_BY_ID[roomId];
   if (room.requiredRoomId && !state.rooms.some((entry) => entry.roomId === room.requiredRoomId && entry.status === 'built')) {
     return { ready: false, reason: `Requires ${ROOMS_BY_ID[room.requiredRoomId].name}.` };
@@ -58,8 +58,11 @@ const getRoomReadiness = (state: SaveGame, roomId: keyof typeof ROOMS_BY_ID): { 
   return { ready: true, reason: 'Ready to place on an empty valid slot.' };
 };
 
-const getRecipeReadiness = (state: SaveGame, recipeId: string): { ready: boolean; reason: string } => {
+export const getRecipeReadiness = (state: SaveGame, recipeId: string): { ready: boolean; reason: string } => {
   const recipe = RECIPES_BY_ID[recipeId];
+  if (!recipe) {
+    return { ready: false, reason: 'Unknown recipe.' };
+  }
   if (!state.rooms.some((room) => room.roomId === recipe.requiredRoomId && room.status === 'built')) {
     return { ready: false, reason: `Requires ${ROOMS_BY_ID[recipe.requiredRoomId].name}.` };
   }

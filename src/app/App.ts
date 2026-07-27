@@ -2,11 +2,8 @@ import Phaser from 'phaser';
 import { COLLECTIBLES_BY_ID } from '../data/collectibles';
 import { PROFESSIONS_BY_ID } from '../data/professions';
 import { ITEMS_BY_ID } from '../data/items';
-import { RECIPES_BY_ID } from '../data/recipes';
-import { ROOMS_BY_ID } from '../data/rooms';
 import { createNewGameState, deriveCharacterSeed, getActiveQuestStepText, getHumanById } from './state';
 import { queueCraftingOrder } from '../simulation/crafting/crafting';
-import { canCraftRecipe } from '../simulation/crafting/crafting';
 import { queueRoomConstruction } from '../simulation/building/building';
 import { completeQuestStep } from '../simulation/quests/quests';
 import { applyDayRestriction, togglePhase } from '../simulation/time/dayNight';
@@ -19,11 +16,11 @@ import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
 import type { CombatUiSnapshot, HumanActionMode, WorldSceneApi } from '../game/combat/combatTypes';
 import { getTraitById } from '../simulation/traits/traitUtils';
-import { addItem, canEquipItem, equipItem, getItemQuantity, hasItems, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
+import { addItem, canEquipItem, equipItem, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
 import { calculatePlayerCombatStats, useHealingDraught } from '../simulation/combat/stats';
 import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite';
 import { renderBottomHud } from '../ui/hud/hud';
-import { renderOverlay } from '../ui/overlays/overlays';
+import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
 import { renderGameShell, renderTitleScreen as renderTitleLayout } from '../ui/shell/layout';
 import { TOPBAR_RESOURCES, renderTopBar } from '../ui/topbar/topbar';
@@ -526,24 +523,9 @@ export class BloodwakeApp {
         if (!this.state) return;
         const state = this.state;
         try {
-          const selectedRoom = ROOMS_BY_ID[this.selectedRoomId];
-          if (selectedRoom.requiredRoomId && !state.rooms.some((room) => room.roomId === selectedRoom.requiredRoomId && room.status === 'built')) {
-            this.notify(`Build ${ROOMS_BY_ID[selectedRoom.requiredRoomId].name} first.`);
-            return;
-          }
-          if (!hasItems(state.inventory, selectedRoom.constructionCostItems)) {
-            const missing = Object.entries(selectedRoom.constructionCostItems)
-              .filter(([itemId, amount]) => getItemQuantity(state.inventory, itemId as ItemId) < (amount ?? 0))
-              .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
-              .join(', ');
-            this.notify(`Missing ${missing}.`);
-            return;
-          }
-          const missingStrategic = Object.entries(selectedRoom.constructionCostResources ?? {}).find(
-            ([resourceId, amount]) => (state.strategicResources[resourceId as keyof SaveGame['strategicResources']] ?? 0) < (amount ?? 0),
-          );
-          if (missingStrategic) {
-            this.notify(`Need more ${missingStrategic[0]}.`);
+          const { ready, reason } = getRoomReadiness(state, this.selectedRoomId);
+          if (!ready) {
+            this.notify(reason);
             return;
           }
           const result = queueRoomConstruction(
@@ -573,21 +555,9 @@ export class BloodwakeApp {
         if (!this.state) return;
         const state = this.state;
         const recipeId = button.dataset.recipeId ?? '';
-        const recipe = RECIPES_BY_ID[recipeId];
-        if (!state.rooms.some((room) => room.roomId === recipe.requiredRoomId && room.status === 'built')) {
-          this.notify(`Requires ${ROOMS_BY_ID[recipe.requiredRoomId].name}.`);
-          return;
-        }
-        if (!canCraftRecipe(state.inventory, recipeId)) {
-          const missing = Object.entries(recipe.inputs)
-            .filter(([itemId, amount]) => getItemQuantity(state.inventory, itemId as ItemId) < (amount ?? 0))
-            .map(([itemId, amount]) => `${Math.max(0, (amount ?? 0) - getItemQuantity(state.inventory, itemId as ItemId))} ${ITEMS_BY_ID[itemId as ItemId].name}`)
-            .join(', ');
-          this.notify(`Missing ${missing}.`);
-          return;
-        }
-        if (!state.servants.some((servant) => servant.priorities.Crafting !== 'Disabled')) {
-          this.notify('Need a servant with Crafting enabled.');
+        const { ready, reason } = getRecipeReadiness(state, recipeId);
+        if (!ready) {
+          this.notify(reason);
           return;
         }
         this.state.craftingQueue = queueCraftingOrder(this.state.craftingQueue, recipeId);
@@ -707,7 +677,7 @@ export class BloodwakeApp {
 
   private installGlobalShortcuts(): void {
     window.onkeydown = (event: KeyboardEvent) => {
-      const gameplayFocused = Boolean(this.state) && this.root.querySelector('.game-app') !== null;
+      const gameplayFocused = Boolean(this.state) && this.root.querySelector('.game-app') !== null && !this.activeMenu;
       if (shouldCaptureGameplayKey(event, gameplayFocused)) {
         event.preventDefault();
       }
