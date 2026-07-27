@@ -260,8 +260,13 @@ export interface EnemyDefinition {
   id: EnemyType;
   name: string;
   health: number;
-  damage: number;
   speed: number;
+  detectionRange: number;
+  preferredDistance: number;
+  attackIds: string[];
+  poise: number;
+  description: string;
+  roleLabel: string;
   elite?: boolean;
 }
 

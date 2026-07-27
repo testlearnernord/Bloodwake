@@ -232,6 +232,12 @@ export const renderOverlay = (
     <header class="overlay-header"><h2 id="overlay-title">Pause & Settings</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
     <div class="overlay-body">
       <p>Use save/export controls from the top bar or resume to continue.</p>
+      <h3>Combat controls</h3>
+      <ul>
+        <li>WASD move, mouse aim, Ctrl lock-on, mouse wheel cycle targets</li>
+        <li>Left Mouse light attack, Right Mouse heavy attack, Q Blood Lance, Space dodge</li>
+        <li>E interact, F bite/feed, Escape close overlay or pause</li>
+      </ul>
       <div class="button-row"><button id="manual-save-overlay">Manual Save</button><button id="return-title">Return to Title</button></div>
     </div>
   `;

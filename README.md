@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.2 UI, inventory, and presentation overhaul.
+> Current status: Milestone 0.3 tactical combat overhaul.
 
 ## Zero-cost architecture
 
@@ -12,29 +12,28 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 - No runtime CDN dependencies
 - Local SVG icons and programmatic visuals only
 
-## Implemented in Milestone 0.2
+## Implemented in Milestone 0.3
 
-- Fullscreen application shell (top strategic bar, centered world view, bottom combat HUD)
-- Overlay-based management UI (Character, Inventory, Servants, Stronghold, Crafting, Journal, Pause)
-- Deterministic world seed + `characterRoll` new-game generation flow
-- New games start with **no starter servant**; first servant is acquired by turning a human
-- Item-based inventory operations with deterministic helpers
-- Strategic resources split from physical inventory items
-- Equipment loadout with stat impact (weapon damage, armor mitigation)
-- Healing Draught consumable support
-- Save format version 2 migration from legacy data
-- Startup fatal-error panel fallback instead of blank white startup failures
-- GitHub Pages smoke validation (`npm run smoke:pages`)
+- Tactical top-down combat with visible Light Attack, Heavy Attack, Blood Lance, bite, feed, drain, and turn flows
+- Ctrl target lock toggle with mouse-wheel target cycling and target-relative orbital WASD movement
+- Real projectiles, dodge invulnerability frames, enemy telegraphs, stagger windows, and combat impact feedback
+- Distinct bandit, clergy hunter, and elite knight behavior with no contact damage
+- Data-driven combat definitions, deterministic combat tests, and preserved save format v2 compatibility
+- Fullscreen application shell, overlays, inventory, equipment, startup error fallback, and Pages smoke validation from Milestone 0.2
 
 ## Controls
 
 ### World controls
 - `WASD`: move
-- `Left Mouse`: primary attack
-- `Right Mouse`: heavy attack
+- `Ctrl`: toggle hostile target lock
+- `Mouse Wheel`: cycle locked targets
+- `Left Mouse`: Light Attack
+- `Right Mouse`: Heavy Attack
+- `Q`: Blood Lance
 - `Space`: dodge
 - `E`: interact / collect
-- `F`: feed nearby human
+- `F`: bite / feed nearby human
+- `Escape`: close overlay, or open Pause if none is open
 
 ### Menu shortcuts
 - `C`: Character & Bloodline
@@ -43,9 +42,18 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 - `B`: Stronghold
 - `K`: Crafting
 - `J`: Journal & Memories
-- `Escape`: close overlay, or open Pause if none is open
+- `Tab`: Pause
 
-Shortcuts are guarded and do not trigger while typing in form controls.
+Shortcuts are guarded and do not trigger while typing in form controls or while overlays own focus.
+
+## Combat highlights
+
+- **Target lock:** closest hostile to your facing or mouse direction wins; wheel cycling wraps in stable order.
+- **Orbital movement:** while locked, `W/S` move toward/away and `A/D` circle the target with normalized speed.
+- **Heavy Attack:** spends Vitae once when the strike commits, not on rejected windups.
+- **Blood Lance:** locked shots bias toward the target; free shots aim at the mouse pointer.
+- **Bite flow:** `F` and context buttons share one animated pipeline so feed/drain/turn outcomes commit exactly once.
+- **Telegraphs:** every enemy damage event is preceded by a readable arc or line marker.
 
 ## Display targets
 
@@ -81,19 +89,22 @@ npm run smoke:pages
 
 ## Current limitations
 
-- Milestone 0.3 combat/animation systems are not implemented yet.
-- This milestone keeps placeholder world visuals and lightweight combat logic.
+- Combat presentation uses compact generated silhouettes and Phaser effects rather than hand-authored sprite sheets.
+- The current world still uses the three prototype combat zones from earlier milestones.
+- Reduced-motion support trims camera and tween intensity, but combat is still visually denser than the management UI.
 
-## Deferred to Milestone 0.3
+## Milestone 0.4 scope
 
-- Ctrl target lock toggle
-- Target selection and cycling
-- Target-relative orbital movement
-- Ranged target-seeking projectiles
-- Full light/heavy/bite animation state machines
-- Enemy telegraphs and advanced combat patterns
-- Hit stop, camera shake, and deeper attack feedback
-- Full animated world character sprite sheets
+Milestone 0.4 is reserved for:
+
+- replacing the three rectangular zones with a real compact world map
+- environmental art and collisions
+- expanded stronghold
+- more locations and interiors
+- more quests and enemies
+- loot drops
+- additional weapons and vampire abilities
+- broader progression
 
 ## License
 

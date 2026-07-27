@@ -263,11 +263,18 @@ main {
   gap: var(--space-1);
 }
 
+.hud-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
 .hud-bar-label {
   font-size: 0.78rem;
 }
 
 .hud-bar-track {
+  position: relative;
   width: 100%;
   height: 0.72rem;
   border-radius: 999px;
@@ -277,8 +284,15 @@ main {
 }
 
 .hud-bar-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
   height: 100%;
   transition: width 220ms ease-out;
+}
+
+.delayed-fill {
+  background: rgba(248, 249, 250, 0.22);
+  transition-duration: 360ms;
 }
 
 .health-fill {
@@ -301,6 +315,93 @@ main {
   border-radius: 999px;
   background: var(--bg-muted);
   padding: 0.25rem 0.5rem;
+}
+
+.ability-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.ability-slot {
+  position: relative;
+  overflow: hidden;
+  min-height: 4.8rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: var(--space-2);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.ability-slot.active {
+  border-color: var(--accent-strong);
+  box-shadow: 0 0 0 1px rgba(181, 31, 74, 0.35);
+}
+
+.ability-slot.disabled {
+  opacity: 0.78;
+}
+
+.ability-icon {
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.ability-meta {
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.8rem;
+  z-index: 1;
+}
+
+.ability-reason {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.ability-cooldown {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(11, 15, 19, 0.78);
+  transition: height 120ms linear;
+}
+
+.target-panel {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.target-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.compact-target {
+  gap: var(--space-1);
+}
+
+.target-fill {
+  background: linear-gradient(90deg, #4b1020, #d6336c);
+}
+
+.target-status {
+  margin: var(--space-1) 0 0;
+  color: var(--muted);
 }
 
 .overlay-root {
@@ -471,7 +572,8 @@ main {
 
 @media (prefers-reduced-motion: reduce) {
   .hud-bar-fill,
-  .toast.fade {
+  .toast.fade,
+  .ability-cooldown {
     transition-duration: 40ms;
   }
 }
@@ -486,6 +588,9 @@ main {
   }
   .bottom-hud {
     grid-template-columns: 1fr;
+  }
+  .ability-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .columns.two,
   .columns.three {

@@ -10,13 +10,21 @@ Core balancing values live in `src/config/balancing.ts`.
 - Job priority weighting
 - Crafting quality thresholds
 - Day/night work restrictions
+- Player movement speed, lock range, and minimum orbit radius
+- Dodge speed, duration, cooldown, and invulnerability window
+- Light/Heavy/Blood Lance timings, cooldowns, costs, stagger, hit-stop, and camera shake
+- Blood Lance projectile speed, range, lifetime, and collision radius
+- Enemy detection ranges, preferred distances, attack timings, poise, and direction-lock timing
+- Feedback timings for damage numbers, delayed health bars, and death fades
 
-## Milestone 0.2 gameplay-impact additions
+## Milestone 0.3 combat notes
 
-- Equipment now contributes to combat stats via deterministic aggregation.
-- Armor reduces incoming damage with a minimum-damage rule.
-- Healing Draught provides consumable health restoration.
-- Building and crafting consume inventory items instead of generic resource keys.
+- **Light Attack** is the quick zero-Vitae option with short windup/recovery and light stagger.
+- **Heavy Attack** spends Vitae once on commit, lunges farther, and applies much stronger stagger.
+- **Blood Lance** is the ranged pressure tool with higher cooldown and no neutral-human damage.
+- **Bandits** close aggressively and can be interrupted often.
+- **Clergy Hunters** try to maintain range and rely on dodgeable holy projectiles.
+- **Elite Knights** have higher poise, longer windups, and direction-lock before release so flanking matters.
 
 ## Editing guidance
 
