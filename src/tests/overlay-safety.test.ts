@@ -73,29 +73,11 @@ describe('overlay rendering safety', () => {
 });
 
 describe('UI scale validation', () => {
-  it('accepts all supported UI scale values', () => {
-    const validScales = [0.9, 1, 1.1, 1.25];
-    const UI_SCALE_OPTIONS = [0.9, 1, 1.1, 1.25] as const;
-    for (const scale of validScales) {
-      expect(UI_SCALE_OPTIONS.includes(scale as (typeof UI_SCALE_OPTIONS)[number])).toBe(true);
-    }
-  });
-
-  it('rejects invalid UI scale values', () => {
-    const invalidScales = [0, 0.5, 0.75, 1.5, 2, -1, NaN];
-    const UI_SCALE_OPTIONS = [0.9, 1, 1.1, 1.25] as const;
-    for (const scale of invalidScales) {
-      expect(UI_SCALE_OPTIONS.includes(scale as (typeof UI_SCALE_OPTIONS)[number])).toBe(false);
-    }
-  });
-
   it('pause overlay renders scale select with all supported options', () => {
     const state = createNewGameState({ seed: 'scale-ui', playerName: 'Tester' });
     const html = renderOverlay('pause', state, null, 'all', 'workshop');
     expect(html).toContain('data-setting-ui-scale');
-    expect(html).toContain('value="0.9"');
-    expect(html).toContain('value="1"');
-    expect(html).toContain('value="1.1"');
-    expect(html).toContain('value="1.25"');
+    const optionValues = [...html.matchAll(/<option value="([^"]+)"/g)].map((m) => m[1]);
+    expect(optionValues).toEqual(['0.9', '1', '1.1', '1.25']);
   });
 });

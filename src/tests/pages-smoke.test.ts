@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -35,13 +34,17 @@ describe('CSS layout regression checks', () => {
 
   it('.overlay-body uses overflow for internal scrolling', () => {
     // overlay-body must have overflow set so it scrolls internally
-    const bodyBlock = css.slice(css.indexOf('.overlay-body'));
+    const bodyIdx = css.indexOf('.overlay-body');
+    expect(bodyIdx, '.overlay-body selector must exist in style.css').toBeGreaterThanOrEqual(0);
+    const bodyBlock = css.slice(bodyIdx);
     expect(bodyBlock).toContain('overflow');
   });
 
   it('game shell uses content-aware top and bottom rows', () => {
     // grid-template-rows must contain auto rows (not fixed topbar-h / hud-h only)
-    const appBlock = css.slice(css.indexOf('.game-app'));
+    const appIdx = css.indexOf('.game-app');
+    expect(appIdx, '.game-app selector must exist in style.css').toBeGreaterThanOrEqual(0);
+    const appBlock = css.slice(appIdx);
     expect(appBlock).toContain('auto');
     // Must not use the old fixed-only row pattern
     expect(appBlock).not.toMatch(/grid-template-rows:\s*var\(--topbar-h\)\s+minmax/);
