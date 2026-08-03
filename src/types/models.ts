@@ -305,6 +305,12 @@ export interface TimeState {
   phase: DayPhase;
 }
 
+export interface WorldCycleState {
+  cycle: number;
+  collectedResourceNodeIds: string[];
+  defeatedEnemyIds: string[];
+}
+
 export interface SaveGame {
   version: number;
   title: string;
@@ -319,6 +325,7 @@ export interface SaveGame {
   constructionTasks: ConstructionTask[];
   craftingQueue: CraftingOrder[];
   time: TimeState;
+  worldCycle: WorldCycleState;
   quests: QuestState[];
   collectibles: CollectibleState[];
   inheritanceHistory: InheritanceReport[];

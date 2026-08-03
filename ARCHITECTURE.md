@@ -18,6 +18,17 @@
 - `src/persistence`: IndexedDB save slots, validation, and migration
 - `src/tests`: deterministic unit tests
 
+## Key decisions in Milestone 0.5
+
+- Introduced `WorldCycleState` in `SaveGame` to track persistent resource node and enemy depletion within a night cycle.
+- Created `advanceWorldPhase()` in `src/simulation/time/phaseAdvance.ts` as the single authoritative lifecycle function for phase transitions.
+- Resource nodes and enemy instances use stable string IDs defined in `WorldScene`; depletion is stored in save state, not Phaser objects.
+- `WorldScene.syncWorldCycleWithState()` rebuilds world entities when a new night begins, using the cycle number as the trigger.
+- Servant and room world representations are passive scene objects created in `createServants()` / `createRooms()` and kept in sync by `syncServantsWithState()` / `syncRoomsWithState()`.
+- Human population replenishment uses deterministic IDs (`human-d{day}-{index}`) derived from world seed and day number to prevent collisions across cycles.
+- Hunger cap and starvation logic live in `advanceWorldPhase()` to keep them testable and centralized.
+- Save format v3 adds `worldCycle` with sanitization and deduplication of identifier arrays.
+
 ## Key decisions in Milestone 0.4
 
 - Keep save version 2 unchanged by storing runtime combat state outside persistent save data.

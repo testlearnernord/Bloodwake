@@ -61,6 +61,7 @@ export const createNewGameState = (options: NewGameOptions = {}): SaveGame => {
     constructionTasks: [],
     craftingQueue: [] as CraftingOrder[],
     time: { day: 1, phase: 'night' },
+    worldCycle: { cycle: 1, collectedResourceNodeIds: [], defeatedEnemyIds: [] },
     quests: createInitialQuestState(),
     collectibles: COLLECTIBLES.map((collectible) => ({ collectibleId: collectible.id, discovered: false })),
     inheritanceHistory: [],

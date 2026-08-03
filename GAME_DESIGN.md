@@ -1,5 +1,36 @@
 # Game Design
 
+## Core loop (Milestone 0.5)
+
+1. Generate a deterministic starting vampire from world seed + character roll.
+2. Explore the world at night and collect physical items (resource nodes persist as depleted until a new night).
+3. Lock hostile targets with predictable controls and fight; defeated enemies are recorded and not re-rewarded during the same night.
+4. Feed on humans to restore Vitae and reduce hunger; drain for Blood Essence and more hunger relief; turn willing candidates into vampire servants.
+5. Turned servants appear in Ruined Stronghold and are assigned work priorities.
+6. Rooms placed in the 4×4 Stronghold grid appear as visual representations at their grid positions.
+7. Advance to day (hunger increases, starvation at max hunger damages health); advance to the next night (resources respawn, enemies respawn, human population replenishes to target 5).
+8. Expand the stronghold, craft gear, and progress the awakening quest.
+
+## World refresh cycle
+
+- **Night → Day**: hunger increases once. No world respawn.
+- **Day → Night**: day number increments; world cycle increments; collected resource node and defeated enemy depletion resets; human population replenishes.
+- The memory fragment collectible does not respawn once discovered.
+
+## Hunger model
+
+- Hunger is capped at `MAX_HUNGER = 10`.
+- Feeding reduces hunger by 3 (cannot go below 0).
+- Draining reduces hunger by 4 (cannot go below 0).
+- At maximum hunger each dawn: health decreases by `STARVATION_HEALTH_DAMAGE = 2` (floor 1) and an event is logged.
+
+## Human population
+
+- Active target: `TARGET_HUMAN_POPULATION = 5` (wandering humans in Village Edge).
+- Drained and turned humans do not repopulate.
+- Fed humans recover to wandering at the start of a new night.
+- Generated IDs are deterministic: `human-d{day}-{index}`.
+
 ## Core loop (Milestone 0.4)
 
 1. Generate a deterministic starting vampire from world seed + character roll.

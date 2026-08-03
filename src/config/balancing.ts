@@ -35,6 +35,12 @@ export const FEED_VITAE_GAIN = 2;
 export const DRAIN_ESSENCE_GAIN = 1;
 export const BITE_RANGE = 60;
 
+export const MAX_HUNGER = 10;
+export const FEED_HUNGER_REDUCTION = 3;
+export const DRAIN_HUNGER_REDUCTION = 4;
+export const STARVATION_HEALTH_DAMAGE = 2;
+export const TARGET_HUMAN_POPULATION = 5;
+
 export const PLAYER_MOVE_SPEED = 168;
 export const LOCK_RANGE = 280;
 export const LOCK_BREAK_RANGE = 360;

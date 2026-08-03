@@ -1,6 +1,74 @@
 # Changelog
 
-## 0.4.3 - Milestone 0.4.3 Enemy Windup Hotfix
+## 0.5.0 - Milestone 0.5: Synchronize servants, rooms, world respawns, and hunger
+
+### World cycle and persistence
+
+- Added `WorldCycleState` to `SaveGame`: tracks `cycle`, `collectedResourceNodeIds`, and `defeatedEnemyIds`.
+- Incremented `SAVE_FORMAT_VERSION` to 3.
+- Added v2 → v3 migration: initializes `worldCycle` safely; sanitizes and deduplicates identifier arrays; limits array size; rejects invalid identifiers.
+- Every normal resource node now has a stable instance ID (`wood-node`, `herb-node`, `ore-node`, `stone-node`, `food-node`).
+- Every enemy instance has a stable ID (`bandit-1`, `clergy-1`, `knight-1`).
+- Collected resource nodes and defeated enemies are recorded in `worldCycle` and persist across save/load within the same night.
+- On the transition from day to night, `collectedResourceNodeIds` and `defeatedEnemyIds` are cleared and resources/enemies respawn exactly once.
+
+### Centralized phase advance
+
+- Introduced `advanceWorldPhase(state)` in `src/simulation/time/phaseAdvance.ts`.
+- Coordinates: day/night toggle, day increment, hunger increase (night→day), starvation consequence, servant work shift, human replenishment (day→night), world cycle refresh (day→night).
+- Returns `{ state, events, worldCycleChanged }` for clean notification flow.
+- `App.ts` now delegates to this function instead of scattering lifecycle logic in event handlers.
+
+### Hunger model
+
+- Added balancing constants: `MAX_HUNGER = 10`, `FEED_HUNGER_REDUCTION = 3`, `DRAIN_HUNGER_REDUCTION = 4`, `STARVATION_HEALTH_DAMAGE = 2`.
+- Hunger is clamped to `[0, MAX_HUNGER]`.
+- Feeding a human reduces hunger by `FEED_HUNGER_REDUCTION`.
+- Draining a human reduces hunger by `DRAIN_HUNGER_REDUCTION` (always ≥ feed reduction).
+- Hunger reductions cannot produce negative values.
+- At maximum hunger, each dawn deals `STARVATION_HEALTH_DAMAGE` (min health floor 1) and logs a warning event.
+- HUD now shows hunger as `current/MAX` with `!` (high) and `⚠ STARVING` (max) indicators plus a descriptive tooltip.
+
+### Human population replenishment
+
+- Added `replenishHumanPopulation()` in `src/simulation/world/humans.ts`.
+- At each new night, drained and turned humans are removed, fed humans recover to `wandering`, and new humans are generated to restore the active population to `TARGET_HUMAN_POPULATION = 5`.
+- New human IDs are deterministic (`human-d{day}-{index}`) and unique across cycles.
+- WorldScene adds new human sprites without requiring a scene reload.
+
+### Servant world representation
+
+- Turned vampire servants now appear as dark-red token sprites in Ruined Stronghold with a name label and current job label.
+- `syncServantsWithState()` adds newly turned servants and removes dismissed ones without duplicating.
+
+### Room world representation
+
+- All `BuiltRoom` instances are mapped to the Stronghold visual area using the 4×4 grid origin.
+- Built rooms appear solid; under-construction rooms appear semi-transparent with a progress indicator (`n/3`).
+- `syncRoomsWithState()` updates progress labels when construction advances.
+
+### Bridge and world sync
+
+- `GameBridge.onCollectItem` now receives `nodeId` (stable ID), `itemId`, and `amount`.
+- `GameBridge.onEnemyDefeated` now receives `instanceId` and `enemyType` separately.
+- `GameBridge.notifyWorldCycleChanged` added for bridge-to-scene signaling.
+- `WorldScene` detects world cycle changes in `update()` and calls `syncWorldCycleWithState()` to rebuild entities.
+
+### Tests
+
+- Added `src/tests/world-sync.test.ts` with 52 new deterministic tests covering: phase lifecycle, hunger model, human replenishment, resource persistence, enemy lifecycle, servant state, room state, and save migration.
+- All 132 tests pass.
+
+### Known limitations
+
+- Servant movement AI, job navigation, hauling, and pathfinding are not implemented.
+- Room interiors, collision, walls, doors, and traps are not implemented.
+- True starvation death or frenzy behavior is deferred.
+- Human servants are not implemented.
+- Advanced injuries, skill XP, and workbench crafting are not implemented.
+- Browser-based manual playtest results: functionality confirmed via automated tests; browser interaction not performed in sandbox environment.
+
+
 
 - Fixed critical bug: enemy windup deadline reset every frame. When an enemy was in `windup` state and the deadline had not yet elapsed, `stepEnemyCombat` fell through to the generic range-entry block and re-assigned `phaseEndsAt: now + attack.windupMs` on every tick, preventing the windup from ever naturally completing during uninterrupted gameplay.
 - Fixed enemies failing to attack during normal focused gameplay without requiring a menu open, focus change, or tab switch.

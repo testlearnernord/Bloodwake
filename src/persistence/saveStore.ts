@@ -1,6 +1,6 @@
 import { SAVE_FORMAT_VERSION } from '../config/game';
 import { ITEMS_BY_ID } from '../data/items';
-import type { DomainResourcePool, InventoryEntry, ItemId, QualityLevel, SaveGame, SaveSlot } from '../types/models';
+import type { DomainResourcePool, InventoryEntry, ItemId, QualityLevel, SaveGame, SaveSlot, WorldCycleState } from '../types/models';
 
 const DATABASE_NAME = 'bloodwake-db';
 const STORE_NAME = 'save-slots';
@@ -87,6 +87,28 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   return requiredArrays.every((field) => Array.isArray(value[field]));
 };
 
+const VALID_ID_PATTERN = /^[a-z0-9-]+$/;
+
+const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
+  const cycle = isRecord(raw) && typeof raw.cycle === 'number' && Number.isFinite(raw.cycle) ? Math.max(0, Math.floor(raw.cycle)) : 0;
+  const MAX_ID_ARRAY_SIZE = 500;
+  const sanitizeIds = (arr: unknown): string[] => {
+    if (!Array.isArray(arr)) return [];
+    return [...new Set(
+      arr
+        .filter((item): item is string => typeof item === 'string' && item.length <= 64)
+        .map((item) => item.toLowerCase())
+        .filter((item) => VALID_ID_PATTERN.test(item))
+        .slice(0, MAX_ID_ARRAY_SIZE)
+    )];
+  };
+  return {
+    cycle,
+    collectedResourceNodeIds: sanitizeIds(isRecord(raw) ? raw.collectedResourceNodeIds : undefined),
+    defeatedEnemyIds: sanitizeIds(isRecord(raw) ? raw.defeatedEnemyIds : undefined),
+  };
+};
+
 const migrateV1ToV2 = (value: Record<string, unknown>): SaveGame => {
   const rawResources = isRecord(value.resources) ? value.resources : {};
   const inventoryFromSave = Array.isArray(value.inventory)
@@ -119,6 +141,7 @@ const migrateV1ToV2 = (value: Record<string, unknown>): SaveGame => {
     player: playerWithEquipment,
     strategicResources,
     inventory: mergeInventory([...inventoryFromSave, ...migratedFromResources]),
+    worldCycle: normalizeWorldCycle(undefined),
     inheritanceHistory: Array.isArray(value.inheritanceHistory) ? (value.inheritanceHistory as SaveGame['inheritanceHistory']) : [],
     lastEventLog: Array.isArray(value.lastEventLog) ? (value.lastEventLog as string[]) : [],
   };
@@ -126,12 +149,12 @@ const migrateV1ToV2 = (value: Record<string, unknown>): SaveGame => {
   return migrated;
 };
 
-const normalizeV2 = (value: SaveGame): SaveGame => {
+const normalizeV2orV3 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
   }
-  const normalized = {
+  const normalized: SaveGame = {
     ...value,
     version: SAVE_FORMAT_VERSION,
     title: 'Bloodwake',
@@ -148,6 +171,7 @@ const normalizeV2 = (value: SaveGame): SaveGame => {
       influence: Math.max(0, Math.floor(value.strategicResources?.influence ?? 0)),
     },
     inventory: mergeInventory(inventory as InventoryEntry[]),
+    worldCycle: normalizeWorldCycle((value as unknown as Record<string, unknown>).worldCycle),
     inheritanceHistory: value.inheritanceHistory ?? [],
     lastEventLog: value.lastEventLog ?? [],
   };
@@ -164,7 +188,7 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
   if (value.version < 2) {
     return migrateV1ToV2(value as unknown as Record<string, unknown>);
   }
-  return normalizeV2(value as SaveGame);
+  return normalizeV2orV3(value as SaveGame);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {
