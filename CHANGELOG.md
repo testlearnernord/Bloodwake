@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.3 - Milestone 0.4.3 Enemy Windup Hotfix
+
+- Fixed critical bug: enemy windup deadline reset every frame. When an enemy was in `windup` state and the deadline had not yet elapsed, `stepEnemyCombat` fell through to the generic range-entry block and re-assigned `phaseEndsAt: now + attack.windupMs` on every tick, preventing the windup from ever naturally completing during uninterrupted gameplay.
+- Fixed enemies failing to attack during normal focused gameplay without requiring a menu open, focus change, or tab switch.
+- Fixed projectile attacks (Clergy Hunter Holy Bolt) depending on overlay or focus interaction to fire.
+- Added explicit early-return guards for all active timed states (`windup`, `active_attack`, `recovery`) before the generic attack-selection branch. Each timed state now preserves its original `phaseEndsAt` and advances exactly once.
+- Preserved `trackingDuringWindup` behavior: attacks with tracking enabled continue updating the enemy's facing toward the player during windup while `phaseEndsAt` remains unchanged. Attacks with `directionLockMs > 0` keep `directionLock` and `facing` stable throughout windup.
+- Improved pause-safe enemy state progression: frozen simulation time (overlay open) no longer repeatedly restarts or extends any timed state; combat resumes predictably without attack bursts when the overlay closes.
+- Added 11 deterministic regression tests covering: windup deadline stability across intermediate frames, windup progression at exact deadline, melee damage emitted exactly once, projectile fired exactly once, recovery→approach transition, tracking windup (facing updates, deadline unchanged), locked windup (directionLock stable, deadline unchanged), frozen-time no-progress invariant, frame-rate independence (16 ms steps vs. single large step produce identical final state), dead-enemy no-attack, and second attack cycle after cooldown.
+- No new major gameplay systems added.
+
 ## 0.4.2 - Milestone 0.4.2 Dodge Hotfix
 
 - Fixed permanent-busy softlock: dodge previously used the same string for `windupState` and `activeState` (`'dodge'`), causing `stepAction` to re-enter the windup→active transition after the active phase expired and never reach idle. Dodge now uses distinct `'dodge_windup'` and `'dodge_active'` states.
