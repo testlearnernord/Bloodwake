@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.4 playability and core-loop integration.
+> Current status: Milestone 0.5 world synchronization — servants, rooms, respawns, and hunger.
 
 ## Zero-cost architecture
 
@@ -11,6 +11,18 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 - No paid services
 - No runtime CDN dependencies
 - Local SVG icons and programmatic visuals only
+
+## Implemented in Milestone 0.5
+
+- Persistent world-cycle state: collected resource nodes and defeated enemies are remembered within a night cycle and cleared when a new night begins
+- Vampire servants appear in Ruined Stronghold with name and job labels; newly turned servants appear without reloading
+- Built rooms are visualized at their grid positions in Ruined Stronghold with progress indicators
+- Human population replenishes at each new night: drained/turned humans are removed, fed humans recover, new humans fill up to the configured target of 5
+- Centralized `advanceWorldPhase()` function coordinates day/night toggle, hunger, starvation, servant work shifts, and world refresh
+- Hunger is capped at `MAX_HUNGER = 10`; feeding reduces hunger by 3, draining by 4; starvation at max hunger deals damage each dawn (health floor 1)
+- HUD shows hunger as `current/MAX` with warning and starvation indicators
+- Save format incremented to version 3 with a safe migration from version 2
+- 52 new deterministic tests for phase lifecycle, hunger, human replenishment, resource and enemy persistence, servant/room state, and migration
 
 ## Implemented in Milestone 0.4
 

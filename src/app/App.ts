@@ -46,7 +46,6 @@ export class BloodwakeApp {
   private sceneApi: WorldSceneApi | null = null;
   private combatUi: CombatUiSnapshot | null = null;
   private hudInterval: number | null = null;
-  private worldCycleChanged = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -295,8 +294,7 @@ export class BloodwakeApp {
         this.openOrCloseMenu(this.activeMenu === 'pause' ? null : 'pause');
       },
       notifyWorldCycleChanged: () => {
-        // WorldScene will call syncWorldCycleWithState on its next update
-        this.worldCycleChanged = true;
+        // WorldScene polls worldCycle.cycle directly — no additional action needed here.
       },
     };
     this.phaserGame = new Phaser.Game({
@@ -764,7 +762,6 @@ export class BloodwakeApp {
     }
 
     if (result.worldCycleChanged) {
-      this.worldCycleChanged = true;
       this.notify(`Night ${this.state.time.day} begins.`);
     }
 

@@ -197,6 +197,8 @@ export class WorldScene extends Phaser.Scene {
     this.syncMemoryWithState();
     this.syncServantsWithState();
     this.syncRoomsWithState();
+    this.syncResourcesWithState();
+    this.syncEnemiesWithState();
     this.playerHealthPreview = Phaser.Math.Linear(this.playerHealthPreview, state.player.health, state.player.health < this.playerHealthPreview ? 0.08 : 0.28);
     if (!canPlayerExplore(state.time.phase)) {
       this.releaseTargetLock();
