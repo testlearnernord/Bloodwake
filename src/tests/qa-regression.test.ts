@@ -30,8 +30,9 @@ import { createNewGameState } from '../app/state';
 import {
   advanceWorldPhase,
   applyDrainHungerReduction,
-  applyFeedHungerReduction,
 } from '../simulation/time/phaseAdvance';
+import { getDayRestrictionPenalty } from '../simulation/traits/traitEffects';
+import { getTraitEffectIds } from '../simulation/traits/traitUtils';
 import { applyHumanAction } from '../simulation/combat/bite';
 import { migrateSaveGame } from '../persistence/saveStore';
 import { queueRoomConstruction } from '../simulation/building/building';
@@ -120,20 +121,25 @@ describe('multi-dawn starvation damage', () => {
     const state = createNewGameState({ seed: 'starv-exact' });
     state.player.hunger = MAX_HUNGER;
     const hBefore = state.player.health;
+    const penalty = getDayRestrictionPenalty(getTraitEffectIds(state.player.traitIds));
     const { state: day } = advanceWorldPhase(state);
-    // Only starvation applies (no sun_cursed trait)
-    expect(day.player.health).toBe(Math.max(1, hBefore - STARVATION_HEALTH_DAMAGE));
+    // Starvation damage plus any daylight restriction penalty (e.g. sun_cursed)
+    const expectedHealth = Math.max(1, Math.max(1, hBefore - penalty) - STARVATION_HEALTH_DAMAGE);
+    expect(day.player.health).toBe(expectedHealth);
   });
 
   it('health decreases by exactly STARVATION_HEALTH_DAMAGE on a second consecutive starving dawn', () => {
     const state = createNewGameState({ seed: 'starv-second-dawn' });
     state.player.hunger = MAX_HUNGER;
+    const penalty = getDayRestrictionPenalty(getTraitEffectIds(state.player.traitIds));
     const { state: day1 } = advanceWorldPhase(state); // night→day (first dawn)
     const h1 = day1.player.health;
     const { state: night2 } = advanceWorldPhase(day1); // day→night
     night2.player.hunger = MAX_HUNGER;
     const { state: day2 } = advanceWorldPhase(night2); // night→day (second dawn)
-    expect(day2.player.health).toBe(Math.max(1, h1 - STARVATION_HEALTH_DAMAGE));
+    // Starvation damage plus any daylight restriction penalty (e.g. sun_cursed)
+    const expectedHealth = Math.max(1, Math.max(1, h1 - penalty) - STARVATION_HEALTH_DAMAGE);
+    expect(day2.player.health).toBe(expectedHealth);
   });
 
   it('health never falls below 1 across five consecutive starving dawns', () => {
