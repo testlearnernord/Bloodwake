@@ -320,7 +320,7 @@ export class WorldScene extends Phaser.Scene {
     }
     // Preserve the stored dodge velocity for the entire dodge window so
     // normal/locked movement and attack multipliers cannot overwrite it.
-    if (this.playerAction.actionId === 'dodge' && this.dodgeVelocity) {
+    if ((this.playerAction.state === 'dodge_windup' || this.playerAction.state === 'dodge_active') && this.dodgeVelocity) {
       this.player.setVelocity(this.dodgeVelocity.x, this.dodgeVelocity.y);
       if (this.playerAction.state === 'dodge_active' && time % 40 < 20) {
         CombatPresentation.showAfterimage(this, this.player);
