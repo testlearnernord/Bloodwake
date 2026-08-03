@@ -20,5 +20,4 @@ export interface GameBridge {
   onPlayerVitalsChanged(nextHealth: number, nextVitae: number): void;
   onRespawn(): void;
   onPauseRequested(): void;
-  onDodgeUsed(nextReadyAt: number): void;
 }

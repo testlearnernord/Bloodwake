@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import {
   BITE_RANGE,
   COFFIN_RESPAWN_FADE_MS,
-  DODGE_COOLDOWN_MS,
   DODGE_SPEED,
   LOCK_BREAK_RANGE,
   LOCK_RANGE,
@@ -90,6 +89,7 @@ export class WorldScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private playerAction: PlayerActionRuntime = createInitialPlayerActionRuntime();
   private biteSequence: BiteSequenceRuntime | null = null;
+  private dodgeVelocity: { x: number; y: number } | null = null;
   private playerStatePreview = 'idle';
   private playerHealthPreview = 0;
   private lastUiEmitAt = 0;
@@ -318,6 +318,15 @@ export class WorldScene extends Phaser.Scene {
       this.player.setVelocity(0, 0);
       return;
     }
+    // Preserve the stored dodge velocity for the entire dodge window so
+    // normal/locked movement and attack multipliers cannot overwrite it.
+    if (this.playerAction.actionId === 'dodge' && this.dodgeVelocity) {
+      this.player.setVelocity(this.dodgeVelocity.x, this.dodgeVelocity.y);
+      if (this.playerAction.state === 'dodge_active' && time % 40 < 20) {
+        CombatPresentation.showAfterimage(this, this.player);
+      }
+      return;
+    }
     const input = this.getMovementInput();
     const pointer = this.input.activePointer;
     const lockedEnemy = this.getLockedEnemy();
@@ -337,9 +346,6 @@ export class WorldScene extends Phaser.Scene {
       if (this.playerAction.state === 'idle') {
         this.playerStatePreview = moving ? 'moving' : 'idle';
       }
-    }
-    if (this.playerAction.state === 'dodge' && time % 40 < 20) {
-      CombatPresentation.showAfterimage(this, this.player);
     }
   }
 
@@ -406,8 +412,10 @@ export class WorldScene extends Phaser.Scene {
     this.playerStatePreview = started.runtime.state;
     if (actionId === 'dodge') {
       const dodgeDirection = this.resolveDodgeDirection();
-      this.player.setVelocity(dodgeDirection.x * DODGE_SPEED, dodgeDirection.y * DODGE_SPEED);
-      this.bridge.onDodgeUsed(Date.now() + DODGE_COOLDOWN_MS);
+      const vx = dodgeDirection.x * DODGE_SPEED;
+      const vy = dodgeDirection.y * DODGE_SPEED;
+      this.dodgeVelocity = { x: vx, y: vy };
+      this.player.setVelocity(vx, vy);
       this.hintText.setText('You become untouchable for a brief instant.');
     }
   }
@@ -458,6 +466,7 @@ export class WorldScene extends Phaser.Scene {
     }
     if (step.finished && !this.biteSequence) {
       this.playerStatePreview = 'idle';
+      this.dodgeVelocity = null;
     } else if (this.playerAction.actionId) {
       this.playerStatePreview = this.playerAction.state;
     }
