@@ -188,11 +188,28 @@ describe('hunger model', () => {
     expect(events.some((e) => e.includes('limit') || e.includes('starv'))).toBe(true);
   });
 
+  it('does not repeat the max-hunger event when already starving', () => {
+    const state = createNewGameState({ seed: 'hunger-repeat' });
+    state.player.hunger = MAX_HUNGER;
+    const { events } = advanceWorldPhase(state);
+    expect(events.some((e) => e.includes('Hunger reaches its limit'))).toBe(false);
+  });
+
   it('produces event message for starvation damage', () => {
     const state = createNewGameState({ seed: 'dmg-msg' });
     state.player.hunger = MAX_HUNGER;
     const { events } = advanceWorldPhase(state);
     expect(events.some((e) => e.includes('Starvation') || e.includes('starv'))).toBe(true);
+  });
+
+  it('applies daylight penalty even when not starving', () => {
+    const state = createNewGameState({ seed: 'daylight-penalty' });
+    state.player.traitIds = ['sun_cursed'];
+    state.player.hunger = 0;
+    const before = state.player.health;
+    const { state: next, events } = advanceWorldPhase(state);
+    expect(next.player.health).toBe(before - 1);
+    expect(events).toContain('Daylight weakens you. (-1 health penalty applied)');
   });
 });
 
@@ -436,6 +453,19 @@ describe('save migration v2 → v3', () => {
     const migrated = migrateSaveGame(withBadIds);
     expect(migrated.worldCycle.collectedResourceNodeIds).not.toContain('INVALID ID!');
     expect(migrated.worldCycle.collectedResourceNodeIds).toContain('valid-id');
+  });
+
+  it('normalizes world-cycle identifiers to lowercase during migration', () => {
+    const v3 = createNewGameState({ seed: 'migrate-case' });
+    const withUppercaseIds = {
+      ...v3,
+      worldCycle: { cycle: 1, collectedResourceNodeIds: ['WOOD-node'], defeatedEnemyIds: ['BANDIT-1'] },
+    };
+    const migrated = migrateSaveGame(withUppercaseIds);
+    expect(migrated.worldCycle.collectedResourceNodeIds).toContain('wood-node');
+    expect(migrated.worldCycle.collectedResourceNodeIds).not.toContain('WOOD-node');
+    expect(migrated.worldCycle.defeatedEnemyIds).toContain('bandit-1');
+    expect(migrated.worldCycle.defeatedEnemyIds).not.toContain('BANDIT-1');
   });
 
   it('deduplicates world cycle identifier arrays', () => {

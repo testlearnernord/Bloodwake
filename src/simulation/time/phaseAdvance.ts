@@ -32,24 +32,25 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
   if (nextPhase === 'day') {
     const penalty = getDayRestrictionPenalty(getTraitEffectIds(player.traitIds));
     const hungerIncrease = 1 + penalty;
+    const wasStarving = player.hunger >= MAX_HUNGER;
     const newHunger = Math.min(MAX_HUNGER, player.hunger + hungerIncrease);
 
-    if (newHunger >= MAX_HUNGER) {
+    if (!wasStarving && newHunger >= MAX_HUNGER) {
       events.push(`Hunger reaches its limit — you are starving. (${MAX_HUNGER}/${MAX_HUNGER})`);
     }
 
-    // Starvation damage — only at max hunger
+    // Daylight restriction and starvation damage are both applied during day.
     let newHealth = player.health;
+    if (penalty > 0) {
+      newHealth = Math.max(1, newHealth - penalty);
+      events.push(`Daylight weakens you. (-${penalty} health penalty applied)`);
+    }
     if (newHunger >= MAX_HUNGER) {
-      newHealth = Math.max(1, player.health - STARVATION_HEALTH_DAMAGE - penalty);
-      events.push(`Starvation saps your strength. (-${STARVATION_HEALTH_DAMAGE + penalty} health)`);
+      newHealth = Math.max(1, newHealth - STARVATION_HEALTH_DAMAGE);
+      events.push(`Starvation saps your strength. (-${STARVATION_HEALTH_DAMAGE} health)`);
     }
 
     player = { ...player, hunger: newHunger, health: newHealth };
-
-    if (penalty > 0) {
-      events.push(`Daylight weakens you. (-${penalty} health penalty applied)`);
-    }
   }
 
   // Day → Night: increment day, refresh world cycle, replenish humans

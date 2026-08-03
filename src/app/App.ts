@@ -222,12 +222,11 @@ export class BloodwakeApp {
       onCollectItem: (nodeId, itemId, amount) => {
         if (!this.state) return;
         // Record node as collected this cycle (prevents duplicate rewards)
-        if (!this.state.worldCycle.collectedResourceNodeIds.includes(nodeId)) {
-          this.state.worldCycle = {
-            ...this.state.worldCycle,
-            collectedResourceNodeIds: [...this.state.worldCycle.collectedResourceNodeIds, nodeId],
-          };
-        }
+        if (this.state.worldCycle.collectedResourceNodeIds.includes(nodeId)) return;
+        this.state.worldCycle = {
+          ...this.state.worldCycle,
+          collectedResourceNodeIds: [...this.state.worldCycle.collectedResourceNodeIds, nodeId],
+        };
         this.state.inventory = addItem(this.state.inventory, itemId, amount);
         this.state.lastEventLog.unshift(`Collected ${amount} ${ITEMS_BY_ID[itemId].name} in ${this.activeZone}.`);
         this.completeStepForEvent('travel');

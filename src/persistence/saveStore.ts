@@ -96,7 +96,9 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
     if (!Array.isArray(arr)) return [];
     return [...new Set(
       arr
-        .filter((item): item is string => typeof item === 'string' && VALID_ID_PATTERN.test(item) && item.length <= 64)
+        .filter((item): item is string => typeof item === 'string' && item.length <= 64)
+        .map((item) => item.toLowerCase())
+        .filter((item) => VALID_ID_PATTERN.test(item))
         .slice(0, MAX_ID_ARRAY_SIZE)
     )];
   };
