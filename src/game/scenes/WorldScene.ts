@@ -8,7 +8,7 @@ import {
   PLAYER_MOVE_SPEED,
   TURN_COST_VITAE,
 } from '../../config/balancing';
-import { COFFIN_RESPAWN, WORLD_BOUNDS, GRID_WIDTH, GRID_HEIGHT } from '../../config/game';
+import { COFFIN_RESPAWN, WORLD_BOUNDS } from '../../config/game';
 import { BLOOD_LANCE_PROJECTILE, HOLY_BOLT_PROJECTILE } from '../../data/abilities';
 import { PLAYER_ACTIONS_BY_ID } from '../../data/combatActions';
 import { ENEMY_ATTACKS_BY_ID } from '../../data/enemyAttacks';

@@ -9,7 +9,7 @@ import { completeQuestStep } from '../simulation/quests/quests';
 import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
 import { loadSettings, saveSettings } from '../persistence/settings';
 import { deleteSlot, exportSaveGame, importSaveGame, listSaveSlots, loadFromSlot, saveToSlot } from '../persistence/saveStore';
-import type { EnemyType, ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
+import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
 import { createDefaultSeed } from '../utilities/rng';
 import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
