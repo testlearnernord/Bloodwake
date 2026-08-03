@@ -80,6 +80,16 @@ export const getRecipeReadiness = (state: SaveGame, recipeId: string): { ready: 
   return { ready: true, reason: 'Ready to queue.' };
 };
 
+const renderOverlayPanel = (title: string, bodyHtml: string): string => `
+  <div class="overlay-panel">
+    <header class="overlay-header">
+      <h2 id="overlay-title">${htmlEscape(title)}</h2>
+      <button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button>
+    </header>
+    <div class="overlay-body">${bodyHtml}</div>
+  </div>
+`;
+
 export const renderOverlay = (
   menu: MenuId,
   state: SaveGame,
@@ -90,9 +100,9 @@ export const renderOverlay = (
   if (menu === 'character') {
     const traits = state.player.traitIds.map((traitId) => getTraitById(traitId));
     const combatStats = calculatePlayerCombatStats(state.player);
-    return `
-      <header class="overlay-header"><h2 id="overlay-title">Character & Bloodline</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
-      <div class="overlay-body columns two">
+    return renderOverlayPanel(
+      'Character & Bloodline',
+      `<div class="columns two">
         <section>
           <h3>${htmlEscape(state.player.name)}</h3>
           <p>Profession: ${htmlEscape(state.player.professionId)}</p>
@@ -109,7 +119,7 @@ export const renderOverlay = (
         </section>
         <section>
           <h4>Traits</h4>
-          <ul>${traits.map((trait) => `<li>${trait.name} (${trait.rarity}) — ${trait.description}</li>`).join('')}</ul>
+          <ul>${traits.map((trait) => `<li>${htmlEscape(trait.name)} (${htmlEscape(trait.rarity)}) — ${htmlEscape(trait.description)}</li>`).join('')}</ul>
           <h4>Inheritance History</h4>
           <ul>${state.inheritanceHistory
             .slice(0, 6)
@@ -119,26 +129,26 @@ export const renderOverlay = (
             )
             .join('') || '<li>No inheritance events yet.</li>'}</ul>
         </section>
-      </div>
-    `;
+      </div>`,
+    );
   }
 
   if (menu === 'inventory') {
     const entries = flattenInventory(state.inventory).filter((entry) => selectedFilter === 'all' || ITEMS_BY_ID[entry.itemId].category === selectedFilter);
     const selectedEntry = entries.find((entry) => entry.itemId === selectedItemId) ?? entries[0];
     const selectedItem = selectedEntry ? ITEMS_BY_ID[selectedEntry.itemId] : null;
-    return `
-      <header class="overlay-header"><h2 id="overlay-title">Inventory & Equipment</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
-      <div class="overlay-body columns three">
+    return renderOverlayPanel(
+      'Inventory & Equipment',
+      `<div class="columns three">
         <section>
           <h3>Filters</h3>
-          <div class="button-list">${INVENTORY_FILTERS.map((filter) => `<button class="${selectedFilter === filter.id ? 'selected' : ''}" data-item-filter="${filter.id}">${filter.label}</button>`).join('')}</div>
+          <div class="button-list">${INVENTORY_FILTERS.map((filter) => `<button class="${selectedFilter === filter.id ? 'selected' : ''}" data-item-filter="${filter.id}">${htmlEscape(filter.label)}</button>`).join('')}</div>
         </section>
         <section>
           <h3>Items</h3>
           <div class="item-grid">${entries
             .map(
-              (entry) => `<button class="item-card ${selectedEntry?.itemId === entry.itemId ? 'selected' : ''}" data-item-id="${entry.itemId}">${renderIcon(ITEMS_BY_ID[entry.itemId].iconId)}<span>${htmlEscape(entry.label)}</span><span>× ${entry.quantity}</span><span>${entry.quality ?? 'Common'} · ${ITEMS_BY_ID[entry.itemId].rarity}</span></button>`,
+              (entry) => `<button class="item-card ${selectedEntry?.itemId === entry.itemId ? 'selected' : ''}" data-item-id="${htmlEscape(entry.itemId)}">${renderIcon(ITEMS_BY_ID[entry.itemId].iconId)}<span>${htmlEscape(entry.label)}</span><span>× ${entry.quantity}</span><span>${htmlEscape(entry.quality ?? 'Common')} · ${htmlEscape(ITEMS_BY_ID[entry.itemId].rarity)}</span></button>`,
             )
             .join('') || '<p>No items in this category.</p>'}</div>
         </section>
@@ -147,36 +157,36 @@ export const renderOverlay = (
           ${
             selectedItem && selectedEntry
               ? `<article>
-              <h4>${selectedItem.name}</h4>
+              <h4>${htmlEscape(selectedItem.name)}</h4>
               <div>${renderIcon(selectedItem.iconId, 'large')}</div>
-              <p>${selectedItem.description}</p>
-              <p>Category: ${selectedItem.category} · Rarity: ${selectedItem.rarity}</p>
-              <p>Quantity: ${selectedEntry.quantity} · Quality: ${selectedEntry.quality ?? 'Common'}</p>
+              <p>${htmlEscape(selectedItem.description)}</p>
+              <p>Category: ${htmlEscape(selectedItem.category)} · Rarity: ${htmlEscape(selectedItem.rarity)}</p>
+              <p>Quantity: ${selectedEntry.quantity} · Quality: ${htmlEscape(selectedEntry.quality ?? 'Common')}</p>
               <p>Modifiers: ${Object.entries(selectedItem.modifiers)
-                .map(([key, value]) => `${key} ${value}`)
+                .map(([key, value]) => `${htmlEscape(key)} ${htmlEscape(String(value))}`)
                 .join(', ') || 'None'}</p>
               <div class="button-row compact">
-                <button data-equip-item="${selectedItem.id}" ${selectedItem.equipSlot ? '' : 'disabled'}>${selectedItem.equipSlot ? `Equip (${selectedItem.equipSlot})` : 'Not Equippable'}</button>
-                <button data-use-item="${selectedItem.id}" ${selectedItem.consumableEffectId === 'heal_player' ? '' : 'disabled'}>${selectedItem.consumableEffectId === 'heal_player' ? 'Use' : 'Not Usable'}</button>
+                <button data-equip-item="${htmlEscape(selectedItem.id)}" ${selectedItem.equipSlot ? '' : 'disabled'}>${selectedItem.equipSlot ? `Equip (${htmlEscape(selectedItem.equipSlot)})` : 'Not Equippable'}</button>
+                <button data-use-item="${htmlEscape(selectedItem.id)}" ${selectedItem.consumableEffectId === 'heal_player' ? '' : 'disabled'}>${selectedItem.consumableEffectId === 'heal_player' ? 'Use' : 'Not Usable'}</button>
               </div>
             </article>`
               : '<p>Select an item to inspect details.</p>'
           }
           <h4>Equipment</h4>
           <ul>
-            <li>Weapon: ${state.player.equipment.Weapon ? ITEMS_BY_ID[state.player.equipment.Weapon].name : 'None'} ${state.player.equipment.Weapon ? `<button data-unequip-slot="Weapon">Unequip</button>` : ''}</li>
-            <li>Armor: ${state.player.equipment.Armor ? ITEMS_BY_ID[state.player.equipment.Armor].name : 'None'} ${state.player.equipment.Armor ? `<button data-unequip-slot="Armor">Unequip</button>` : ''}</li>
-            <li>Accessory: ${state.player.equipment.Accessory ? ITEMS_BY_ID[state.player.equipment.Accessory].name : 'None'} ${state.player.equipment.Accessory ? `<button data-unequip-slot="Accessory">Unequip</button>` : ''}</li>
+            <li>Weapon: ${state.player.equipment.Weapon ? htmlEscape(ITEMS_BY_ID[state.player.equipment.Weapon].name) : 'None'} ${state.player.equipment.Weapon ? `<button data-unequip-slot="Weapon">Unequip</button>` : ''}</li>
+            <li>Armor: ${state.player.equipment.Armor ? htmlEscape(ITEMS_BY_ID[state.player.equipment.Armor].name) : 'None'} ${state.player.equipment.Armor ? `<button data-unequip-slot="Armor">Unequip</button>` : ''}</li>
+            <li>Accessory: ${state.player.equipment.Accessory ? htmlEscape(ITEMS_BY_ID[state.player.equipment.Accessory].name) : 'None'} ${state.player.equipment.Accessory ? `<button data-unequip-slot="Accessory">Unequip</button>` : ''}</li>
           </ul>
         </section>
-      </div>
-    `;
+      </div>`,
+    );
   }
 
   if (menu === 'servants') {
-    return `
-      <header class="overlay-header"><h2 id="overlay-title">Servants</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
-      <div class="overlay-body columns three">
+    return renderOverlayPanel(
+      'Servants',
+      `<div class="columns three">
         <section>
           <h3>Roster</h3>
           ${
@@ -191,13 +201,11 @@ export const renderOverlay = (
             state.servants.length === 0
               ? '<p>Once recruited, servants can gather, build, and craft for your stronghold.</p>'
               : state.servants
-                  .map(
-                    (servant) => {
-                      const profession = PROFESSIONS_BY_ID[servant.professionId];
-                      const predictedTask = selectTaskForServant(servant, state.rooms, state.craftingQueue, state.inventory, state.time.phase);
-                      return `<article><h4>${htmlEscape(servant.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>Health ${servant.health}/${servant.maxHealth} · Morale ${servant.morale} · Loyalty ${servant.loyalty}</p><p>Ambition ${servant.ambition} · Stress ${servant.stress}</p><p>Current task: ${htmlEscape(servant.currentTask ?? 'none')} — ${htmlEscape(servant.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTask?.reason ?? 'No enabled work is available.')}</p></article>`;
-                    },
-                  )
+                  .map((servant) => {
+                    const profession = PROFESSIONS_BY_ID[servant.professionId];
+                    const predictedTask = selectTaskForServant(servant, state.rooms, state.craftingQueue, state.inventory, state.time.phase);
+                    return `<article><h4>${htmlEscape(servant.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>Health ${servant.health}/${servant.maxHealth} · Morale ${servant.morale} · Loyalty ${servant.loyalty}</p><p>Ambition ${servant.ambition} · Stress ${servant.stress}</p><p>Current task: ${htmlEscape(servant.currentTask ?? 'none')} — ${htmlEscape(servant.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTask?.reason ?? 'No enabled work is available.')}</p></article>`;
+                  })
                   .join('')
           }
         </section>
@@ -210,7 +218,7 @@ export const renderOverlay = (
                   .map(
                     (servant) => `<article><h4>${htmlEscape(servant.name)}</h4>${(['Building', 'Crafting', 'Gathering', 'Guarding', 'Research', 'Hunting'] as const)
                       .map(
-                        (jobType) => `<label>${jobType}<select data-servant-id="${servant.id}" data-job-type="${jobType}">${['Disabled', 'Low', 'Normal', 'High', 'Critical']
+                        (jobType) => `<label>${htmlEscape(jobType)}<select data-servant-id="${htmlEscape(servant.id)}" data-job-type="${jobType}">${['Disabled', 'Low', 'Normal', 'High', 'Critical']
                           .map((priority) => `<option value="${priority}" ${servant.priorities[jobType] === priority ? 'selected' : ''}>${priority}</option>`)
                           .join('')}</select></label>`,
                       )
@@ -219,26 +227,24 @@ export const renderOverlay = (
                   .join('')
           }
         </section>
-      </div>
-    `;
+      </div>`,
+    );
   }
 
   if (menu === 'stronghold') {
-    return `
-      <header class="overlay-header"><h2 id="overlay-title">Stronghold</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
-      <div class="overlay-body columns two">
+    return renderOverlayPanel(
+      'Stronghold',
+      `<div class="columns two">
         <section>
           <h3>Room Catalog</h3>
           <div class="button-list">
             ${ROOMS.filter((room) => room.id !== 'coffin_chamber')
-              .map(
-                (room) => {
-                  const readiness = getRoomReadiness(state, room.id);
-                  return `<button class="${selectedRoomId === room.id ? 'selected' : ''}" data-room-select="${room.id}">${renderIcon(room.iconId)} ${room.name}<small>${Object.entries(room.constructionCostItems)
-                    .map(([itemId, qty]) => `${qty} ${ITEMS_BY_ID[itemId as ItemId].name}`)
-                    .join(', ') || 'No item cost'}</small><small>${htmlEscape(readiness.reason)}</small></button>`;
-                },
-              )
+              .map((room) => {
+                const readiness = getRoomReadiness(state, room.id);
+                return `<button class="${selectedRoomId === room.id ? 'selected' : ''}" data-room-select="${room.id}">${renderIcon(room.iconId)} ${htmlEscape(room.name)}<small>${Object.entries(room.constructionCostItems)
+                  .map(([itemId, qty]) => `${qty} ${htmlEscape(ITEMS_BY_ID[itemId as ItemId].name)}`)
+                  .join(', ') || 'No item cost'}</small><small>${htmlEscape(readiness.reason)}</small></button>`;
+              })
               .join('')}
           </div>
         </section>
@@ -247,46 +253,46 @@ export const renderOverlay = (
           <p>Selected room: ${htmlEscape(ROOMS_BY_ID[selectedRoomId].name)}. Empty cells build only when placement and costs are valid.</p>
           <div class="build-grid">${Array.from({ length: 16 }, (_, index) => roomGridCell(state.rooms, index % 4, Math.floor(index / 4))).join('')}</div>
           <h4>Current Rooms</h4>
-          <ul>${state.rooms.map((room) => `<li>${room.roomId} at ${room.x},${room.y} · ${room.status} · progress ${room.progress}</li>`).join('')}</ul>
+          <ul>${state.rooms.map((room) => `<li>${htmlEscape(room.roomId)} at ${room.x},${room.y} · ${htmlEscape(room.status)} · progress ${room.progress}</li>`).join('')}</ul>
         </section>
-      </div>
-    `;
+      </div>`,
+    );
   }
 
   if (menu === 'crafting') {
-    return `
-      <header class="overlay-header"><h2 id="overlay-title">Crafting</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
-      <div class="overlay-body columns three">
+    return renderOverlayPanel(
+      'Crafting',
+      `<div class="columns three">
         <section><h3>Categories</h3><div class="button-list"><button disabled>Materials</button><button disabled>Equipment</button><button disabled>Alchemy</button></div></section>
         <section>
           <h3>Recipes</h3>
           <div class="button-list">${RECIPES.map((recipe) => {
             const readiness = getRecipeReadiness(state, recipe.id);
-            return `<button data-recipe-id="${recipe.id}" ${readiness.ready ? '' : 'disabled'}>${recipe.name}<small>${htmlEscape(readiness.reason)}</small></button>`;
+            return `<button data-recipe-id="${recipe.id}" ${readiness.ready ? '' : 'disabled'}>${htmlEscape(recipe.name)}<small>${htmlEscape(readiness.reason)}</small></button>`;
           }).join('')}</div>
         </section>
         <section>
           <h3>Queue</h3>
-          <ul>${state.craftingQueue.map((order) => `<li>${RECIPES_BY_ID[order.recipeId].name} · ${order.status}</li>`).join('') || '<li>No crafting orders.</li>'}</ul>
+          <ul>${state.craftingQueue.map((order) => `<li>${htmlEscape(RECIPES_BY_ID[order.recipeId].name)} · ${htmlEscape(order.status)}</li>`).join('') || '<li>No crafting orders.</li>'}</ul>
           <p>Crafting requires matching rooms, resources, and capable servants.</p>
         </section>
-      </div>
-    `;
+      </div>`,
+    );
   }
 
   if (menu === 'journal') {
     const quest = QUESTS_BY_ID.awakening;
     const questState = state.quests[0];
-    return `
-      <header class="overlay-header"><h2 id="overlay-title">Journal & Memory Codex</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
-      <div class="overlay-body columns two">
+    return renderOverlayPanel(
+      'Journal & Memory Codex',
+      `<div class="columns two">
         <section>
           <h3>Active Quest</h3>
           <ol>${quest.steps
             .map((step) => {
               const done = questState.completedStepIds.includes(step.id);
               const active = questState.activeStepId === step.id;
-              return `<li class="${done ? 'complete' : active ? 'active' : ''}">${step.text}</li>`;
+              return `<li class="${done ? 'complete' : active ? 'active' : ''}">${htmlEscape(step.text)}</li>`;
             })
             .join('')}</ol>
           <h3>Completed Steps</h3>
@@ -298,29 +304,27 @@ export const renderOverlay = (
           <h3>Recent Events</h3>
           <ul>${state.lastEventLog.slice(0, 10).map((line) => `<li>${htmlEscape(line)}</li>`).join('')}</ul>
         </section>
-      </div>
-    `;
+      </div>`,
+    );
   }
 
-  return `
-    <header class="overlay-header"><h2 id="overlay-title">Pause & Settings</h2><button data-close-overlay aria-label="Close overlay">${renderIcon('close')}</button></header>
-    <div class="overlay-body">
-      <p>Use save/export controls from the top bar or resume to continue.</p>
-      <h3>Combat controls</h3>
-      <ul>
-        <li>WASD move, mouse aim, Ctrl lock-on toggle, Tab next target, Shift+Tab previous target</li>
-        <li>Mouse wheel also cycles targets, middle mouse locks the enemy nearest the cursor</li>
-        <li>Left Mouse light attack, Right Mouse heavy attack, Q Blood Lance, Space dodge</li>
-        <li>E interact, F bite/feed, Escape close overlay or pause</li>
-      </ul>
-      <label>UI Scale
-        <select data-setting-ui-scale>
-          ${[0.9, 1, 1.1, 1.25]
-            .map((scale) => `<option value="${scale}" ${state.settings.uiScale === scale ? 'selected' : ''}>${Math.round(scale * 100)}%</option>`)
-            .join('')}
-        </select>
-      </label>
-      <div class="button-row"><button id="manual-save-overlay">Manual Save</button><button id="return-title">Return to Title</button></div>
-    </div>
-  `;
+  return renderOverlayPanel(
+    'Pause & Settings',
+    `<p>Use save/export controls from the top bar or resume to continue.</p>
+    <h3>Combat controls</h3>
+    <ul>
+      <li>WASD move, mouse aim, Ctrl lock-on toggle, Tab next target, Shift+Tab previous target</li>
+      <li>Mouse wheel also cycles targets, middle mouse locks the enemy nearest the cursor</li>
+      <li>Left Mouse light attack, Right Mouse heavy attack, Q Blood Lance, Space dodge</li>
+      <li>E interact, F bite/feed, Escape close overlay or pause</li>
+    </ul>
+    <label>UI Scale
+      <select data-setting-ui-scale>
+        ${[0.9, 1, 1.1, 1.25]
+          .map((scale) => `<option value="${scale}" ${state.settings.uiScale === scale ? 'selected' : ''}>${Math.round(scale * 100)}%</option>`)
+          .join('')}
+      </select>
+    </label>
+    <div class="button-row"><button id="manual-save-overlay">Manual Save</button><button id="return-title">Return to Title</button></div>`,
+  );
 };
