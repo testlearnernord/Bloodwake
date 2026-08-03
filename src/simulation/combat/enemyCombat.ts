@@ -125,6 +125,23 @@ export const stepEnemyCombat = (
       shouldCleanupTelegraph: false,
     };
   }
+  // Active timed states: preserve deadline and do not re-enter the attack-selection branch.
+  if (enemy.state === 'windup' && now < enemy.phaseEndsAt) {
+    // Tracking attacks may update facing toward the player; locked attacks keep directionLock stable.
+    const updatedFacing = attack.trackingDuringWindup ? nextFacing : (enemy.directionLock ?? enemy.facing);
+    return {
+      enemy: { ...enemy, facing: updatedFacing },
+      damageEvents: [],
+      shouldFireProjectile: false,
+      shouldCleanupTelegraph: false,
+    };
+  }
+  if (enemy.state === 'active_attack' && now < enemy.phaseEndsAt) {
+    return { enemy: { ...enemy }, damageEvents: [], shouldFireProjectile: false, shouldCleanupTelegraph: false };
+  }
+  if (enemy.state === 'recovery' && now < enemy.phaseEndsAt) {
+    return { enemy: { ...enemy }, damageEvents: [], shouldFireProjectile: false, shouldCleanupTelegraph: false };
+  }
   if (now < enemy.cooldownUntil) {
     return { enemy: { ...enemy, facing: nextFacing }, damageEvents: [], shouldFireProjectile: false, shouldCleanupTelegraph: false };
   }
