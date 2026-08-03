@@ -14,7 +14,7 @@ describe('save serialization and validation', () => {
     await saveToSlot('slot-test', state);
     const loaded = await loadFromSlot('slot-test');
     expect(loaded?.seed).toBe('save-seed');
-    expect(loaded?.version).toBe(2);
+    expect(loaded?.version).toBe(3);
   });
 
   it('exports and imports a valid save payload', () => {
@@ -69,7 +69,7 @@ describe('save serialization and validation', () => {
       ],
     };
     const migrated = migrateSaveGame(v1Like);
-    expect(migrated.version).toBe(2);
+    expect(migrated.version).toBe(3);
     expect(migrated.title).toBe('Bloodwake');
     expect(migrated.characterRoll).toBe(0);
     expect(migrated.strategicResources.bloodEssence).toBe(4);

@@ -1,4 +1,5 @@
 import { ITEMS_BY_ID } from '../../data/items';
+import { MAX_HUNGER } from '../../config/balancing';
 import type { CombatUiSnapshot } from '../../game/combat/combatTypes';
 import type { SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
@@ -30,7 +31,15 @@ export const renderBottomHud = (
   const healthPct = Math.max(0, Math.min(100, (state.player.health / state.player.maxHealth) * 100));
   const delayedHealthPct = combatUi ? Math.max(0, Math.min(100, (combatUi.playerHealthPreview / state.player.maxHealth) * 100)) : healthPct;
   const vitaePct = Math.max(0, Math.min(100, (state.player.vitae / state.player.maxVitae) * 100));
-  const hungerPct = Math.max(0, Math.min(100, (state.player.hunger / 10) * 100));
+  const hungerPct = Math.max(0, Math.min(100, (state.player.hunger / MAX_HUNGER) * 100));
+  const isMaxHunger = state.player.hunger >= MAX_HUNGER;
+  const isHighHunger = state.player.hunger >= MAX_HUNGER * 0.7;
+  const hungerClass = isMaxHunger ? 'hunger-max' : isHighHunger ? 'hunger-high' : '';
+  const hungerTooltip = isMaxHunger
+    ? 'STARVING — dawn damage incoming! Feed or drain a human to reduce hunger.'
+    : isHighHunger
+      ? 'Hunger is high. Feeding or draining reduces hunger.'
+      : 'Feeding or draining humans reduces hunger.';
   const weapon = state.player.equipment.Weapon ? ITEMS_BY_ID[state.player.equipment.Weapon].name : weaponName;
   const target = combatUi?.lockedTarget ?? null;
   const abilities = combatUi?.abilities ?? [];
@@ -47,8 +56,8 @@ export const renderBottomHud = (
         <div class="hud-bar-label">Vitae ${state.player.vitae}/${state.player.maxVitae}</div>
         <div class="hud-bar-track"><div class="hud-bar-fill vitae-fill" style="width:${vitaePct}%"></div></div>
       </div>
-      <div class="hud-bar" aria-label="Hunger ${state.player.hunger}">
-        <div class="hud-bar-label">Hunger ${state.player.hunger}</div>
+      <div class="hud-bar ${hungerClass}" aria-label="Hunger ${state.player.hunger} of ${MAX_HUNGER}" data-tooltip="${htmlEscape(hungerTooltip)}">
+        <div class="hud-bar-label">Hunger ${state.player.hunger}/${MAX_HUNGER}${isMaxHunger ? ' ⚠ STARVING' : isHighHunger ? ' !' : ''}</div>
         <div class="hud-bar-track"><div class="hud-bar-fill hunger-fill" style="width:${hungerPct}%"></div></div>
       </div>
       <div class="hud-chip-row">

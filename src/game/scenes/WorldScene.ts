@@ -8,13 +8,14 @@ import {
   PLAYER_MOVE_SPEED,
   TURN_COST_VITAE,
 } from '../../config/balancing';
-import { COFFIN_RESPAWN, WORLD_BOUNDS } from '../../config/game';
+import { COFFIN_RESPAWN, WORLD_BOUNDS, GRID_WIDTH, GRID_HEIGHT } from '../../config/game';
 import { BLOOD_LANCE_PROJECTILE, HOLY_BOLT_PROJECTILE } from '../../data/abilities';
 import { PLAYER_ACTIONS_BY_ID } from '../../data/combatActions';
 import { ENEMY_ATTACKS_BY_ID } from '../../data/enemyAttacks';
 import { ENEMIES_BY_ID } from '../../data/enemies';
+import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
-import type { EnemyType, HumanCharacter, ItemId } from '../../types/models';
+import type { BuiltRoom, EnemyType, HumanCharacter, ItemId, Servant } from '../../types/models';
 import type { GameBridge } from '../bridge';
 import { CombatPresentation, type TargetIndicator } from '../combat/CombatPresentation';
 import type { CombatActionId, CombatDamageEvent, CombatTargetSnapshot, CombatUiSnapshot, HumanActionMode, LockedTargetHudState } from '../combat/combatTypes';
@@ -65,6 +66,58 @@ interface SceneProjectile {
   lastTrailAt: number;
 }
 
+interface SceneServant {
+  servantId: string;
+  sprite: Phaser.GameObjects.Rectangle;
+  nameLabel: Phaser.GameObjects.Text;
+  jobLabel: Phaser.GameObjects.Text;
+}
+
+interface SceneRoom {
+  roomInstanceId: string;
+  visual: Phaser.GameObjects.Rectangle;
+  label: Phaser.GameObjects.Text;
+  progressLabel: Phaser.GameObjects.Text;
+}
+
+// Spawn definition for enemy instances with stable IDs
+interface EnemySpawnDef {
+  id: string;
+  type: EnemyType;
+  x: number;
+  y: number;
+}
+
+const ENEMY_SPAWNS: EnemySpawnDef[] = [
+  { id: 'bandit-1', type: 'bandit', x: 520, y: 270 },
+  { id: 'clergy-1', type: 'clergy_hunter', x: 730, y: 470 },
+  { id: 'knight-1', type: 'elite_knight', x: 1160, y: 410 },
+];
+
+// Resource node definitions with stable IDs
+interface ResourceNodeDef {
+  id: string;
+  itemId: ItemId;
+  amount: number;
+  x: number;
+  y: number;
+  color: number;
+}
+
+const RESOURCE_NODE_DEFS: ResourceNodeDef[] = [
+  { id: 'wood-node', itemId: 'wood', amount: 3, x: 430, y: 340, color: 0x2d6a4f },
+  { id: 'herb-node', itemId: 'herbs', amount: 2, x: 740, y: 250, color: 0x74c69d },
+  { id: 'ore-node', itemId: 'iron_ore', amount: 2, x: 840, y: 520, color: 0x6c757d },
+  { id: 'stone-node', itemId: 'stone', amount: 2, x: 300, y: 280, color: 0x868e96 },
+  { id: 'food-node', itemId: 'food', amount: 2, x: 980, y: 180, color: 0xe9c46a },
+];
+
+// Stronghold visual area: left panel is x=20..319, y=40..700
+// Map 4x4 grid into 280×640 area starting at x=20,y=80
+const STRONGHOLD_GRID_ORIGIN = { x: 22, y: 90 };
+const STRONGHOLD_CELL_W = 66;
+const STRONGHOLD_CELL_H = 76;
+
 export class WorldScene extends Phaser.Scene {
   private readonly bridge: GameBridge;
   private player!: Phaser.Physics.Arcade.Image;
@@ -73,6 +126,8 @@ export class WorldScene extends Phaser.Scene {
   private enemies: SceneEnemy[] = [];
   private resources: SceneResourceNode[] = [];
   private projectiles: SceneProjectile[] = [];
+  private servants: SceneServant[] = [];
+  private rooms: SceneRoom[] = [];
   private memoryFragment: Phaser.GameObjects.Rectangle | null = null;
   private nearbyHumanId: string | null = null;
   private lockedTargetId: string | null = null;
@@ -96,6 +151,7 @@ export class WorldScene extends Phaser.Scene {
   private reducedMotion = false;
   private followOffset = new Phaser.Math.Vector2(0, 0);
   private playerAimAngle = 0;
+  private lastKnownWorldCycle = -1;
 
   constructor(bridge: GameBridge) {
     super('world');
@@ -114,6 +170,8 @@ export class WorldScene extends Phaser.Scene {
     this.createEnemies();
     this.createResources();
     this.createMemoryFragment();
+    this.createServants();
+    this.createRooms();
     this.createUiHints();
     this.configureInput();
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
@@ -122,14 +180,23 @@ export class WorldScene extends Phaser.Scene {
     this.bridge.registerWorldSceneApi({
       startHumanActionSequence: (humanId, mode) => this.startHumanActionSequence(humanId, mode),
     });
+    this.lastKnownWorldCycle = this.bridge.getState().worldCycle.cycle;
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanupCombatRuntime());
     this.emitCombatUi(this.time.now);
   }
 
   update(time: number, delta: number): void {
     const state = this.bridge.getState();
+    // Detect world cycle change (new night) and re-sync world entities
+    const currentCycle = state.worldCycle.cycle;
+    if (currentCycle !== this.lastKnownWorldCycle) {
+      this.syncWorldCycleWithState();
+      this.lastKnownWorldCycle = currentCycle;
+    }
     this.syncHumansWithState();
     this.syncMemoryWithState();
+    this.syncServantsWithState();
+    this.syncRoomsWithState();
     this.playerHealthPreview = Phaser.Math.Linear(this.playerHealthPreview, state.player.health, state.player.health < this.playerHealthPreview ? 0.08 : 0.28);
     if (!canPlayerExplore(state.time.phase)) {
       this.releaseTargetLock();
@@ -195,41 +262,41 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private createEnemies(): void {
-    const spawns: Array<{ id: string; type: EnemyType; x: number; y: number }> = [
-      { id: 'bandit-1', type: 'bandit', x: 520, y: 270 },
-      { id: 'clergy-1', type: 'clergy_hunter', x: 730, y: 470 },
-      { id: 'knight-1', type: 'elite_knight', x: 1160, y: 410 },
-    ];
-    this.enemies = spawns.map((spawn) => {
-      const shadow = CombatPresentation.createShadow(this, spawn.x, spawn.y, spawn.type === 'elite_knight' ? 28 : 24, 11);
-      const sprite = this.physics.add.image(spawn.x, spawn.y, `${spawn.type}-token`).setDepth(5);
-      sprite.setCircle(spawn.type === 'elite_knight' ? 13 : 11, 4, 10);
-      sprite.setCollideWorldBounds(true);
-      const definition = ENEMIES_BY_ID[spawn.type];
-      const label = this.add.text(spawn.x, spawn.y - 34, definition.elite ? `${definition.name} • Elite` : definition.name, {
-        color: '#f8f9fa',
-        fontSize: '12px',
-      }).setOrigin(0.5).setDepth(6);
-      return {
-        id: spawn.id,
-        sprite,
-        shadow,
-        label,
-        runtime: createEnemyRuntime(spawn.id, spawn.type, { x: spawn.x, y: spawn.y }),
-        telegraph: null,
-        aimAngle: 0,
-      };
-    });
+    const state = this.bridge.getState();
+    this.enemies = ENEMY_SPAWNS
+      .filter((spawn) => !state.worldCycle.defeatedEnemyIds.includes(spawn.id))
+      .map((spawn) => {
+        const shadow = CombatPresentation.createShadow(this, spawn.x, spawn.y, spawn.type === 'elite_knight' ? 28 : 24, 11);
+        const sprite = this.physics.add.image(spawn.x, spawn.y, `${spawn.type}-token`).setDepth(5);
+        sprite.setCircle(spawn.type === 'elite_knight' ? 13 : 11, 4, 10);
+        sprite.setCollideWorldBounds(true);
+        const definition = ENEMIES_BY_ID[spawn.type];
+        const label = this.add.text(spawn.x, spawn.y - 34, definition.elite ? `${definition.name} • Elite` : definition.name, {
+          color: '#f8f9fa',
+          fontSize: '12px',
+        }).setOrigin(0.5).setDepth(6);
+        return {
+          id: spawn.id,
+          sprite,
+          shadow,
+          label,
+          runtime: createEnemyRuntime(spawn.id, spawn.type, { x: spawn.x, y: spawn.y }),
+          telegraph: null,
+          aimAngle: 0,
+        };
+      });
   }
 
   private createResources(): void {
-    this.resources = [
-      { id: 'wood-node', itemId: 'wood', amount: 3, sprite: this.add.rectangle(430, 340, 20, 20, 0x2d6a4f).setDepth(4) },
-      { id: 'herb-node', itemId: 'herbs', amount: 2, sprite: this.add.rectangle(740, 250, 18, 18, 0x74c69d).setDepth(4) },
-      { id: 'ore-node', itemId: 'iron_ore', amount: 2, sprite: this.add.rectangle(840, 520, 20, 20, 0x6c757d).setDepth(4) },
-      { id: 'stone-node', itemId: 'stone', amount: 2, sprite: this.add.rectangle(300, 280, 18, 18, 0x868e96).setDepth(4) },
-      { id: 'food-node', itemId: 'food', amount: 2, sprite: this.add.rectangle(980, 180, 18, 18, 0xe9c46a).setDepth(4) },
-    ];
+    const state = this.bridge.getState();
+    this.resources = RESOURCE_NODE_DEFS
+      .filter((def) => !state.worldCycle.collectedResourceNodeIds.includes(def.id))
+      .map((def) => ({
+        id: def.id,
+        itemId: def.itemId,
+        amount: def.amount,
+        sprite: this.add.rectangle(def.x, def.y, 20, 20, def.color).setDepth(4),
+      }));
   }
 
   private createMemoryFragment(): void {
@@ -237,6 +304,51 @@ export class WorldScene extends Phaser.Scene {
     if (!collected) {
       this.memoryFragment = this.add.rectangle(600, 180, 18, 18, 0xe9c46a).setDepth(4);
     }
+  }
+
+  private createServants(): void {
+    const state = this.bridge.getState();
+    this.servants = [];
+    state.servants.forEach((servant, index) => {
+      this.spawnServantVisual(servant, index);
+    });
+  }
+
+  private spawnServantVisual(servant: Servant, index: number): void {
+    const col = index % 3;
+    const row = Math.floor(index / 3);
+    const x = 60 + col * 70;
+    const y = 540 + row * 60;
+    const sprite = this.add.rectangle(x, y, 22, 22, 0x8b0000).setDepth(4).setStrokeStyle(1, 0xff6b6b);
+    const nameLabel = this.add.text(x, y - 18, servant.name, { color: '#ff6b6b', fontSize: '10px' }).setOrigin(0.5).setDepth(5);
+    const jobText = servant.currentJob ? servant.currentJob : 'Idle';
+    const jobLabel = this.add.text(x, y + 15, jobText, { color: '#aaaaaa', fontSize: '9px' }).setOrigin(0.5).setDepth(5);
+    this.servants.push({ servantId: servant.id, sprite, nameLabel, jobLabel });
+  }
+
+  private createRooms(): void {
+    const state = this.bridge.getState();
+    this.rooms = [];
+    state.rooms.forEach((room) => {
+      this.spawnRoomVisual(room);
+    });
+  }
+
+  private spawnRoomVisual(room: BuiltRoom): void {
+    const x = STRONGHOLD_GRID_ORIGIN.x + room.x * STRONGHOLD_CELL_W + (room.width * STRONGHOLD_CELL_W) / 2;
+    const y = STRONGHOLD_GRID_ORIGIN.y + room.y * STRONGHOLD_CELL_H + (room.height * STRONGHOLD_CELL_H) / 2;
+    const w = room.width * STRONGHOLD_CELL_W - 4;
+    const h = room.height * STRONGHOLD_CELL_H - 4;
+    const isBuilt = room.status === 'built';
+    const fillColor = isBuilt ? 0x2c3e50 : 0x1a1a2e;
+    const alpha = isBuilt ? 1 : 0.55;
+    const visual = this.add.rectangle(x, y, w, h, fillColor, alpha).setDepth(2).setStrokeStyle(1, isBuilt ? 0x4f7cac : 0x555588);
+    const roomDef = ROOMS_BY_ID[room.roomId];
+    const shortName = roomDef.name.length > 12 ? roomDef.name.slice(0, 12) : roomDef.name;
+    const label = this.add.text(x, y - 4, shortName, { color: '#c8d6e5', fontSize: '9px' }).setOrigin(0.5).setDepth(3);
+    const progressText = isBuilt ? 'Built' : `${room.progress}/3`;
+    const progressLabel = this.add.text(x, y + 8, progressText, { color: isBuilt ? '#88cc88' : '#ffcc44', fontSize: '8px' }).setOrigin(0.5).setDepth(3);
+    this.rooms.push({ roomInstanceId: room.id, visual, label, progressLabel });
   }
 
   private createUiHints(): void {
@@ -658,7 +770,7 @@ export class WorldScene extends Phaser.Scene {
       }
       CombatPresentation.fadeDeath(this, enemy.sprite, enemy.shadow);
       enemy.label.destroy();
-      this.bridge.onEnemyDefeated(enemy.runtime.type);
+      this.bridge.onEnemyDefeated(enemy.id, enemy.runtime.type);
     }
   }
 
@@ -895,7 +1007,7 @@ export class WorldScene extends Phaser.Scene {
       const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, node.sprite.x, node.sprite.y);
       if (distance <= 50) {
         node.sprite.destroy();
-        this.bridge.onCollectItem(node.itemId, node.amount);
+        this.bridge.onCollectItem(node.id, node.itemId, node.amount);
         this.hintText.setText(`Collected ${node.amount} ${node.itemId.replace('_', ' ')}.`);
         return;
       }
@@ -918,6 +1030,7 @@ export class WorldScene extends Phaser.Scene {
   private syncHumansWithState(): void {
     const state = this.bridge.getState();
     const byId = new Map(state.npcs.map((human) => [human.id, human]));
+    // Remove humans that are drained/turned or no longer in state
     this.humans = this.humans.filter((entry) => {
       const updated = byId.get(entry.human.id);
       if (!updated || updated.status === 'drained' || updated.status === 'turned') {
@@ -929,6 +1042,33 @@ export class WorldScene extends Phaser.Scene {
       entry.human = updated;
       return true;
     });
+    // Add humans that are in state but not yet in scene
+    const existingIds = new Set(this.humans.map((entry) => entry.human.id));
+    const humanPositions = [
+      { x: 930, y: 260 }, { x: 1010, y: 330 }, { x: 1120, y: 280 },
+      { x: 880, y: 430 }, { x: 980, y: 500 },
+    ];
+    const extraBase = { x: 950, y: 350 };
+    let extraOffset = 0;
+    for (const human of state.npcs) {
+      if (human.status === 'drained' || human.status === 'turned') continue;
+      if (existingIds.has(human.id)) continue;
+      const posIndex = this.humans.length;
+      let position: { x: number; y: number };
+      if (posIndex < humanPositions.length) {
+        position = humanPositions[posIndex];
+      } else {
+        // Deterministic offset for extra humans in Village Edge bounds
+        position = { x: extraBase.x + (extraOffset % 3) * 40, y: extraBase.y + Math.floor(extraOffset / 3) * 40 };
+        extraOffset++;
+      }
+      const shadow = CombatPresentation.createShadow(this, position.x, position.y, 22, 10);
+      const sprite = this.physics.add.image(position.x, position.y, 'human-token').setDepth(5);
+      sprite.setCircle(10, 4, 10);
+      const label = this.add.text(position.x, position.y - 28, `${human.name} ${human.familyName}`, { color: '#f8f9fa', fontSize: '11px' }).setOrigin(0.5).setDepth(6).setVisible(false);
+      this.humans.push({ sprite, shadow, human, label });
+      existingIds.add(human.id);
+    }
     if (this.nearbyHumanId && !state.npcs.some((human) => human.id === this.nearbyHumanId && human.status !== 'drained' && human.status !== 'turned')) {
       this.nearbyHumanId = null;
       this.bridge.onHumanFocused(null);
@@ -941,6 +1081,127 @@ export class WorldScene extends Phaser.Scene {
       this.memoryFragment.destroy();
       this.memoryFragment = null;
     }
+  }
+
+  private syncServantsWithState(): void {
+    const state = this.bridge.getState();
+    const existingIds = new Set(this.servants.map((s) => s.servantId));
+    // Remove servants no longer in state
+    this.servants = this.servants.filter((entry) => {
+      if (!state.servants.some((s) => s.id === entry.servantId)) {
+        entry.sprite.destroy();
+        entry.nameLabel.destroy();
+        entry.jobLabel.destroy();
+        return false;
+      }
+      return true;
+    });
+    // Add new servants
+    state.servants.forEach((servant, index) => {
+      if (!existingIds.has(servant.id)) {
+        this.spawnServantVisual(servant, index);
+        existingIds.add(servant.id);
+      } else {
+        // Update job label
+        const entry = this.servants.find((s) => s.servantId === servant.id);
+        if (entry) {
+          entry.jobLabel.setText(servant.currentJob ?? 'Idle');
+        }
+      }
+    });
+  }
+
+  private syncRoomsWithState(): void {
+    const state = this.bridge.getState();
+    const existingIds = new Set(this.rooms.map((r) => r.roomInstanceId));
+    // Remove rooms no longer in state
+    this.rooms = this.rooms.filter((entry) => {
+      if (!state.rooms.some((r) => r.id === entry.roomInstanceId)) {
+        entry.visual.destroy();
+        entry.label.destroy();
+        entry.progressLabel.destroy();
+        return false;
+      }
+      return true;
+    });
+    // Add new rooms and update existing ones
+    for (const room of state.rooms) {
+      const entry = this.rooms.find((r) => r.roomInstanceId === room.id);
+      if (!entry) {
+        if (!existingIds.has(room.id)) {
+          this.spawnRoomVisual(room);
+          existingIds.add(room.id);
+        }
+      } else {
+        // Update progress label and visual appearance
+        const isBuilt = room.status === 'built';
+        entry.progressLabel.setText(isBuilt ? 'Built' : `${room.progress}/3`);
+        entry.progressLabel.setColor(isBuilt ? '#88cc88' : '#ffcc44');
+        entry.visual.setAlpha(isBuilt ? 1 : 0.55);
+        entry.visual.setFillStyle(isBuilt ? 0x2c3e50 : 0x1a1a2e, isBuilt ? 1 : 0.55);
+      }
+    }
+  }
+
+  private syncResourcesWithState(): void {
+    const state = this.bridge.getState();
+    // Remove resources that are now collected
+    this.resources = this.resources.filter((node) => {
+      if (state.worldCycle.collectedResourceNodeIds.includes(node.id)) {
+        if (node.sprite.active) node.sprite.destroy();
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private syncEnemiesWithState(): void {
+    const state = this.bridge.getState();
+    // Remove enemies that are now defeated in the cycle
+    this.enemies = this.enemies.filter((enemy) => {
+      if (state.worldCycle.defeatedEnemyIds.includes(enemy.id)) {
+        enemy.telegraph?.destroy();
+        if (enemy.sprite.active) enemy.sprite.destroy();
+        enemy.shadow.destroy();
+        enemy.label.destroy();
+        return false;
+      }
+      return true;
+    });
+  }
+
+  private syncWorldCycleWithState(): void {
+    // Full world refresh for a new night cycle
+    // Clear all existing enemies cleanly
+    for (const enemy of this.enemies) {
+      enemy.telegraph?.destroy();
+      if (enemy.sprite.active) enemy.sprite.destroy();
+      enemy.shadow.destroy();
+      enemy.label.destroy();
+    }
+    this.enemies = [];
+
+    // Clear projectiles from removed enemies
+    for (const proj of this.projectiles) {
+      proj.visual.destroy();
+    }
+    this.projectiles = [];
+
+    // Clear resources
+    for (const node of this.resources) {
+      if (node.sprite.active) node.sprite.destroy();
+    }
+    this.resources = [];
+
+    // Invalidate target lock
+    this.lockedTargetId = null;
+    if (this.targetIndicator) {
+      CombatPresentation.clearTargetIndicator(this.targetIndicator);
+    }
+
+    // Recreate enemies and resources with new cycle filter
+    this.createEnemies();
+    this.createResources();
   }
 
   private getLockedEnemy(): SceneEnemy | null {

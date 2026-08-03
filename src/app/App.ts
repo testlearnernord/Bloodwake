@@ -6,11 +6,10 @@ import { createNewGameState, deriveCharacterSeed, getActiveQuestStepText, getHum
 import { queueCraftingOrder } from '../simulation/crafting/crafting';
 import { queueRoomConstruction } from '../simulation/building/building';
 import { completeQuestStep } from '../simulation/quests/quests';
-import { applyDayRestriction, togglePhase } from '../simulation/time/dayNight';
-import { runWorkShift } from '../simulation/servants/production';
+import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
 import { loadSettings, saveSettings } from '../persistence/settings';
 import { deleteSlot, exportSaveGame, importSaveGame, listSaveSlots, loadFromSlot, saveToSlot } from '../persistence/saveStore';
-import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
+import type { EnemyType, ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
 import { createDefaultSeed } from '../utilities/rng';
 import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
@@ -47,6 +46,7 @@ export class BloodwakeApp {
   private sceneApi: WorldSceneApi | null = null;
   private combatUi: CombatUiSnapshot | null = null;
   private hudInterval: number | null = null;
+  private worldCycleChanged = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -220,8 +220,15 @@ export class BloodwakeApp {
       onFeedShortcut: (humanId) => {
         this.sceneApi?.startHumanActionSequence(humanId, 'feed');
       },
-      onCollectItem: (itemId, amount) => {
+      onCollectItem: (nodeId, itemId, amount) => {
         if (!this.state) return;
+        // Record node as collected this cycle (prevents duplicate rewards)
+        if (!this.state.worldCycle.collectedResourceNodeIds.includes(nodeId)) {
+          this.state.worldCycle = {
+            ...this.state.worldCycle,
+            collectedResourceNodeIds: [...this.state.worldCycle.collectedResourceNodeIds, nodeId],
+          };
+        }
         this.state.inventory = addItem(this.state.inventory, itemId, amount);
         this.state.lastEventLog.unshift(`Collected ${amount} ${ITEMS_BY_ID[itemId].name} in ${this.activeZone}.`);
         this.completeStepForEvent('travel');
@@ -244,12 +251,19 @@ export class BloodwakeApp {
         this.notify('Memory recovered.');
         this.renderGame();
       },
-      onEnemyDefeated: (enemyId) => {
+      onEnemyDefeated: (instanceId, enemyType) => {
         if (!this.state) return;
-        this.state.strategicResources.bloodEssence += 1;
-        this.state.lastEventLog.unshift(`Defeated a ${enemyId} and harvested Blood Essence.`);
-        this.notify('Blood Essence increased.');
-        this.renderGame();
+        // Record enemy as defeated this cycle (prevents duplicate rewards)
+        if (!this.state.worldCycle.defeatedEnemyIds.includes(instanceId)) {
+          this.state.worldCycle = {
+            ...this.state.worldCycle,
+            defeatedEnemyIds: [...this.state.worldCycle.defeatedEnemyIds, instanceId],
+          };
+          this.state.strategicResources.bloodEssence += 1;
+          this.state.lastEventLog.unshift(`Defeated ${enemyType.replace('_', ' ')} (${instanceId}) and harvested Blood Essence.`);
+          this.notify('Blood Essence increased.');
+          this.renderGame();
+        }
       },
       onZoneChanged: (zone) => {
         this.activeZone = zone;
@@ -279,6 +293,10 @@ export class BloodwakeApp {
       },
       onPauseRequested: () => {
         this.openOrCloseMenu(this.activeMenu === 'pause' ? null : 'pause');
+      },
+      notifyWorldCycleChanged: () => {
+        // WorldScene will call syncWorldCycleWithState on its next update
+        this.worldCycleChanged = true;
       },
     };
     this.phaserGame = new Phaser.Game({
@@ -734,31 +752,23 @@ export class BloodwakeApp {
     if (!this.state) {
       return;
     }
-    const nextPhase = togglePhase(this.state.time.phase);
     const wasQueuedSimpleSword = this.state.craftingQueue.some((order) => order.recipeId === 'simple_sword' && order.status === 'queued');
-    if (nextPhase === 'day') {
-      this.state.player = applyDayRestriction(this.state.player, nextPhase);
+
+    const result = advanceWorldPhase(this.state);
+    this.state = result.state;
+
+    for (const event of result.events) {
+      if (event.includes('Hunger reaches its limit') || event.includes('Starvation saps')) {
+        this.notify(event.replace('[Phase] ', ''));
+      }
     }
-    this.state.time = {
-      day: nextPhase === 'night' ? this.state.time.day + 1 : this.state.time.day,
-      phase: nextPhase,
-    };
-    const shift = runWorkShift(
-      this.state.servants,
-      this.state.rooms,
-      this.state.craftingQueue,
-      this.state.strategicResources,
-      this.state.inventory,
-      nextPhase,
-      this.state.seed,
-    );
-    this.state.servants = shift.servants;
-    this.state.rooms = shift.rooms;
-    this.state.strategicResources = shift.strategicResources;
-    this.state.inventory = shift.inventory;
-    this.state.craftingQueue = shift.craftingQueue;
-    this.state.lastEventLog = [...shift.log.reverse(), ...this.state.lastEventLog].slice(0, 12);
-    if (shift.servants.some((servant) => servant.currentJob && servant.currentTask)) {
+
+    if (result.worldCycleChanged) {
+      this.worldCycleChanged = true;
+      this.notify(`Night ${this.state.time.day} begins.`);
+    }
+
+    if (result.state.servants.some((servant) => servant.currentJob && servant.currentTask)) {
       this.completeStepForEvent('assign');
     }
     if (wasQueuedSimpleSword && this.state.craftingQueue.some((order) => order.recipeId === 'simple_sword' && order.status === 'complete')) {
