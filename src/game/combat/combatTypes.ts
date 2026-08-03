@@ -8,7 +8,8 @@ export type PlayerActionState =
   | 'idle'
   | 'moving'
   | 'locked_moving'
-  | 'dodge'
+  | 'dodge_windup'
+  | 'dodge_active'
   | 'light_windup'
   | 'light_active'
   | 'light_recovery'
@@ -70,6 +71,7 @@ export interface CombatActionDefinition {
   commitOnStart?: boolean;
   commitOnActiveStart?: boolean;
   projectileId?: string;
+  invulnerableMs?: number;
 }
 
 export interface ProjectileDefinition {

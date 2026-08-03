@@ -4,6 +4,7 @@ import {
   BLOOD_LANCE_VITAE_COST,
   DODGE_COOLDOWN_MS,
   DODGE_DURATION_MS,
+  DODGE_INVULNERABLE_MS,
   HEAVY_ACTIVE_MS,
   HEAVY_ATTACK_ARC,
   HEAVY_CAMERA_SHAKE,
@@ -162,10 +163,11 @@ export const PLAYER_ACTIONS: CombatActionDefinition[] = [
     cameraShake: 0,
     animationId: 'player_dodge',
     effectId: 'dodge',
-    windupState: 'dodge',
-    activeState: 'dodge',
+    windupState: 'dodge_windup',
+    activeState: 'dodge_active',
     recoveryState: 'idle',
     commitOnStart: true,
+    invulnerableMs: DODGE_INVULNERABLE_MS,
   },
 ];
 

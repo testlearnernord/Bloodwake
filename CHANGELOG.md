@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.2 - Milestone 0.4.2 Dodge Hotfix
+
+- Fixed permanent-busy softlock: dodge previously used the same string for `windupState` and `activeState` (`'dodge'`), causing `stepAction` to re-enter the windup→active transition after the active phase expired and never reach idle. Dodge now uses distinct `'dodge_windup'` and `'dodge_active'` states.
+- Fixed dodge velocity being overwritten every frame: `updateMovement` previously recomputed and applied normal/locked-movement velocity every tick, silently zeroing out the one-time velocity set at dodge start. The resolved direction is now stored at action start and reapplied throughout the active window; normal movement, lock-orbit movement, and attack multipliers cannot interfere.
+- Fixed invulnerability window: `startAction` previously granted invulnerability for the full `activeMs` (220 ms) instead of the intended `DODGE_INVULNERABLE_MS` (150 ms). The action definition now carries `invulnerableMs` and `startAction` uses that value.
+- Fixed time-domain mismatch: `onDodgeUsed(Date.now() + DODGE_COOLDOWN_MS)` mixed wall-clock time with Phaser scene time. The bridge method and its caller have been removed; dodge readiness is now authoritative from the Phaser-time `cooldowns` map emitted in every `CombatUiSnapshot`.
+- Fixed close icon invisible in SVG fill rendering: the previous path (`M5 5l14 14M19 5L5 19`) consisted of two open line segments with no enclosed area, rendering as an empty square. Replaced with a properly closed filled-X path.
+- Added focused deterministic regression tests covering dodge phase ordering, phase re-entry prevention, invulnerability window bounds, `isActionStateActive` during windup, Phaser-time cooldown recording, repeated-input blocking, and close-icon filled-path requirement.
+
 ## 0.4.1 - Milestone 0.4.1 Layout Hotfix
 
 - Repaired oversized overlay headers: the previous overlay renderer returned `<header>` and `<div class="overlay-body">` as separate direct children of `#overlay-root`; the CSS rule `.overlay-root > *` applied full panel dimensions (≈86dvh height) to every direct child, causing the header alone to fill nearly the entire viewport. Fixed by introducing a `renderOverlayPanel` helper that wraps header and body inside a single `<div class="overlay-panel">`, and replacing `.overlay-root > *` with a targeted `.overlay-panel` rule.

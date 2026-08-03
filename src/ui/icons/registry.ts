@@ -14,7 +14,7 @@ const ICON_PATHS: Record<string, string> = {
   crafting: 'M3 17l5-5 3 3 6-6 4 4-10 10-8-6z',
   journal: 'M5 3h13a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2zm2 4h9v2H7V7zm0 4h9v2H7v-2z',
   pause: 'M7 4h4v16H7V4zm6 0h4v16h-4V4z',
-  close: 'M5 5l14 14M19 5L5 19',
+  close: 'M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z',
   weapon: 'M4 20l7-7 2 2-7 7H4v-2zm9-11l2-2 4 4-2 2-4-4z',
   armor: 'M12 2l7 3v6c0 5-3 8-7 11-4-3-7-6-7-11V5l7-3z',
   accessory: 'M12 4a8 8 0 110 16 8 8 0 010-16z',

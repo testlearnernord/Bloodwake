@@ -41,7 +41,6 @@ export class BloodwakeApp {
   private activeMenu: MenuId | null = null;
   private selectedItemId: ItemId | null = null;
   private selectedFilter: 'all' | ItemCategory = 'all';
-  private dodgeReadyAt = 0;
   private toastManager: ToastManager | null = null;
   private tooltipManager: TooltipManager | null = null;
   private previousResourceSnapshot: Record<string, number> | null = null;
@@ -281,10 +280,6 @@ export class BloodwakeApp {
       onPauseRequested: () => {
         this.openOrCloseMenu(this.activeMenu === 'pause' ? null : 'pause');
       },
-      onDodgeUsed: (nextReadyAt) => {
-        this.dodgeReadyAt = nextReadyAt;
-        this.renderGame();
-      },
     };
     this.phaserGame = new Phaser.Game({
       type: Phaser.AUTO,
@@ -413,7 +408,7 @@ export class BloodwakeApp {
     this.query('#bottom-hud').innerHTML = renderBottomHud(
       this.state,
       'Unarmed',
-      (combatUi?.abilities.find((ability) => ability.id === 'dodge')?.cooldownRemainingMs ?? (this.dodgeReadyAt > Date.now() ? 1 : 0)) <= 0,
+      (combatUi?.abilities.find((ability) => ability.id === 'dodge')?.cooldownRemainingMs ?? 0) <= 0,
       combatUi,
     );
   }

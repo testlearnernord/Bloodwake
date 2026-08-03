@@ -81,7 +81,7 @@ export const startAction = (
     committed: Boolean(definition.commitOnStart),
     commitCount: definition.commitOnStart ? runtime.commitCount + 1 : runtime.commitCount,
     cooldowns: { ...runtime.cooldowns, [definition.id]: context.now + definition.cooldownMs },
-    invulnerableUntil: definition.id === 'dodge' ? context.now + definition.activeMs : runtime.invulnerableUntil,
+    invulnerableUntil: definition.invulnerableMs != null ? context.now + definition.invulnerableMs : runtime.invulnerableUntil,
   };
   return { ok: true, runtime: nextRuntime, committedCost: Boolean(definition.commitOnStart) };
 };
