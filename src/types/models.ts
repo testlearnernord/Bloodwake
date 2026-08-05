@@ -359,7 +359,8 @@ export interface SaveGame {
   characterRoll: number;
   player: VampireCharacter;
   npcs: HumanCharacter[];
-  servants: Servant[];
+  humanServants: HumanServant[];
+  vampireVassals: VampireVassal[];
   strategicResources: DomainResourcePool;
   inventory: InventoryEntry[];
   rooms: BuiltRoom[];

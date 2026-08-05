@@ -3,7 +3,7 @@ import { inheritVampire } from '../bloodlines/inheritance';
 import { completeQuestStep } from '../quests/quests';
 import { applyFeedHungerReduction, applyDrainHungerReduction } from '../time/phaseAdvance';
 import type { HumanActionMode } from '../../game/combat/combatTypes';
-import type { HumanCharacter, SaveGame, Servant } from '../../types/models';
+import type { HumanCharacter, SaveGame, VampireVassal } from '../../types/models';
 
 export interface BiteSequenceRuntime {
   humanId: string;
@@ -83,7 +83,8 @@ export const applyHumanAction = (
     player: { ...state.player },
     npcs: state.npcs.map((npc) => ({ ...npc })),
     strategicResources: { ...state.strategicResources },
-    servants: state.servants.map((servant) => ({ ...servant, priorities: { ...servant.priorities }, equipped: { ...servant.equipped } })),
+    humanServants: state.humanServants.map((s) => ({ ...s, priorities: { ...s.priorities }, equipped: { ...s.equipped } })),
+    vampireVassals: state.vampireVassals.map((s) => ({ ...s, priorities: { ...s.priorities }, equipped: { ...s.equipped } })),
     inheritanceHistory: [...state.inheritanceHistory],
     lastEventLog: [...state.lastEventLog],
     quests: [...state.quests],
@@ -110,9 +111,11 @@ export const applyHumanAction = (
   const result = inheritVampire(nextState.player, human, `${nextState.seed}-${nextState.characterRoll}`);
   nextState.player.vitae -= TURN_COST_VITAE;
   updateHumanStatus('turned');
-  const servant: Servant = {
+  const vassal: VampireVassal = {
+    kind: 'vampire_vassal',
     ...result.vampire,
-    type: 'vampire',
+    vitae: 2,
+    maxVitae: 8,
     priorities: {
       Building: 'Normal',
       Crafting: 'High',
@@ -127,13 +130,16 @@ export const applyHumanAction = (
     hunger: result.vampire.hunger,
     equipped: {},
   };
-  nextState.servants = [...nextState.servants, servant];
+  // Prevent duplicate: only add if no vassal with this id exists
+  if (!nextState.vampireVassals.some((v) => v.id === vassal.id)) {
+    nextState.vampireVassals = [...nextState.vampireVassals, vassal];
+  }
   nextState.inheritanceHistory.unshift(result.report);
   nextState.quests = completeQuestStep(nextState.quests, 'awakening', 'turn');
-  nextState.lastEventLog.unshift(`Turned ${human.name} into a fledgling vampire.`);
+  nextState.lastEventLog.unshift(`Turned ${human.name} into a fledgling vampire vassal.`);
   return {
     state: nextState,
-    message: 'A new vampire servant has joined your bloodline.',
+    message: 'A new vampire vassal has joined your bloodline.',
     inheritanceSummary: `Inherited ${result.report.inheritedTraits.join(', ') || 'no dominant traits'}; mutations: ${result.report.mutations.join(', ') || 'none'}.`,
   };
 };

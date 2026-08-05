@@ -1,6 +1,6 @@
 import { SAVE_FORMAT_VERSION } from '../config/game';
 import { ITEMS_BY_ID } from '../data/items';
-import type { DomainResourcePool, InventoryEntry, ItemId, QualityLevel, SaveGame, SaveSlot, WorldCycleState } from '../types/models';
+import type { HumanServant, InventoryEntry, ItemId, QualityLevel, SaveGame, SaveSlot, VampireVassal, WorldCycleState } from '../types/models';
 
 const DATABASE_NAME = 'bloodwake-db';
 const STORE_NAME = 'save-slots';
@@ -28,15 +28,6 @@ const runTransaction = async <T>(mode: IDBTransactionMode, action: (store: IDBOb
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object';
 
 const QUALITY_LEVELS: QualityLevel[] = ['Poor', 'Common', 'Fine', 'Masterwork'];
-
-const RESOURCE_TO_ITEM_ID: Record<string, ItemId> = {
-  Wood: 'wood',
-  Stone: 'stone',
-  'Iron Ore': 'iron_ore',
-  Leather: 'leather',
-  Herbs: 'herbs',
-  Food: 'food',
-};
 
 const normalizeInventoryEntry = (value: unknown): InventoryEntry | null => {
   if (!isRecord(value) || typeof value.itemId !== 'string' || typeof value.quantity !== 'number') {
@@ -77,14 +68,48 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isRecord(value)) {
     return false;
   }
-  const requiredArrays = ['rooms', 'inventory', 'servants', 'npcs', 'craftingQueue', 'constructionTasks', 'quests', 'collectibles'];
+  const requiredArrays = ['rooms', 'inventory', 'humanServants', 'vampireVassals', 'npcs', 'craftingQueue', 'constructionTasks', 'quests', 'collectibles'];
   if (typeof value.version !== 'number' || typeof value.seed !== 'string' || typeof value.title !== 'string') {
     return false;
   }
   if (!isRecord(value.player) || !isRecord(value.time) || !Array.isArray(value.lastEventLog)) {
     return false;
   }
-  return requiredArrays.every((field) => Array.isArray(value[field]));
+  // Reject saves that still carry the legacy servants field
+  if ('servants' in value) {
+    return false;
+  }
+  if (!requiredArrays.every((field) => Array.isArray(value[field]))) {
+    return false;
+  }
+  // Validate population records are objects with string ids
+  const humanServants = value.humanServants as unknown[];
+  const vampireVassals = value.vampireVassals as unknown[];
+  for (const record of humanServants) {
+    if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'human_servant') {
+      return false;
+    }
+  }
+  for (const record of vampireVassals) {
+    if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'vampire_vassal') {
+      return false;
+    }
+  }
+  // Reject duplicate IDs within and across collections
+  const humanIds = new Set((humanServants as HumanServant[]).map((r) => r.id));
+  if (humanIds.size !== humanServants.length) {
+    return false;
+  }
+  const vassalIds = new Set((vampireVassals as VampireVassal[]).map((r) => r.id));
+  if (vassalIds.size !== vampireVassals.length) {
+    return false;
+  }
+  for (const id of vassalIds) {
+    if (humanIds.has(id)) {
+      return false;
+    }
+  }
+  return true;
 };
 
 const VALID_ID_PATTERN = /^[a-z0-9-]+$/;
@@ -109,47 +134,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const migrateV1ToV2 = (value: Record<string, unknown>): SaveGame => {
-  const rawResources = isRecord(value.resources) ? value.resources : {};
-  const inventoryFromSave = Array.isArray(value.inventory)
-    ? value.inventory.map(normalizeInventoryEntry).filter((entry): entry is InventoryEntry => entry !== null)
-    : [];
-
-  const migratedFromResources: InventoryEntry[] = Object.entries(rawResources)
-    .filter(([resourceId, amount]) => typeof amount === 'number' && (amount as number) > 0 && RESOURCE_TO_ITEM_ID[resourceId])
-    .map(([resourceId, amount]) => ({ itemId: RESOURCE_TO_ITEM_ID[resourceId], quantity: Math.floor(amount as number) }));
-
-  const strategicResources: DomainResourcePool = {
-    bloodEssence: typeof rawResources['Blood Essence'] === 'number' ? Math.max(0, Math.floor(rawResources['Blood Essence'] as number)) : 0,
-    security: typeof rawResources.Security === 'number' ? Math.max(0, Math.floor(rawResources.Security as number)) : 0,
-    gold: 0,
-    knowledge: 0,
-    influence: 0,
-  };
-
-  const legacy = value as unknown as SaveGame;
-  const playerWithEquipment: SaveGame['player'] = {
-    ...legacy.player,
-    equipment: isRecord(legacy.player?.equipment) ? (legacy.player.equipment as SaveGame['player']['equipment']) : {},
-  };
-
-  const migrated: SaveGame = {
-    ...legacy,
-    version: SAVE_FORMAT_VERSION,
-    title: 'Bloodwake',
-    characterRoll: typeof value.characterRoll === 'number' && Number.isFinite(value.characterRoll) ? Math.max(0, Math.floor(value.characterRoll)) : 0,
-    player: playerWithEquipment,
-    strategicResources,
-    inventory: mergeInventory([...inventoryFromSave, ...migratedFromResources]),
-    worldCycle: normalizeWorldCycle(undefined),
-    inheritanceHistory: Array.isArray(value.inheritanceHistory) ? (value.inheritanceHistory as SaveGame['inheritanceHistory']) : [],
-    lastEventLog: Array.isArray(value.lastEventLog) ? (value.lastEventLog as string[]) : [],
-  };
-
-  return migrated;
-};
-
-const normalizeV2orV3 = (value: SaveGame): SaveGame => {
+const normalizeV4 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -179,16 +164,22 @@ const normalizeV2orV3 = (value: SaveGame): SaveGame => {
 };
 
 export const migrateSaveGame = (value: unknown): SaveGame => {
+  // Detect old save versions and reject them cleanly
+  if (isRecord(value) && typeof value.version === 'number') {
+    if (value.version < SAVE_FORMAT_VERSION) {
+      throw new Error(
+        `This save belongs to an incompatible older game version (save v${value.version}, current v${SAVE_FORMAT_VERSION}). ` +
+        'Old saves are not supported. Please start a new game.',
+      );
+    }
+    if (value.version > SAVE_FORMAT_VERSION) {
+      throw new Error('Save file version is newer than this build supports.');
+    }
+  }
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  if (value.version > SAVE_FORMAT_VERSION) {
-    throw new Error('Save file version is newer than this build supports.');
-  }
-  if (value.version < 2) {
-    return migrateV1ToV2(value as unknown as Record<string, unknown>);
-  }
-  return normalizeV2orV3(value as SaveGame);
+  return normalizeV4(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

@@ -32,8 +32,10 @@ describe('new game world seed and character roll determinism', () => {
     expect(first.npcs).toEqual(second.npcs);
   });
 
-  it('starts new games without a starter servant', () => {
+  it('starts new games with empty population arrays and no servants field', () => {
     const state = createNewGameState({ seed: 'no-servant' });
-    expect(state.servants).toEqual([]);
+    expect(state.humanServants).toEqual([]);
+    expect(state.vampireVassals).toEqual([]);
+    expect('servants' in state).toBe(false);
   });
 });
