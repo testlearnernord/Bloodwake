@@ -165,11 +165,15 @@ export interface PopulationBase {
   maxHealth: number;
   morale: number;
   loyalty: number;
+  ambition: number;
   stress: number;
+  combat: number;
+  professionSkills: Partial<Record<JobType, number>>;
   priorities: JobPriorityMap;
   currentJob: JobType | null;
   currentTask: string | null;
   taskReason: string;
+  hunger: number;
   equipped: Partial<Record<ItemSlot, ItemId>>;
 }
 
@@ -181,11 +185,8 @@ export interface HumanServant extends PopulationBase {
 /** Explicit population type for a vampire who serves the player. */
 export interface VampireVassal extends PopulationBase {
   kind: 'vampire_vassal';
-  ambition: number;
-  combat: number;
   vitae: number;
   maxVitae: number;
-  hunger: number;
 }
 
 export interface RoomDefinition {

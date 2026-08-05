@@ -91,10 +91,14 @@ describe('convertLegacyHumanServant', () => {
     expect(result.maxHealth).toBe(humanServant.maxHealth);
     expect(result.morale).toBe(humanServant.morale);
     expect(result.loyalty).toBe(humanServant.loyalty);
+    expect(result.ambition).toBe(humanServant.ambition);
     expect(result.stress).toBe(humanServant.stress);
+    expect(result.combat).toBe(humanServant.combat);
+    expect(result.professionSkills).toEqual(humanServant.professionSkills);
     expect(result.currentJob).toBe(humanServant.currentJob);
     expect(result.currentTask).toBe(humanServant.currentTask);
     expect(result.taskReason).toBe(humanServant.taskReason);
+    expect(result.hunger).toBe(humanServant.hunger);
   });
 
   it('clones priorities (not the same reference)', () => {
@@ -146,6 +150,7 @@ describe('convertLegacyVampireVassal', () => {
     expect(result.ambition).toBe(vampireServant.ambition);
     expect(result.stress).toBe(vampireServant.stress);
     expect(result.combat).toBe(vampireServant.combat);
+    expect(result.professionSkills).toEqual(vampireServant.professionSkills);
     expect(result.hunger).toBe(vampireServant.hunger);
     expect(result.currentJob).toBe(vampireServant.currentJob);
     expect(result.currentTask).toBe(vampireServant.currentTask);

@@ -37,11 +37,15 @@ export const convertLegacyHumanServant = (servant: Servant): HumanServant => {
     maxHealth: servant.maxHealth,
     morale: servant.morale,
     loyalty: servant.loyalty,
+    ambition: servant.ambition,
     stress: servant.stress,
+    combat: servant.combat,
+    professionSkills: { ...servant.professionSkills },
     priorities: { ...servant.priorities },
     currentJob: servant.currentJob,
     currentTask: servant.currentTask,
     taskReason: servant.taskReason,
+    hunger: servant.hunger,
     equipped: { ...servant.equipped },
   };
 };
@@ -74,6 +78,7 @@ export const convertLegacyVampireVassal = (servant: Servant): VampireVassal => {
     ambition: servant.ambition,
     stress: servant.stress,
     combat: servant.combat,
+    professionSkills: { ...servant.professionSkills },
     vitae: 2,
     maxVitae: 8,
     hunger: servant.hunger,

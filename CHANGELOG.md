@@ -15,7 +15,7 @@
 - The current `SaveGame` still uses the legacy `servants: Servant[]` collection. No save-format change occurs in this milestone.
 - Save-v4 migration and runtime adoption of the new types are intentionally deferred to Milestone 0.6.1b.
 
-
+## 0.5.0
 
 ### World cycle and persistence
 
