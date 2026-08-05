@@ -1,17 +1,16 @@
 # Roadmap
 
-## Milestone 0.4 (current)
+## Milestones
 
-- Playability pass across combat, turning, servants, building, crafting, and onboarding
-- Tab / Shift+Tab / wheel / middle-mouse targeting improvements with clearer lock feedback
-- Browser-safe gameplay shortcut handling and better fullscreen desktop behavior
-- Upright character presentation, practical UI scaling, and truthful disabled reasons
-- Deterministic tests for turn reliability, shortcut guards, target cycling, saves, and servant productivity
-
-## Milestone 0.5 (next)
-
-- Stronghold raids
-- Traps and fortifications
-- Walls and chokepoint planning
-- Path blocking and defensive layout decisions
-- Deeper strategic base defense gameplay
+- 0.5 completed
+- 0.6.1 Population Foundation
+- 0.6.2 Blood Choices
+- 0.6.3 Human Recruitment and Housing
+- 0.6.4 Dominion and Torpor
+- 0.6.5 Day Management
+- 0.6.6 Night Orders
+- 0.7 Economy and Facilities
+- 0.8 Character and Bloodline
+- 0.9 Hunt Before Dawn
+- 1.0 Visible Operations
+- 1.1 Threat and Siege
