@@ -18,6 +18,14 @@
 - `src/persistence`: IndexedDB save slots, validation, and migration
 - `src/tests`: deterministic unit tests
 
+## Key decisions in Milestone 0.6.1a
+
+- Introduced explicit `HumanServant` (discriminator `kind: "human_servant"`) and `VampireVassal` (discriminator `kind: "vampire_vassal"`) types in `src/types/models.ts`.
+- The existing `Servant` type is preserved as a temporary legacy compatibility model; it is marked `@deprecated` and will be removed in the save-v4 migration (Milestone 0.6.1b).
+- The current `SaveGame` still uses the legacy `servants: Servant[]` collection; no save-format changes occur in this milestone.
+- Added pure conversion helpers in `src/simulation/population/legacyPopulation.ts`: `convertLegacyHumanServant`, `convertLegacyVampireVassal`, and `splitLegacyServants`. These clone all nested mutable objects and never mutate the source. They are intentionally not wired into the production runtime yet.
+- Save-v4 migration and runtime adoption of the new population types are deferred to Milestone 0.6.1b.
+
 ## Key decisions in Milestone 0.5
 
 - Introduced `WorldCycleState` in `SaveGame` to track persistent resource node and enemy depletion within a night cycle.

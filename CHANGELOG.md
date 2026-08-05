@@ -1,6 +1,21 @@
 # Changelog
 
-## 0.5.0 - Milestone 0.5: Synchronize servants, rooms, world respawns, and hunger
+## 0.6.1a - Milestone 0.6.1a: Add human servant and vampire vassal population types
+
+### Population type foundation
+
+- Added explicit `HumanServant` type with discriminator `kind: "human_servant"` in `src/types/models.ts`.
+- Added explicit `VampireVassal` type with discriminator `kind: "vampire_vassal"` in `src/types/models.ts`.
+- Marked the existing `Servant` type as `@deprecated` (legacy compatibility model). Existing production code is unchanged.
+- Added pure conversion helpers in `src/simulation/population/legacyPopulation.ts`:
+  - `convertLegacyHumanServant(servant)`: converts a human Servant to HumanServant.
+  - `convertLegacyVampireVassal(servant)`: converts a vampire Servant to VampireVassal.
+  - `splitLegacyServants(servants)`: splits a mixed legacy array into separate `humanServants` and `vampireVassals` arrays.
+- Helpers clone nested mutable objects (priorities, equipped, attributes, traitIds) and never mutate the source.
+- The current `SaveGame` still uses the legacy `servants: Servant[]` collection. No save-format change occurs in this milestone.
+- Save-v4 migration and runtime adoption of the new types are intentionally deferred to Milestone 0.6.1b.
+
+## 0.5.0
 
 ### World cycle and persistence
 

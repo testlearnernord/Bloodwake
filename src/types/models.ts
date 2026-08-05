@@ -137,6 +137,11 @@ export interface JobPriorityMap {
   Hunting: JobPriority;
 }
 
+/**
+ * @deprecated Legacy compatibility model kept for the current save-v3 format.
+ * Do not add new fields here. Use HumanServant or VampireVassal for new code.
+ * This type will be removed as part of the save-v4 migration in Milestone 0.6.1b.
+ */
 export interface Servant extends CharacterBase {
   type: ServantType;
   professionSkills: Partial<Record<JobType, number>>;
@@ -146,6 +151,42 @@ export interface Servant extends CharacterBase {
   taskReason: string;
   hunger: number;
   equipped: Partial<Record<ItemSlot, ItemId>>;
+}
+
+/** Shared fields for all explicit population types. */
+export interface PopulationBase {
+  id: string;
+  name: string;
+  age: number;
+  professionId: ProfessionId;
+  attributes: AttributeSet;
+  traitIds: string[];
+  health: number;
+  maxHealth: number;
+  morale: number;
+  loyalty: number;
+  ambition: number;
+  stress: number;
+  combat: number;
+  professionSkills: Partial<Record<JobType, number>>;
+  priorities: JobPriorityMap;
+  currentJob: JobType | null;
+  currentTask: string | null;
+  taskReason: string;
+  hunger: number;
+  equipped: Partial<Record<ItemSlot, ItemId>>;
+}
+
+/** Explicit population type for a human who has been recruited as a servant. */
+export interface HumanServant extends PopulationBase {
+  kind: 'human_servant';
+}
+
+/** Explicit population type for a vampire who serves the player. */
+export interface VampireVassal extends PopulationBase {
+  kind: 'vampire_vassal';
+  vitae: number;
+  maxVitae: number;
 }
 
 export interface RoomDefinition {
