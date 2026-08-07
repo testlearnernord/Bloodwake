@@ -22,11 +22,11 @@
 
 - **Save format v4 is active.** `SaveGame` replaces `servants: Servant[]` with two separate arrays: `humanServants: HumanServant[]` and `vampireVassals: VampireVassal[]`. The legacy `servants` field is absent from v4 saves; its presence causes rejection.
 - **Old saves (v1, v2, v3) are intentionally incompatible.** Loading or importing an old save returns a clear error; no partial load, no silent empty population, no resource grants. Players must start a new game.
-- **Population collections are separated.** All former vampire servants become vampire vassals in new games. Human recruitment remains deferred; `humanServants` is always empty until implemented.
+- **Population collections are separated.** All former vampire servants become vampire vassals in new games. Human recruitment remains deferred; new games start with an empty `humanServants` list until implemented.
 - **Turn creates a `VampireVassal`.** `applyHumanAction` now appends to `vampireVassals`. Duplicate prevention is enforced at commit time (a vassal is only appended if its ID does not already exist in `vampireVassals`).
 - **Work shift operates on `vampireVassals`.** `runWorkShift` and `selectTaskForVassal` in `src/simulation/servants/` operate on `VampireVassal[]` temporarily until day/night job separation is implemented.
 - **World scene sync uses `vampireVassals`.** `WorldScene.syncVassalsWithState()` replaces `syncServantsWithState()`.
-- **Population overlay shows separate sections.** The Domain Population overlay renders a Human Servants section (currently empty with a placeholder message) and a Vampire Vassals section.
+- **Population overlay shows separate sections.** The Domain Population overlay renders a Human Servants section (showing a placeholder only when empty) and a Vampire Vassals section.
 - **Player-facing terminology updated.** "Turn to Servant" → "Turn into Vassal". The population overlay is titled "Domain Population".
 - **`Servant` type retained** in `src/types/models.ts` as a `@deprecated` reference kept for `legacyPopulation.ts`. It is not used in any production runtime path.
 - **Validation enforces ID uniqueness.** `validateSaveGame` rejects: duplicate IDs within `humanServants`, duplicate IDs within `vampireVassals`, and any ID shared across both collections.

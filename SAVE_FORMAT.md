@@ -12,7 +12,7 @@ Save data is stored as versioned JSON in IndexedDB.
 - `characterRoll` (deterministic vampire generation roll)
 - `player` (includes `equipment`)
 - `npcs`
-- `humanServants` — array of recruited human servants *(new in v4; currently always empty pending recruitment implementation)*
+- `humanServants` — array of recruited human servants *(new in v4; new games start empty pending recruitment implementation)*
 - `vampireVassals` — array of vampire vassals created by the Turn action *(new in v4; replaces `servants`)*
 - `strategicResources`
   - `bloodEssence`
@@ -57,7 +57,7 @@ Existing old save slots remain deletable.
 
 - `servants` removed; replaced by `humanServants` and `vampireVassals`.
 - No automatic migration from v1/v2/v3 to v4.
-- Human recruitment is deferred; `humanServants` will always be empty until implemented.
+- Human recruitment is deferred; new games start with an empty `humanServants` list until implemented.
 - Day-phase human servant work is deferred; vampire vassals work only at night.
 
 ## World cycle node and enemy IDs

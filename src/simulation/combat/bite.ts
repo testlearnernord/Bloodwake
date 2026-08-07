@@ -111,11 +111,25 @@ export const applyHumanAction = (
   const result = inheritVampire(nextState.player, human, `${nextState.seed}-${nextState.characterRoll}`);
   nextState.player.vitae -= TURN_COST_VITAE;
   updateHumanStatus('turned');
+  const inheritedVampire = result.vampire;
   const vassal: VampireVassal = {
     kind: 'vampire_vassal',
-    ...result.vampire,
-    vitae: 2,
-    maxVitae: 8,
+    id: inheritedVampire.id,
+    name: inheritedVampire.name,
+    age: inheritedVampire.age,
+    professionId: inheritedVampire.professionId,
+    attributes: { ...inheritedVampire.attributes },
+    traitIds: [...inheritedVampire.traitIds],
+    health: inheritedVampire.health,
+    maxHealth: inheritedVampire.maxHealth,
+    morale: inheritedVampire.morale,
+    loyalty: inheritedVampire.loyalty,
+    ambition: inheritedVampire.ambition,
+    stress: inheritedVampire.stress,
+    combat: inheritedVampire.combat,
+    professionSkills: { ...inheritedVampire.professionSkills },
+    vitae: inheritedVampire.vitae,
+    maxVitae: inheritedVampire.maxVitae,
     priorities: {
       Building: 'Normal',
       Crafting: 'High',
@@ -127,7 +141,7 @@ export const applyHumanAction = (
     currentJob: null,
     currentTask: null,
     taskReason: 'Newly turned and awaiting direction.',
-    hunger: result.vampire.hunger,
+    hunger: inheritedVampire.hunger,
     equipped: {},
   };
   // Prevent duplicate: only add if no vassal with this id exists

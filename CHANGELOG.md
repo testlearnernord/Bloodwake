@@ -6,7 +6,7 @@
 
 - `SAVE_FORMAT_VERSION` incremented from 3 to 4.
 - `SaveGame.servants: Servant[]` removed. Replaced by two explicit population arrays:
-  - `humanServants: HumanServant[]` — recruited human servants (empty until recruitment is implemented).
+  - `humanServants: HumanServant[]` — recruited human servants (new games start empty until recruitment is implemented).
   - `vampireVassals: VampireVassal[]` — vampire vassals created by the Turn action.
 - New games initialize both arrays as empty.
 - Saves at version 1, 2, or 3 are intentionally incompatible. Loading or importing an old save returns a clear error; no partial load, no resource grants, no silent empty population.
@@ -40,11 +40,11 @@
 
 - "Turn to Servant" button renamed to **"Turn into Vassal"**.
 - Population overlay title changed from "Servants" to **"Domain Population"**.
-- Overlay now shows two separate sections: **Human Servants** (empty-state message) and **Vampire Vassals**.
+- Overlay now shows two separate sections: **Human Servants** (with an empty-state message only when none exist) and **Vampire Vassals**.
 
 ### Deferred
 
-- Human recruitment is not implemented. `humanServants` will always be empty until a future milestone.
+- Human recruitment is not implemented. New games start with an empty `humanServants` list until a future milestone adds recruitment.
 - Day-phase human servant work is not implemented.
 - No Blood Stock, Dominion, torpor, housing, food upkeep, raids, or sunlight mechanics.
 

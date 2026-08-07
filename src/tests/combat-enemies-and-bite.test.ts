@@ -228,6 +228,9 @@ describe('bite pipeline', () => {
     expect(turned.state.inheritanceHistory).toHaveLength(1);
     expect(turned.state.npcs[0]?.status).toBe('turned');
     expect(turned.state.vampireVassals[0]?.taskReason).toContain('awaiting direction');
+    expect(turned.state.vampireVassals[0]).not.toHaveProperty('bloodEssence');
+    expect(turned.state.vampireVassals[0]).not.toHaveProperty('memoryFragments');
+    expect(turned.state.vampireVassals[0]).not.toHaveProperty('equipment');
   });
 
   it('reports blocked turn attempts without mutating state', () => {

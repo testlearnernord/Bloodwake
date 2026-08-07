@@ -75,7 +75,7 @@ export const getRecipeReadiness = (state: SaveGame, recipeId: string): { ready: 
   }
   const hasCrafter = state.vampireVassals.some((vassal) => vassal.priorities.Crafting !== 'Disabled');
   if (!hasCrafter) {
-    return { ready: false, reason: 'Need a servant with Crafting enabled.' };
+    return { ready: false, reason: 'Need a vassal with Crafting enabled.' };
   }
   return { ready: true, reason: 'Ready to queue.' };
 };
@@ -184,13 +184,20 @@ export const renderOverlay = (
   }
 
   if (menu === 'servants') {
+    const humanServants = state.humanServants;
     const vassals = state.vampireVassals;
     return renderOverlayPanel(
       'Domain Population',
       `<div class="columns three">
         <section>
           <h3>Human Servants</h3>
-          <p class="hint">No human servants recruited yet. Human recruitment is not yet available.</p>
+          ${
+            humanServants.length === 0
+              ? '<p class="hint">No human servants recruited yet. Human recruitment is not yet available.</p>'
+              : humanServants
+                  .map((servant) => `<button class="servant-card" data-servant-row="${htmlEscape(servant.id)}">${htmlEscape(servant.name)} · human servant</button>`)
+                  .join('')
+          }
           <h3>Vampire Vassals</h3>
           ${
             vassals.length === 0
