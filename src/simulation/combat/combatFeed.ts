@@ -114,7 +114,7 @@ export const stepCombatFeedRuntime = (runtime: CombatFeedRuntime, now: number): 
   return runtime;
 };
 
-export const getCombatFeedRoundIndex = (runtime: CombatFeedRuntime): 0 | 1 | null => {
+const getCombatFeedRoundIndex = (runtime: CombatFeedRuntime): 0 | 1 | null => {
   if (runtime.phase === 'first_window') return 0;
   if (runtime.phase === 'second_window') return 1;
   return null;
