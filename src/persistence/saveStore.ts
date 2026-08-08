@@ -32,6 +32,9 @@ const QUALITY_LEVELS: QualityLevel[] = ['Poor', 'Common', 'Fine', 'Masterwork'];
 const isIntegerInRange = (value: unknown, min: number, max: number): boolean =>
   typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= min && value <= max;
 
+const isValidSettings = (value: unknown): boolean =>
+  isRecord(value) && typeof value.volume === 'number' && Number.isFinite(value.volume) && typeof value.uiScale === 'number' && Number.isFinite(value.uiScale);
+
 const normalizeInventoryEntry = (value: unknown): InventoryEntry | null => {
   if (!isRecord(value) || typeof value.itemId !== 'string' || typeof value.quantity !== 'number') {
     return null;
@@ -78,7 +81,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isRecord(value.player) || !isRecord(value.time) || !Array.isArray(value.lastEventLog)) {
     return false;
   }
-  if (!isRecord(value.settings) || typeof value.settings.volume !== 'number' || !Number.isFinite(value.settings.volume) || typeof value.settings.uiScale !== 'number' || !Number.isFinite(value.settings.uiScale)) {
+  if (!isValidSettings(value.settings)) {
     return false;
   }
   // Reject saves that still carry the legacy servants field
