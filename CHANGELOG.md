@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.2e - Predatory Bite Circular Timing Rework
+
+- Replaced the permissive two-button timing windows with two sequential circular skill checks.
+- Each circle now rolls a seeded-random green success sector; the player must press `F` while the rotating marker is inside that sector.
+- Pressing early, late, or spamming outside the green sector fails the bite immediately.
+- Normal prey uses slower circles and wider green sectors; elites rotate faster and expose a smaller target sector.
+- The centered Predatory Bite UI now shows both circles, the active random green arc, the rotating marker, completed-circle feedback, and the current 1/2 or 2/2 step.
+- The existing pounce, Vitae reward, execution, failure damage, knockback, audio, and save-v6 behavior remain unchanged.
+
 ## 0.6.2c Hotfix - Combat Feeding Presentation & Clergy Damage
 
 - Holy Bolt impacts now use the same authoritative damage/death/respawn pipeline as melee attacks, fixing the Clergy Hunter being unable to finish the player correctly.

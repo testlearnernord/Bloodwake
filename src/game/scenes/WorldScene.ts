@@ -37,7 +37,7 @@ import { createProjectile, registerProjectileImpact, resolveProjectileDirection,
 import { cycleLockTarget, selectLockTarget, selectTargetNearPoint, shouldBreakLock } from '../../simulation/combat/targeting';
 import { applyIncomingDamage } from '../../simulation/combat/stats';
 import { getVitaeConditionEffects } from '../../simulation/blood/vitaeCondition';
-import { createCombatFeedRuntime, getCombatFeedEligibility, getCombatFeedFailureDamage, getCombatFeedPrompt, getCombatFeedVitaeGain, getCombatFeedWindowProgress, isCombatFeedInputWindowOpen, pressCombatFeedInput, stepCombatFeedRuntime, type CombatFeedRuntime } from '../../simulation/combat/combatFeed';
+import { createCombatFeedRuntime, getCombatFeedEligibility, getCombatFeedFailureDamage, getCombatFeedMarkerProgress, getCombatFeedPrompt, getCombatFeedVitaeGain, pressCombatFeedInput, stepCombatFeedRuntime, type CombatFeedRuntime } from '../../simulation/combat/combatFeed';
 
 interface SceneEnemy {
   id: string;
@@ -637,16 +637,18 @@ export class WorldScene extends Phaser.Scene {
         ? 'bite_hold'
         : 'bite_release';
     if (this.combatFeedPrompt && this.combatFeedSequence.phase !== 'success') {
-      const windowOpen = isCombatFeedInputWindowOpen(this.combatFeedSequence, now);
-      const cueStep = windowOpen ? this.combatFeedSequence.successfulInputs + 1 : 0;
+      const roundStarted = this.combatFeedSequence.phase !== 'pounce' && now >= this.combatFeedSequence.windowOpensAt;
+      const cueStep = roundStarted ? this.combatFeedSequence.successfulInputs + 1 : 0;
       if (cueStep > this.combatFeedPromptCueStep) {
         this.combatFeedPromptCueStep = cueStep;
         CombatPresentation.playCombatFeedSound('window');
       }
       CombatPresentation.updateCombatFeedPrompt(this.combatFeedPrompt, {
         phase: this.combatFeedSequence.phase as 'pounce' | 'first_window' | 'second_window',
-        windowOpen,
-        progress: getCombatFeedWindowProgress(this.combatFeedSequence, now),
+        roundStarted,
+        markerProgress: getCombatFeedMarkerProgress(this.combatFeedSequence, now),
+        successZoneStarts: this.combatFeedSequence.successZoneStarts,
+        successZoneSize: this.combatFeedSequence.successZoneSize,
         successfulInputs: this.combatFeedSequence.successfulInputs,
         elite: this.combatFeedSequence.elite,
         now,
@@ -673,7 +675,7 @@ export class WorldScene extends Phaser.Scene {
     if (result.accepted && enemy) {
       CombatPresentation.showBloodSiphon(this, enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y, 3);
     }
-    this.hintText.setText('First bite locked. Watch the center prompt for the second opening.');
+    this.hintText.setText('First circle hit. The second blood window is forming.');
   }
 
   private finishCombatFeedSuccess(now: number): void {

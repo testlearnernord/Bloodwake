@@ -92,8 +92,10 @@ Predatory Bite is a zero-Vitae combat finisher and emergency recovery tool.
 - Requires a locked hostile target within `112` units.
 - Normal enemies are vulnerable at `<= 35%` health or while staggered.
 - Elite enemies are vulnerable at `<= 20%` health or while staggered.
-- Start with `F`, then land two additional `F` timing inputs.
-- Normal timing windows are `360 ms`; elite windows are `240 ms`.
+- Start with `F`, then clear two sequential circular timing checks.
+- Each circle has a seeded-random green success sector; pressing `F` outside it fails immediately, so button mashing cannot brute-force the bite.
+- Normal circles take `1150 ms` per revolution with an `18%` green sector. Elite circles take `850 ms` with a `12%` green sector.
+- Green sectors spawn away from the first and final edge of the revolution (`18%` minimum start, `90%` maximum end) so the challenge stays readable rather than lottery-like.
 - Success executes the already-vulnerable target and restores up to `2 Vitae`, clipped by max Vitae.
 - Failure deals `3` damage against normal enemies or `5` against elites and knocks the player away.
 - The execution design prevents repeatedly farming the same enemy for Vitae without adding another persistent per-enemy blood counter.
