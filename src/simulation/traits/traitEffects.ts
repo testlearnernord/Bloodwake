@@ -1,4 +1,4 @@
-import { FEED_VITAE_GAIN, INHERITANCE_BALANCING } from '../../config/balancing';
+import { INHERITANCE_BALANCING } from '../../config/balancing';
 import type { TraitEffectId } from '../../types/models';
 
 export const traitEffectHandlers: Record<
@@ -20,10 +20,10 @@ export const traitEffectHandlers: Record<
   },
 };
 
-export const applyFeedGainEffects = (effectIds: TraitEffectId[]): number =>
+export const applyFeedGainEffects = (baseGain: number, effectIds: TraitEffectId[]): number =>
   effectIds.reduce<number>(
     (value, effectId) => traitEffectHandlers[effectId].modifyFeedGain?.(value) ?? value,
-    FEED_VITAE_GAIN,
+    baseGain,
   );
 
 export const applyRetainedTraitEffects = (effectIds: TraitEffectId[]): number =>

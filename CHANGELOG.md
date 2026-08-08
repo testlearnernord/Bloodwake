@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.2b - Blood Choices
+
+- Blood Resonance now determines Feed and Drain rewards instead of decorative metadata.
+- Feed restores `1 + ceil(resonance / 2)` Vitae and leaves the human alive; Blood Hunter adds +1 Vitae to Feed only.
+- Drain restores `2 + resonance` Vitae, kills the target, and yields 1 Blood Essence at resonance 1-3 or 2 at resonance 4-5.
+- Already-fed humans cannot be fed, drained, or turned again until the next-night recovery step, closing the infinite-feeding exploit.
+- Focused-human UI previews use the same authoritative reward calculation as execution, including max-Vitae clipping.
+- Result messages report actual Vitae restored rather than nominal gain.
+- Bottom HUD cards no longer stretch into a large empty block when the locked-target panel is taller.
+- Removed obsolete flat Feed/Drain reward constants; no compatibility aliases remain.
+- Save format remains v6; no schema change or migration is introduced.
+- Combat Feeding remains a separate 0.6.2c milestone.
+
 ## 0.6.2a - Unified Vampire Vitae
 
 - Removed ordinary vampire hunger and the dawn starvation-damage system.

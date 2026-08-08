@@ -26,7 +26,7 @@
 - Low Vitae reduces player attack damage and normal/orbital movement, but does not directly damage health.
 - Ordinary Food is for humans, not vampires. Human Servant Food consumption arrives with the human economy.
 - Vampire Vassal domain-scale blood supply is deferred until Blood Stock/Dominion gives it a real source and sink.
-- Resonance-based Feed/Drain reward differentiation will be implemented in 0.6.2b.
+- Blood Resonance now makes Feed a renewable, nonlethal Vitae choice and Drain a larger one-time Vitae/Essence payout that kills the target. A fed human cannot be used again until the next night.
 
 ## Human population
 

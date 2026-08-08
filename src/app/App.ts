@@ -18,6 +18,7 @@ import { getTraitById } from '../simulation/traits/traitUtils';
 import { addItem, canEquipItem, equipItem, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
 import { calculatePlayerCombatStats, useHealingDraught } from '../simulation/combat/stats';
 import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite';
+import { getBloodChoicePreview } from '../simulation/blood/bloodChoices';
 import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
@@ -443,6 +444,7 @@ export class BloodwakeApp {
     const humanActions = (['feed', 'drain', 'turn'] as const).map((mode) => ({
       mode,
       validation: validateHumanAction(this.state!, human, mode),
+      preview: mode === 'turn' ? null : getBloodChoicePreview(this.state!, human, mode),
     }));
     const profession = PROFESSIONS_BY_ID[human.professionId];
     const traitNames = human.traitIds.map((traitId) => getTraitById(traitId).name);
@@ -464,8 +466,8 @@ export class BloodwakeApp {
       <ul class="context-reasons">
         ${humanActions
           .map(
-            ({ mode, validation }) =>
-              `<li>${mode === 'turn' ? 'Turn' : mode[0].toUpperCase() + mode.slice(1)}: ${htmlEscape(validation.ok ? 'Ready.' : validation.reason)}</li>`,
+            ({ mode, validation, preview }) =>
+              `<li>${mode === 'turn' ? 'Turn' : mode[0].toUpperCase() + mode.slice(1)}: ${htmlEscape(validation.ok ? (preview ?? 'Ready.') : validation.reason)}</li>`,
           )
           .join('')}
       </ul>
