@@ -57,8 +57,10 @@ const human: HumanCharacter = {
   ambition: 44,
   stress: 12,
   combat: 2,
-  bloodQuality: 4,
-  recruitability: 80,
+  bloodResonance: 4,
+  resolve: 4,
+  disposition: 0,
+  fear: 0,
   status: 'wandering',
   relationships: {},
 };

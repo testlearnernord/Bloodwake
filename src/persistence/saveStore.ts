@@ -29,6 +29,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(v
 
 const QUALITY_LEVELS: QualityLevel[] = ['Poor', 'Common', 'Fine', 'Masterwork'];
 
+const isIntegerInRange = (value: unknown, min: number, max: number): boolean =>
+  typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= min && value <= max;
+
+const isValidSettings = (value: unknown): boolean =>
+  isRecord(value) && typeof value.volume === 'number' && Number.isFinite(value.volume) && typeof value.uiScale === 'number' && Number.isFinite(value.uiScale);
+
 const normalizeInventoryEntry = (value: unknown): InventoryEntry | null => {
   if (!isRecord(value) || typeof value.itemId !== 'string' || typeof value.quantity !== 'number') {
     return null;
@@ -75,6 +81,9 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isRecord(value.player) || !isRecord(value.time) || !Array.isArray(value.lastEventLog)) {
     return false;
   }
+  if (!isValidSettings(value.settings)) {
+    return false;
+  }
   // Reject saves that still carry the legacy servants field
   if ('servants' in value) {
     return false;
@@ -82,6 +91,29 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!requiredArrays.every((field) => Array.isArray(value[field]))) {
     return false;
   }
+  // Validate v5 free-human metadata. Old decorative fields are no longer accepted.
+  const npcs = value.npcs as unknown[];
+  for (const record of npcs) {
+    if (!isRecord(record) || typeof record.id !== 'string') {
+      return false;
+    }
+    if ('bloodQuality' in record || 'recruitability' in record) {
+      return false;
+    }
+    if (!isIntegerInRange(record.bloodResonance, 1, 5)) {
+      return false;
+    }
+    if (!isIntegerInRange(record.resolve, 1, 5)) {
+      return false;
+    }
+    if (!isIntegerInRange(record.disposition, -100, 100)) {
+      return false;
+    }
+    if (!isIntegerInRange(record.fear, 0, 100)) {
+      return false;
+    }
+  }
+
   // Validate population records are objects with string ids
   const humanServants = value.humanServants as unknown[];
   const vampireVassals = value.vampireVassals as unknown[];
@@ -134,7 +166,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const normalizeV4 = (value: SaveGame): SaveGame => {
+const normalizeV5 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -179,7 +211,7 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  return normalizeV4(value);
+  return normalizeV5(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

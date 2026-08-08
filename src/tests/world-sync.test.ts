@@ -220,7 +220,7 @@ describe('human replenishment', () => {
 
   it('surviving humans remain', () => {
     const npcs = replenishHumanPopulation(
-      [{ id: 'human-1', status: 'wandering', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodQuality: 3, recruitability: 50, relationships: {} }],
+      [{ id: 'human-1', status: 'wandering', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
       seed,
       2,
       TARGET_HUMAN_POPULATION,
@@ -230,7 +230,7 @@ describe('human replenishment', () => {
 
   it('fed humans recover to wandering', () => {
     const npcs = replenishHumanPopulation(
-      [{ id: 'fed-1', status: 'fed', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodQuality: 3, recruitability: 50, relationships: {} }],
+      [{ id: 'fed-1', status: 'fed', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
       seed,
       2,
       TARGET_HUMAN_POPULATION,
@@ -241,7 +241,7 @@ describe('human replenishment', () => {
 
   it('drained humans are removed', () => {
     const npcs = replenishHumanPopulation(
-      [{ id: 'drain-1', status: 'drained', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodQuality: 3, recruitability: 50, relationships: {} }],
+      [{ id: 'drain-1', status: 'drained', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
       seed,
       2,
       TARGET_HUMAN_POPULATION,
@@ -251,7 +251,7 @@ describe('human replenishment', () => {
 
   it('turned humans do not reappear as humans', () => {
     const npcs = replenishHumanPopulation(
-      [{ id: 'turned-1', status: 'turned', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodQuality: 3, recruitability: 50, relationships: {} }],
+      [{ id: 'turned-1', status: 'turned', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
       seed,
       2,
       TARGET_HUMAN_POPULATION,
