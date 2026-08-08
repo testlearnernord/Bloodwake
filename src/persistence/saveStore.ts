@@ -84,6 +84,14 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if ('hunger' in value.player) {
     return false;
   }
+  if (
+    typeof value.player.vitae !== 'number' ||
+    !Number.isFinite(value.player.vitae) ||
+    typeof value.player.maxVitae !== 'number' ||
+    !Number.isFinite(value.player.maxVitae)
+  ) {
+    return false;
+  }
   if (!isValidSettings(value.settings)) {
     return false;
   }
@@ -210,6 +218,9 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
     if (value.version > SAVE_FORMAT_VERSION) {
       throw new Error('Save file version is newer than this build supports.');
     }
+  }
+  if (isRecord(value) && isRecord(value.player) && 'hunger' in value.player) {
+    throw new Error('Imported save still includes legacy hunger data and is incompatible with this build.');
   }
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');

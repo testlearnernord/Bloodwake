@@ -32,6 +32,18 @@ describe('save serialization and validation', () => {
     expect(validateSaveGame({ nope: true })).toBe(false);
   });
 
+  it('rejects v6 saves with non-finite player vitae values', () => {
+    const state = createNewGameState({ seed: 'bad-vitae' });
+    const badVitae = { ...state, player: { ...state.player, vitae: Number.NaN } };
+    const badMaxVitae = { ...state, player: { ...state.player, maxVitae: Number.POSITIVE_INFINITY } };
+    const badVitaeType = { ...state, player: { ...state.player, vitae: '5' } };
+    const badMaxVitaeType = { ...state, player: { ...state.player, maxVitae: undefined } };
+    expect(validateSaveGame(badVitae)).toBe(false);
+    expect(validateSaveGame(badMaxVitae)).toBe(false);
+    expect(validateSaveGame(badVitaeType)).toBe(false);
+    expect(validateSaveGame(badMaxVitaeType)).toBe(false);
+  });
+
   it('rejects v1 saves with a clear incompatibility error', () => {
     const base = createNewGameState({ seed: 'old-save' });
     const v1Like = { ...base, version: 1, servants: [], humanServants: undefined, vampireVassals: undefined };
@@ -106,6 +118,13 @@ describe('save serialization and validation', () => {
     const withLegacy = { ...state, servants: [] };
     expect(validateSaveGame(withLegacy)).toBe(false);
     expect(() => migrateSaveGame(withLegacy)).toThrow();
+  });
+
+  it('rejects v6 saves that still contain a legacy hunger field with a targeted error', () => {
+    const state = createNewGameState({ seed: 'legacy-hunger' });
+    const withLegacyHunger = { ...state, player: { ...state.player, hunger: 0 } };
+    expect(validateSaveGame(withLegacyHunger)).toBe(false);
+    expect(() => migrateSaveGame(withLegacyHunger)).toThrow(/legacy hunger data/);
   });
 
   it('rejects v6 saves with malformed humanServants records', () => {
