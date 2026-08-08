@@ -1,7 +1,7 @@
 import { ITEMS_BY_ID } from '../../data/items';
-import { MAX_HUNGER } from '../../config/balancing';
 import type { CombatUiSnapshot } from '../../game/combat/combatTypes';
 import type { SaveGame } from '../../types/models';
+import { getVitaeCondition, getVitaeConditionDescription } from '../../simulation/blood/vitaeCondition';
 import { renderIcon } from '../icons/registry';
 import { htmlEscape } from '../../utilities/html';
 
@@ -31,15 +31,8 @@ export const renderBottomHud = (
   const healthPct = Math.max(0, Math.min(100, (state.player.health / state.player.maxHealth) * 100));
   const delayedHealthPct = combatUi ? Math.max(0, Math.min(100, (combatUi.playerHealthPreview / state.player.maxHealth) * 100)) : healthPct;
   const vitaePct = Math.max(0, Math.min(100, (state.player.vitae / state.player.maxVitae) * 100));
-  const hungerPct = Math.max(0, Math.min(100, (state.player.hunger / MAX_HUNGER) * 100));
-  const isMaxHunger = state.player.hunger >= MAX_HUNGER;
-  const isHighHunger = state.player.hunger >= MAX_HUNGER * 0.7;
-  const hungerClass = isMaxHunger ? 'hunger-max' : isHighHunger ? 'hunger-high' : '';
-  const hungerTooltip = isMaxHunger
-    ? 'STARVING — dawn damage incoming! Feed or drain a human to reduce hunger.'
-    : isHighHunger
-      ? 'Hunger is high. Feeding or draining reduces hunger.'
-      : 'Feeding or draining humans reduces hunger.';
+  const vitaeCondition = getVitaeCondition(state.player.vitae, state.player.maxVitae);
+  const vitaeTooltip = getVitaeConditionDescription(state.player.vitae, state.player.maxVitae);
   const weapon = state.player.equipment.Weapon ? ITEMS_BY_ID[state.player.equipment.Weapon].name : weaponName;
   const target = combatUi?.lockedTarget ?? null;
   const abilities = combatUi?.abilities ?? [];
@@ -48,17 +41,13 @@ export const renderBottomHud = (
       <div class="hud-bar" aria-label="Health ${state.player.health} of ${state.player.maxHealth}">
         <div class="hud-bar-label">Health ${state.player.health}/${state.player.maxHealth}</div>
         <div class="hud-bar-track">
-          <div class="hud-bar-fill delayed-fill" style="width:${delayedHealthPct}%"></div>
-          <div class="hud-bar-fill health-fill" style="width:${healthPct}%"></div>
+<div class="hud-bar-fill delayed-fill" style="width:${delayedHealthPct}%"></div>
+<div class="hud-bar-fill health-fill" style="width:${healthPct}%"></div>
         </div>
       </div>
-      <div class="hud-bar" aria-label="Vitae ${state.player.vitae} of ${state.player.maxVitae}">
-        <div class="hud-bar-label">Vitae ${state.player.vitae}/${state.player.maxVitae}</div>
+      <div class="hud-bar vitae-condition-${vitaeCondition.toLowerCase()}" aria-label="Vitae ${state.player.vitae} of ${state.player.maxVitae}, ${vitaeCondition}" data-tooltip="${htmlEscape(vitaeTooltip)}">
+        <div class="hud-bar-label">Vitae ${state.player.vitae}/${state.player.maxVitae} · ${vitaeCondition}</div>
         <div class="hud-bar-track"><div class="hud-bar-fill vitae-fill" style="width:${vitaePct}%"></div></div>
-      </div>
-      <div class="hud-bar ${hungerClass}" aria-label="Hunger ${state.player.hunger} of ${MAX_HUNGER}" data-tooltip="${htmlEscape(hungerTooltip)}">
-        <div class="hud-bar-label">Hunger ${state.player.hunger}/${MAX_HUNGER}${isMaxHunger ? ' ⚠ STARVING' : isHighHunger ? ' !' : ''}</div>
-        <div class="hud-bar-track"><div class="hud-bar-fill hunger-fill" style="width:${hungerPct}%"></div></div>
       </div>
       <div class="hud-chip-row">
         <div class="hud-chip" data-tooltip="Current weapon">${renderIcon('weapon')}<span>${htmlEscape(weapon)}</span></div>
@@ -69,16 +58,12 @@ export const renderBottomHud = (
     <div class="hud-combat">
       <div class="ability-grid">${abilities.map(renderAbilitySlot).join('')}</div>
       <div class="target-panel ${target ? '' : 'hidden'}">
-        ${
-          target
-           ? `<div class="target-header"><strong>Locked: ${htmlEscape(target.name)}</strong><span>${target.elite ? 'Elite' : target.typeLabel}</span></div>
-               <div class="hud-bar compact-target" aria-label="Target ${target.health} of ${target.maxHealth}">
-                 <div class="hud-bar-track"><div class="hud-bar-fill target-fill" style="width:${Math.max(0, Math.min(100, (target.health / target.maxHealth) * 100))}%"></div></div>
-                 <div class="hud-bar-label">${target.health}/${target.maxHealth}</div>
-               </div>
-               <p class="target-status">${htmlEscape(target.statusText)}</p>`
-            : ''
-        }
+        ${target ? `<div class="target-header"><strong>Locked: ${htmlEscape(target.name)}</strong><span>${target.elite ? 'Elite' : target.typeLabel}</span></div>
+     <div class="hud-bar compact-target" aria-label="Target ${target.health} of ${target.maxHealth}">
+       <div class="hud-bar-track"><div class="hud-bar-fill target-fill" style="width:${Math.max(0, Math.min(100, (target.health / target.maxHealth) * 100))}%"></div></div>
+       <div class="hud-bar-label">${target.health}/${target.maxHealth}</div>
+     </div>
+     <p class="target-status">${htmlEscape(target.statusText)}</p>` : ''}
       </div>
     </div>
   `;

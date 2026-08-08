@@ -88,7 +88,6 @@ export const inheritVampire = (
     vitae: 2,
     maxVitae: 8,
     bloodEssence: 0,
-    hunger: 1,
     memoryFragments: [],
     professionSkills,
     equipment: {},

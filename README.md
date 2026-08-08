@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.5 world synchronization — servants, rooms, respawns, and hunger.
+> Current status: Milestone 0.6.2a unified Vampire Vitae rework.
 
 ## Zero-cost architecture
 
@@ -15,14 +15,14 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 ## Implemented in Milestone 0.5
 
 - Persistent world-cycle state: collected resource nodes and defeated enemies are remembered within a night cycle and cleared when a new night begins
-- Vampire servants appear in Ruined Stronghold with name and job labels; newly turned servants appear without reloading
+- Vampire vassals appear in Ruined Stronghold with name and job labels; newly turned vassals appear without reloading
 - Built rooms are visualized at their grid positions in Ruined Stronghold with progress indicators
 - Human population replenishes at each new night: drained/turned humans are removed, fed humans recover, new humans fill up to the configured target of 5
-- Centralized `advanceWorldPhase()` function coordinates day/night toggle, hunger, starvation, servant work shifts, and world refresh
-- Hunger is capped at `MAX_HUNGER = 10`; feeding reduces hunger by 3, draining by 4; starvation at max hunger deals damage each dawn (health floor 1)
-- HUD shows hunger as `current/MAX` with warning and starvation indicators
+- Centralized `advanceWorldPhase()` coordinates day/night toggle, Vitae upkeep, daylight restrictions, vassal work shifts, and world refresh
+- Vampire sustenance and supernatural abilities now share the single personal Vitae resource.
+- HUD shows Vitae condition (Sated / Thirsty / Starved / Bloodless) and its active penalties.
 - Save format incremented to version 3 with a safe migration from version 2
-- 52 new deterministic tests for phase lifecycle, hunger, human replenishment, resource and enemy persistence, servant/room state, and migration
+- Deterministic regression coverage tracks phase lifecycle, human replenishment, resource/enemy persistence, population state, rooms, and saves.
 
 ## Implemented in Milestone 0.4
 
@@ -64,10 +64,10 @@ Shortcuts are guarded and do not trigger while typing in form controls or while 
 ## Supported core loop
 
 1. Explore and fight at night.
-2. Feed to restore Vitae and stay effective.
-3. Inspect humans for blood quality, profession value, and useful traits.
-4. Turn a qualified human into exactly one vampire servant.
-5. Assign servant priorities so they build, craft, gather, or guard.
+2. Feed to restore Vitae and avoid low-blood combat and movement penalties.
+3. Inspect humans for Blood Resonance, profession value, and useful traits.
+4. Turn a qualified human into exactly one vampire vassal.
+5. Assign vassal priorities so they build, craft, gather, or guard.
 6. Use new rooms and crafted gear to strengthen both stronghold and combat.
 7. Loop back into stronger combat, better candidates, and steadier stronghold growth.
 
@@ -80,12 +80,12 @@ Shortcuts are guarded and do not trigger while typing in form controls or while 
 - **Bite flow:** `F` and context buttons share one animated pipeline so feed/drain/turn outcomes commit exactly once.
 - **Telegraphs:** every enemy damage event is preceded by a readable arc or line marker.
 
-## Turning and servants
+## Turning and vassals
 
 - Context UI now shows whether a nearby human is eligible for feeding, draining, or turning.
 - Turn failures explain the real blocker before resources are spent.
-- Successful turns consume Vitae once, create one servant once, add one inheritance report once, and remove the human from the world state once.
-- Servant screens explain why a profession or trait matters and what work that servant is likely to do next.
+- Successful turns consume Vitae once, create one vampire vassal once, add one inheritance report once, and remove the human from the world state once.
+- Domain Population screens explain why a profession or trait matters and what work a vassal is likely to do next.
 
 ## Display targets
 
@@ -129,13 +129,7 @@ npm run smoke:pages
 
 ## Next milestone direction
 
-If the current foundation remains stable, Milestone 0.5 should focus on:
-
-- raids on the stronghold
-- traps and fortifications
-- walls and chokepoints
-- path blocking / defensive layout planning
-- deeper strategic base defense gameplay
+Milestone 0.6.2b makes Feed and Drain use Blood Resonance as an actual tactical choice. Human recruitment/housing follows in 0.6.3.
 
 ## License
 

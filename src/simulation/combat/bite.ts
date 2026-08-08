@@ -1,7 +1,6 @@
 import { DRAIN_ESSENCE_GAIN, FEED_VITAE_GAIN, TURN_COST_VITAE } from '../../config/balancing';
 import { inheritVampire } from '../bloodlines/inheritance';
 import { completeQuestStep } from '../quests/quests';
-import { applyFeedHungerReduction, applyDrainHungerReduction } from '../time/phaseAdvance';
 import type { HumanActionMode } from '../../game/combat/combatTypes';
 import type { HumanCharacter, SaveGame, VampireVassal } from '../../types/models';
 
@@ -94,7 +93,6 @@ export const applyHumanAction = (
   };
   if (mode === 'feed') {
     nextState.player.vitae = Math.min(nextState.player.maxVitae, nextState.player.vitae + FEED_VITAE_GAIN);
-    nextState.player.hunger = applyFeedHungerReduction(nextState.player.hunger);
     updateHumanStatus('fed');
     nextState.quests = completeQuestStep(nextState.quests, 'awakening', 'feed');
     nextState.lastEventLog.unshift(`Fed on ${human.name} and left them alive.`);
@@ -103,7 +101,6 @@ export const applyHumanAction = (
   if (mode === 'drain') {
     nextState.player.vitae = Math.min(nextState.player.maxVitae, nextState.player.vitae + FEED_VITAE_GAIN);
     nextState.strategicResources.bloodEssence += DRAIN_ESSENCE_GAIN;
-    nextState.player.hunger = applyDrainHungerReduction(nextState.player.hunger);
     updateHumanStatus('drained');
     nextState.lastEventLog.unshift(`Drained ${human.name} for Blood Essence.`);
     return { state: nextState, message: 'Blood Essence increased.' };
@@ -141,7 +138,6 @@ export const applyHumanAction = (
     currentJob: null,
     currentTask: null,
     taskReason: 'Newly turned and awaiting direction.',
-    hunger: inheritedVampire.hunger,
     equipped: {},
   };
   // Prevent duplicate: only add if no vassal with this id exists

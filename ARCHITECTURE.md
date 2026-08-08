@@ -61,7 +61,7 @@ Once a supported transition has ended, obsolete compatibility models, aliases, c
 - `WorldScene.syncWorldCycleWithState()` rebuilds world entities when a new night begins, using the cycle number as the trigger.
 - Vampire vassal and room world representations are passive scene objects created in `createVassals()` / `createRooms()` and kept in sync by `syncVassalsWithState()` / `syncRoomsWithState()`.
 - Human population replenishment uses deterministic IDs (`human-d{day}-{index}`) derived from world seed and day number to prevent collisions across cycles.
-- Hunger cap and starvation logic live in `advanceWorldPhase()` to keep them testable and centralized.
+- Phase lifecycle logic remains centralized in `advanceWorldPhase()`; current vampire sustenance uses the unified Vitae rules documented below.
 - Save format v3 added `worldCycle` with sanitization and deduplication of identifier arrays.
 
 ## Key decisions in Milestone 0.4
@@ -102,3 +102,11 @@ Once a supported transition has ended, obsolete compatibility models, aliases, c
 - Enemy population remains intentionally small for this milestone.
 - Presentation favors small generated silhouettes and shape effects over authored animation sheets.
 - Base defense systems such as raids, traps, walls, and path blocking remain deferred.
+
+
+## Unified Vampire Vitae boundary
+
+- `VampireCharacter` and `VampireVassal` carry Vitae/maxVitae and never use Food as personal sustenance.
+- Vitae condition is derived through `src/simulation/blood/vitaeCondition.ts`; thresholds/effects are not persisted.
+- Player dawn upkeep consumes personal Vitae. Vassal domain upkeep is deliberately deferred until Blood Stock/Dominion supplies the source/sink.
+- Human Food requirements belong to Human Servants and must not be reintroduced through `PopulationBase`.

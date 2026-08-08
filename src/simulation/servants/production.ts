@@ -60,9 +60,6 @@ export const runWorkShift = (
     } else if (task.type === 'gather_resource') {
       const itemId = task.id === 'gather-herbs' ? 'herbs' : 'wood';
       updatedInventory = addItem(updatedInventory, itemId, 3);
-      if (itemId === 'wood') {
-        updatedInventory = addItem(updatedInventory, 'food', 1);
-      }
       log.push(`${vassal.name} gathers ${itemId === 'wood' ? 'Wood' : 'Herbs'}.`);
     } else {
       updatedStrategicResources.security += 1;

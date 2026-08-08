@@ -27,7 +27,6 @@ const sire: VampireCharacter = {
   vitae: 8,
   maxVitae: 10,
   bloodEssence: 1,
-  hunger: 0,
   memoryFragments: [],
   professionSkills: { Crafting: 2, Research: 2 },
   equipment: {},

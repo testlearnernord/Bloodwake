@@ -13,7 +13,6 @@
   --muted: #adb5bd;
   --health: #d90429;
   --vitae: #6a4c93;
-  --hunger: #f4a261;
   --rarity-common: #ced4da;
   --rarity-uncommon: #74c69d;
   --rarity-rare: #80b1ff;
@@ -315,9 +314,6 @@ main {
   background: linear-gradient(90deg, #4a1942, var(--vitae));
 }
 
-.hunger-fill {
-  background: linear-gradient(90deg, #99582a, var(--hunger));
-}
 
 .hud-chip {
   display: inline-flex;

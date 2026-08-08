@@ -1,10 +1,4 @@
-import {
-  DRAIN_HUNGER_REDUCTION,
-  FEED_HUNGER_REDUCTION,
-  MAX_HUNGER,
-  STARVATION_HEALTH_DAMAGE,
-  TARGET_HUMAN_POPULATION,
-} from '../../config/balancing';
+import { PLAYER_VITAE_UPKEEP_PER_DAWN, TARGET_HUMAN_POPULATION } from '../../config/balancing';
 import type { DayPhase, SaveGame } from '../../types/models';
 import { runWorkShift } from '../servants/production';
 import { getDayRestrictionPenalty } from '../traits/traitEffects';
@@ -28,32 +22,24 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
   let npcs = state.npcs.map((npc) => ({ ...npc }));
   let worldCycle = { ...state.worldCycle };
 
-  // Night → Day: apply hunger and day restriction penalty
+  // Night -> Day: vampires consume stored Vitae; daylight traits remain separate.
   if (nextPhase === 'day') {
-    const penalty = getDayRestrictionPenalty(getTraitEffectIds(player.traitIds));
-    const hungerIncrease = 1 + penalty;
-    const wasStarving = player.hunger >= MAX_HUNGER;
-    const newHunger = Math.min(MAX_HUNGER, player.hunger + hungerIncrease);
-
-    if (!wasStarving && newHunger >= MAX_HUNGER) {
-      events.push(`Hunger reaches its limit — you are starving. (${MAX_HUNGER}/${MAX_HUNGER})`);
+    const vitaeBefore = player.vitae;
+    const vitaeAfter = Math.max(0, vitaeBefore - PLAYER_VITAE_UPKEEP_PER_DAWN);
+    if (vitaeAfter < vitaeBefore) {
+      events.push(`Dawn deepens your thirst. (-${vitaeBefore - vitaeAfter} Vitae)`);
     }
 
-    // Daylight restriction and starvation damage are both applied during day.
+    const penalty = getDayRestrictionPenalty(getTraitEffectIds(player.traitIds));
     let newHealth = player.health;
     if (penalty > 0) {
       newHealth = Math.max(1, newHealth - penalty);
       events.push(`Daylight weakens you. (-${penalty} health penalty applied)`);
     }
-    if (newHunger >= MAX_HUNGER) {
-      newHealth = Math.max(1, newHealth - STARVATION_HEALTH_DAMAGE);
-      events.push(`Starvation saps your strength. (-${STARVATION_HEALTH_DAMAGE} health)`);
-    }
-
-    player = { ...player, hunger: newHunger, health: newHealth };
+    player = { ...player, vitae: vitaeAfter, health: newHealth };
   }
 
-  // Day → Night: increment day, refresh world cycle, replenish humans
+  // Day -> Night: increment day, refresh world cycle, replenish humans.
   const nextDay = nextPhase === 'night' ? state.time.day + 1 : state.time.day;
   if (nextPhase === 'night') {
     worldCycle = {
@@ -63,11 +49,9 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     };
     worldCycleChanged = true;
     events.push(`Night ${nextDay} begins. The world stirs anew.`);
-
     npcs = replenishHumanPopulation(npcs, state.seed, nextDay, TARGET_HUMAN_POPULATION);
   }
 
-  // Run work shift for vampire vassals
   const shift = runWorkShift(
     state.vampireVassals,
     state.rooms,
@@ -78,9 +62,7 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     state.seed,
   );
 
-  for (const logEntry of shift.log) {
-    events.push(logEntry);
-  }
+  for (const logEntry of shift.log) events.push(logEntry);
 
   const newState: SaveGame = {
     ...state,
@@ -98,15 +80,3 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
 
   return { state: newState, events, worldCycleChanged };
 };
-
-/**
- * Apply hunger reduction from feeding. Returns clamped new hunger value.
- */
-export const applyFeedHungerReduction = (currentHunger: number): number =>
-  Math.max(0, currentHunger - FEED_HUNGER_REDUCTION);
-
-/**
- * Apply hunger reduction from draining. Returns clamped new hunger value.
- */
-export const applyDrainHungerReduction = (currentHunger: number): number =>
-  Math.max(0, currentHunger - DRAIN_HUNGER_REDUCTION);
