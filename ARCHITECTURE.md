@@ -110,3 +110,8 @@ Once a supported transition has ended, obsolete compatibility models, aliases, c
 - Vitae condition is derived through `src/simulation/blood/vitaeCondition.ts`; thresholds/effects are not persisted.
 - Player dawn upkeep consumes personal Vitae. Vassal domain upkeep is deliberately deferred until Blood Stock/Dominion supplies the source/sink.
 - Human Food requirements belong to Human Servants and must not be reintroduced through `PopulationBase`.
+
+
+## Human Thrall boundary (0.6.3a)
+
+`HumanServant` and `VampireVassal` share only operational population fields. Human Thralls must not acquire loyalty/ambition/morale compatibility fields. Their authority model lives in `simulation/servants/humanThralls.ts` through Control/Resistance, housing, Food upkeep and reassertion. Vampire Vassal politics remain separate. Compatibility aliases for the removed human loyalty fields are forbidden; save v7 rejects them.

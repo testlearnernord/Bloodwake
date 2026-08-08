@@ -83,11 +83,17 @@ describe('overlay rendering safety', () => {
         professionId: human.professionId,
         attributes: { ...human.attributes },
         traitIds: [...human.traitIds],
+        familyName: human.familyName,
+        factionId: human.factionId,
+        bloodResonance: human.bloodResonance,
+        resolve: human.resolve,
+        disposition: human.disposition,
+        fear: human.fear,
+        relationships: { ...human.relationships },
+        resistance: human.resolve,
+        control: 70,
         health: human.health,
         maxHealth: human.maxHealth,
-        morale: human.morale,
-        loyalty: human.loyalty,
-        ambition: human.ambition,
         stress: human.stress,
         combat: human.combat,
         professionSkills: {},
@@ -101,14 +107,14 @@ describe('overlay rendering safety', () => {
         },
         currentJob: null,
         currentTask: null,
-        taskReason: 'Awaiting recruitment systems.',
+        taskReason: 'Held under vampiric control.',
         equipped: {},
       },
     ];
 
     const html = renderOverlay('servants', state, null, 'all', 'workshop');
     expect(html).toContain(human.name);
-    expect(html).not.toContain('No human servants recruited yet.');
+    expect(html).not.toContain('No human thralls.');
   });
 });
 

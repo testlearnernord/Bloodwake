@@ -9,6 +9,7 @@ import { getItemQuantity, hasItems } from '../../simulation/inventory/inventory'
 import { calculatePlayerCombatStats } from '../../simulation/combat/stats';
 import { getVitaeCondition } from '../../simulation/blood/vitaeCondition';
 import { selectTaskForVassal } from '../../simulation/servants/tasks';
+import { getHumanHousingCapacity, getThrallControlState, validateReassertThrallControl } from '../../simulation/servants/humanThralls';
 import type { BuiltRoom, InventoryEntry, ItemCategory, ItemId, SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
 import type { MenuId } from '../uiState';
@@ -187,30 +188,30 @@ export const renderOverlay = (
   if (menu === 'servants') {
     const humanServants = state.humanServants;
     const vassals = state.vampireVassals;
+    const housingCapacity = getHumanHousingCapacity(state.rooms);
     return renderOverlayPanel(
       'Domain Population',
       `<div class="columns three">
         <section>
-          <h3>Human Servants</h3>
+          <h3>Human Thralls</h3>
+          <p>Housing: ${humanServants.length}/${housingCapacity} · Base ruins provide 2 spaces; each Servant Quarters adds 4.</p>
           ${
             humanServants.length === 0
-              ? '<p class="hint">No human servants recruited yet. Human recruitment is not yet available.</p>'
+              ? '<p class="hint">No human thralls. Subdue a free human at night and choose Enthrall.</p>'
               : humanServants
-                  .map((servant) => `<button class="servant-card" data-servant-row="${htmlEscape(servant.id)}">${htmlEscape(servant.name)} · human servant</button>`)
+                  .map((servant) => {
+                    const profession = PROFESSIONS_BY_ID[servant.professionId];
+                    const reassert = validateReassertThrallControl(state, servant);
+                    return `<article class="servant-card"><h4>${htmlEscape(servant.name)} ${htmlEscape(servant.familyName)}</h4><p>${htmlEscape(profession.name)} · Blood Resonance ${servant.bloodResonance}</p><p>Control ${servant.control}/100 · ${htmlEscape(getThrallControlState(servant.control))}</p><p>Resistance ${servant.resistance}/5 · Stress ${servant.stress}/100 · Fear ${servant.fear}/100</p><p class="hint">${htmlEscape(servant.taskReason)}</p><button data-reassert-thrall="${htmlEscape(servant.id)}" ${reassert.ok ? '' : 'disabled'} title="${htmlEscape(reassert.ok ? 'Spend Vitae to reinforce the thrall bond.' : reassert.reason)}">Reassert Control</button></article>`;
+                  })
                   .join('')
-          }
-          <h3>Vampire Vassals</h3>
-          ${
-            vassals.length === 0
-              ? '<p>No vampire vassals yet. Turn a human in the world to create your first vampire vassal.</p>'
-              : vassals.map((vassal) => `<button class="servant-card" data-servant-row="${htmlEscape(vassal.id)}">${htmlEscape(vassal.name)} · vassal</button>`).join('')
           }
         </section>
         <section>
-          <h3>Overview</h3>
+          <h3>Vampire Vassals</h3>
           ${
             vassals.length === 0
-              ? '<p>Once turned, vampire vassals can gather, build, and craft for your stronghold.</p>'
+              ? '<p>No vampire vassals yet. Turning creates a powerful but autonomous subordinate, not a thrall.</p>'
               : vassals
                   .map((vassal) => {
                     const profession = PROFESSIONS_BY_ID[vassal.professionId];
@@ -221,10 +222,10 @@ export const renderOverlay = (
           }
         </section>
         <section>
-          <h3>Priorities</h3>
+          <h3>Vassal Priorities</h3>
           ${
             vassals.length === 0
-              ? '<p>Priority controls unlock once a vampire vassal exists.</p>'
+              ? '<p>Human Thralls and Vampire Vassals use different control models. Human work assignments arrive on top of the Thrall foundation rather than reusing vassal loyalty.</p>'
               : vassals
                   .map(
                     (vassal) => `<article><h4>${htmlEscape(vassal.name)}</h4>${(['Building', 'Crafting', 'Gathering', 'Guarding', 'Research', 'Hunting'] as const)

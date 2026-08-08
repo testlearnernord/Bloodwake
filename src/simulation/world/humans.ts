@@ -62,7 +62,7 @@ export const replenishHumanPopulation = (
   targetCount: number,
 ): HumanCharacter[] => {
   const survivors = existingNpcs.filter((human) => {
-    if (human.status === 'drained' || human.status === 'turned') return false;
+    if (human.status === 'drained' || human.status === 'turned' || human.status === 'enthralled') return false;
     return true;
   });
   const recoveredSurvivors = survivors.map((human) =>

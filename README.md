@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.6.2c Combat Feeding — vulnerable hostiles can be riskily executed for emergency Vitae.
+> Current status: Milestone 0.6.3a Human Thralls — free humans can be enthralled, housed, fed, controlled, and lost again if the vampiric bond breaks.
 
 ## Zero-cost architecture
 
@@ -12,27 +12,22 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 - No runtime CDN dependencies
 - Local SVG icons and programmatic visuals only
 
-## Implemented in Milestone 0.5
+## Current gameplay systems
 
-- Persistent world-cycle state: collected resource nodes and defeated enemies are remembered within a night cycle and cleared when a new night begins
-- Vampire vassals appear in Ruined Stronghold with name and job labels; newly turned vassals appear without reloading
-- Built rooms are visualized at their grid positions in Ruined Stronghold with progress indicators
-- Human population replenishes at each new night: drained/turned humans are removed, fed humans recover, new humans fill up to the configured target of 5
-- Centralized `advanceWorldPhase()` coordinates day/night toggle, Vitae upkeep, daylight restrictions, vassal work shifts, and world refresh
-- Vampire sustenance and supernatural abilities now share the single personal Vitae resource.
-- HUD shows Vitae condition (Sated / Thirsty / Starved / Bloodless) and its active penalties.
-- Save format incremented to version 3 with a safe migration from version 2
-- Deterministic regression coverage tracks phase lifecycle, human replenishment, resource/enemy persistence, population state, rooms, and saves.
-
-## Implemented in Milestone 0.4
-
-- Tactical top-down combat with readable lock-on feedback, Tab / Shift+Tab target cycling, middle-mouse cursor lock, and browser-safe inputs
-- Visual facing that keeps silhouettes upright instead of spinning fully upside down
-- Truthful combat, turning, crafting, and building UI states with disabled reasons instead of fake-active controls
-- Human evaluation and turning flow that clearly explains eligibility, blocked reasons, and why a candidate matters
-- Servant overview that shows practical profession value, likely work contribution, and the turn → servant → stronghold loop
-- Practical fullscreen shell fixes for desktop resolutions, safe overlay scrolling, and an in-game UI scale setting (90/100/110/125%)
-- Deterministic regression coverage for turn reliability, target cycling, shortcut guards, save persistence, and servant productivity flow
+- Persistent world-cycle state: collected resource nodes and defeated enemies are remembered within a night cycle and cleared when a new night begins.
+- Tactical top-down combat with lock-on, light/heavy attacks, dodge, Blood Lance, enemy telegraphs, hit feedback, and Predatory Bite.
+- Predatory Bite uses two circular timing checks with randomized green hit sectors; successful combat feeding executes vulnerable enemies and restores Vitae.
+- Vampire sustenance and supernatural abilities share the single personal Vitae resource.
+- Free humans have profession, traits, Blood Resonance, Resolve, Disposition and Fear.
+- Feed and Drain use Blood Resonance for different tactical rewards.
+- Free humans can be Turned directly into Vampire Vassals or Enthralled as captive Human Thralls.
+- Human Thralls use Control and Resistance rather than Loyalty/Ambition/Morale.
+- The ruined stronghold provides two Human Thrall housing spaces; each Servant Quarters adds four.
+- Human Thralls consume Food each resolved day, lose Control based on Resistance, and suffer additional Control/Stress pressure during shortages.
+- At night the player can spend Vitae to Reassert Control. A Thrall whose Control reaches zero escapes back into the free-human world.
+- Vampire Vassals remain autonomous subordinates with Loyalty and Ambition and can perform the existing stronghold work loop.
+- Built rooms are visualized at their grid positions in Ruined Stronghold with progress indicators.
+- Save format is v7. Older v1-v6 saves are intentionally unsupported.
 
 ## Controls
 
@@ -48,13 +43,13 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 - `Q`: Blood Lance
 - `Space`: dodge
 - `E`: interact / collect
-- `F`: bite / feed nearby human
+- `F`: contextual bite / feed action
 - `Escape`: close overlay, or open Pause if none is open
 
 ### Menu shortcuts
 - `C`: Character & Bloodline
 - `I`: Inventory & Equipment
-- `V`: Servants
+- `V`: Domain Population
 - `B`: Stronghold
 - `K`: Crafting
 - `J`: Journal & Memories
@@ -64,12 +59,21 @@ Shortcuts are guarded and do not trigger while typing in form controls or while 
 ## Supported core loop
 
 1. Explore and fight at night.
-2. Feed to restore Vitae and avoid low-blood combat and movement penalties.
-3. Inspect humans for Blood Resonance, profession value, and useful traits.
-4. Turn a qualified human into exactly one vampire vassal.
-5. Assign vassal priorities so they build, craft, gather, or guard.
-6. Use new rooms and crafted gear to strengthen both stronghold and combat.
-7. Loop back into stronger combat, better candidates, and steadier stronghold growth.
+2. Manage personal Vitae through hunting, Blood Resonance choices, and risky combat feeding.
+3. Inspect free humans for profession, traits, Blood Resonance and Resolve.
+4. Choose what each useful human is worth to you: Feed, Drain, Enthrall as a mortal captive, or Turn into a Vampire Vassal.
+5. House and feed Human Thralls while managing the strength of their vampiric Control.
+6. Spend Vitae to reinforce unstable Thralls before the bond breaks and they escape.
+7. Use Vampire Vassals, rooms, crafting and future Human work systems to expand the stronghold.
+8. Build toward long-term human genetics, Blood Donors, bloodline selection and vampire-domain politics.
+
+## Human Thralls versus Vampire Vassals
+
+Human Thralls are prisoners under vampiric venom and domination, not citizens. They retain their mortal identity and useful human characteristics, but their relationship to the player is measured through **Control** and **Resistance**. Their upkeep is primarily Food, housing, and attention to the weakening bond.
+
+Vampire Vassals are fundamentally different. They are immortal, powerful and autonomous. They retain political agency and therefore use **Loyalty** and **Ambition** rather than Thrall Control. Turning a human is intended to become a strategic trade-off, not an automatic upgrade from mortal worker to better worker.
+
+The retained human identity fields are deliberate groundwork for later profession development, donor selection, families/genetics, and the choice between cultivating a valuable mortal line or converting selected humans into the vampire bloodline.
 
 ## Combat highlights
 
@@ -77,15 +81,9 @@ Shortcuts are guarded and do not trigger while typing in form controls or while 
 - **Orbital movement:** while locked, `W/S` move toward/away and `A/D` circle the target with normalized speed.
 - **Heavy Attack:** spends Vitae once when the strike commits, not on rejected windups.
 - **Blood Lance:** locked shots bias toward the target; free shots aim at the mouse pointer.
-- **Bite flow:** `F` and context buttons share one animated pipeline so feed/drain/turn outcomes commit exactly once.
-- **Telegraphs:** every enemy damage event is preceded by a readable arc or line marker.
-
-## Turning and vassals
-
-- Context UI now shows whether a nearby human is eligible for feeding, draining, or turning.
-- Turn failures explain the real blocker before resources are spent.
-- Successful turns consume Vitae once, create one vampire vassal once, add one inheritance report once, and remove the human from the world state once.
-- Domain Population screens explain why a profession or trait matters and what work a vassal is likely to do next.
+- **Predatory Bite:** vulnerable enemies can be pounced on and executed only after clearing two circular timing checks.
+- **Human bite flow:** contextual actions share one animated pipeline so Feed, Drain, Enthrall and Turn commit exactly once.
+- **Telegraphs:** enemy damage is preceded by readable combat telegraphs.
 
 ## Display targets
 
@@ -121,15 +119,16 @@ npm run smoke:pages
 
 ## Current limitations
 
+- Human Thralls are now recruitable/manageable, but their day-work assignments and production roles are the next layer rather than being faked by the Vampire Vassal worker system.
+- Blood Stock / Blood Cellar donor production is not implemented yet.
+- Genetics, family lines and deeper learned-skill development remain later Character/Bloodline work.
 - Combat presentation uses compact generated silhouettes and Phaser effects rather than hand-authored sprite sheets.
 - The current world still uses the three prototype combat zones from earlier milestones.
-- Reduced-motion support trims camera and tween intensity, but combat is still visually denser than the management UI.
-- Camera zoom is not currently a supported gameplay feature; browser zoom should not be treated as in-game zoom.
 - Large raids, traps, walls, path blocking, and defensive stronghold tactics are intentionally deferred.
 
 ## Next milestone direction
 
-Milestone 0.6.2b makes Feed and Drain use Blood Resonance as an actual tactical choice. Human recruitment/housing follows in 0.6.3.
+Milestone 0.6.3b gives Human Thralls actual daytime work roles and introduces the first Blood Cellar / Blood Donor source-storage-use loop without collapsing Humans and Vampire Vassals into the same worker type.
 
 ## License
 
