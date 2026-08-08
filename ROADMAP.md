@@ -6,8 +6,8 @@
 - 0.6.1 Population Foundation ✅
 - 0.6.2 Blood Choices
   - 0.6.2a Unified Vampire Vitae ✅
-  - 0.6.2b Resonance Feed / Drain choices (current)
-  - 0.6.2c Combat Feeding
+  - 0.6.2b Resonance Feed / Drain choices ✅
+  - 0.6.2c Combat Feeding (current)
 - 0.6.3 Human Recruitment and Housing
 - 0.6.4 Dominion and Torpor
 - 0.6.5 Day Management

@@ -83,3 +83,18 @@ Vitae is both personal vampire blood reserve and supernatural ability energy.
 - A fed human is spent for the rest of the current night: Feed, Drain, and Turn are all blocked until next-night recovery.
 - Drain permanently removes that human on the next replenishment pass.
 - Blood Stock is not introduced here because its donor/storage/upkeep loop belongs to later Human Servant / Dominion work.
+
+
+## Combat Feeding (0.6.2c)
+
+Predatory Bite is a zero-Vitae combat finisher and emergency recovery tool.
+
+- Requires a locked hostile target within `112` units.
+- Normal enemies are vulnerable at `<= 35%` health or while staggered.
+- Elite enemies are vulnerable at `<= 20%` health or while staggered.
+- Start with `F`, then land two additional `F` timing inputs.
+- Normal timing windows are `360 ms`; elite windows are `240 ms`.
+- Success executes the already-vulnerable target and restores up to `2 Vitae`, clipped by max Vitae.
+- Failure deals `3` damage against normal enemies or `5` against elites and knocks the player away.
+- The execution design prevents repeatedly farming the same enemy for Vitae without adding another persistent per-enemy blood counter.
+- Boss-specific feeding rules are intentionally deferred to future regional/boss progression.

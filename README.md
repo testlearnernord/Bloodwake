@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.6.2b Blood Choices — Blood Resonance now drives Feed/Drain decisions.
+> Current status: Milestone 0.6.2c Combat Feeding — vulnerable hostiles can be riskily executed for emergency Vitae.
 
 ## Zero-cost architecture
 
