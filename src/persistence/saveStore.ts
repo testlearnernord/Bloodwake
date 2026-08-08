@@ -102,7 +102,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!requiredArrays.every((field) => Array.isArray(value[field]))) {
     return false;
   }
-  // Validate v6 free-human metadata. Old decorative fields are no longer accepted.
+  // Validate v7 free-human metadata. Old decorative fields are no longer accepted.
   const npcs = value.npcs as unknown[];
   for (const record of npcs) {
     if (!isRecord(record) || typeof record.id !== 'string') {
@@ -132,6 +132,11 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'human_servant' || 'hunger' in record) {
       return false;
     }
+    if ('loyalty' in record || 'ambition' in record || 'morale' in record) return false;
+    if (!isIntegerInRange(record.control, 0, 100) || !isIntegerInRange(record.resistance, 1, 5)) return false;
+    if (!isIntegerInRange(record.bloodResonance, 1, 5) || !isIntegerInRange(record.resolve, 1, 5)) return false;
+    if (!isIntegerInRange(record.disposition, -100, 100) || !isIntegerInRange(record.fear, 0, 100)) return false;
+    if (typeof record.familyName !== 'string' || typeof record.factionId !== 'string' || !isRecord(record.relationships)) return false;
   }
   for (const record of vampireVassals) {
     if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'vampire_vassal' || 'hunger' in record) {
@@ -177,7 +182,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const normalizeV6 = (value: SaveGame): SaveGame => {
+const normalizeV7 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -225,7 +230,7 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  return normalizeV6(value);
+  return normalizeV7(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

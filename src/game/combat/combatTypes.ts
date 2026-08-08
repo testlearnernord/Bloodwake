@@ -1,7 +1,7 @@
 import type { EnemyType } from '../../types/models';
 
 export type CombatActionId = 'light' | 'heavy' | 'blood_lance' | 'bite' | 'dodge';
-export type HumanActionMode = 'feed' | 'drain' | 'turn';
+export type HumanActionMode = 'feed' | 'drain' | 'enthrall' | 'turn';
 export type TelegraphShape = 'arc' | 'line' | 'circle';
 
 export type PlayerActionState =

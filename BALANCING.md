@@ -100,3 +100,20 @@ Predatory Bite is a zero-Vitae combat finisher and emergency recovery tool.
 - Failure deals `3` damage against normal enemies or `5` against elites and knocks the player away.
 - The execution design prevents repeatedly farming the same enemy for Vitae without adding another persistent per-enemy blood counter.
 - Boss-specific feeding rules are intentionally deferred to future regional/boss progression.
+
+
+## Human Thralls (0.6.3a)
+
+Human Servants are captive thralls, not citizens and not loyalty-based vassals.
+
+- Base ruined stronghold housing: `2` humans.
+- Each built Servant Quarters: `+4` human housing.
+- Enthrall cost: `1 Vitae`; enthrallment is only available at night and is blocked when housing is full.
+- Initial Control: `55 + Blood Control * 5 + Fear * 0.2 - Resolve * 6`, clamped to `35..95`.
+- Resistance currently starts from Resolve (`1..5`) and is stored independently for future trait/genetic modifiers.
+- Daily Control decay: `6 + Resistance * 2`.
+- Human upkeep: `1 Food` per thrall per resolved day. Ration shortages add proportional Control loss (up to `12`) and Stress (up to `15`).
+- Reassert Control: night-only, costs `1 Vitae`, restores `35 Control`, and raises Fear/Stress slightly.
+- At `0 Control`, the vampiric bond breaks and the captive escapes back into the free-human world.
+- Control states: Dominated `80-100`, Subdued `60-79`, Unstable `40-59`, Defiant `20-39`, Breaking `0-19`.
+- Human Thralls deliberately do not use `Loyalty`, `Ambition`, or `Morale`; those remain Vampire Vassal concerns.

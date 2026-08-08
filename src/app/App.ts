@@ -20,6 +20,7 @@ import { calculatePlayerCombatStats, useHealingDraught } from '../simulation/com
 import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite';
 import { getBloodChoicePreview } from '../simulation/blood/bloodChoices';
 import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
+import { reassertThrallControl } from '../simulation/servants/humanThralls';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
@@ -441,10 +442,10 @@ export class BloodwakeApp {
       return;
     }
     contextPanel.classList.remove('hidden');
-    const humanActions = (['feed', 'drain', 'turn'] as const).map((mode) => ({
+    const humanActions = (['feed', 'drain', 'enthrall', 'turn'] as const).map((mode) => ({
       mode,
       validation: validateHumanAction(this.state!, human, mode),
-      preview: mode === 'turn' ? null : getBloodChoicePreview(this.state!, human, mode),
+      preview: mode === 'feed' || mode === 'drain' ? getBloodChoicePreview(this.state!, human, mode) : null,
     }));
     const profession = PROFESSIONS_BY_ID[human.professionId];
     const traitNames = human.traitIds.map((traitId) => getTraitById(traitId).name);
@@ -459,7 +460,7 @@ export class BloodwakeApp {
       <div class="button-row compact">
         ${humanActions
           .map(
-            ({ mode, validation }) => `<button data-human-action="${mode}" ${validation.ok ? '' : 'disabled'}>${mode === 'turn' ? 'Turn into Vassal' : mode[0].toUpperCase() + mode.slice(1)}</button>`,
+            ({ mode, validation }) => `<button data-human-action="${mode}" ${validation.ok ? '' : 'disabled'}>${mode === 'turn' ? 'Turn into Vassal' : mode === 'enthrall' ? 'Enthrall as Thrall' : mode[0].toUpperCase() + mode.slice(1)}</button>`,
           )
           .join('')}
       </div>
@@ -467,7 +468,7 @@ export class BloodwakeApp {
         ${humanActions
           .map(
             ({ mode, validation, preview }) =>
-              `<li>${mode === 'turn' ? 'Turn' : mode[0].toUpperCase() + mode.slice(1)}: ${htmlEscape(validation.ok ? (preview ?? 'Ready.') : validation.reason)}</li>`,
+              `<li>${mode === 'turn' ? 'Turn' : mode === 'enthrall' ? 'Enthrall' : mode[0].toUpperCase() + mode.slice(1)}: ${htmlEscape(validation.ok ? (preview ?? 'Ready.') : validation.reason)}</li>`,
           )
           .join('')}
       </ul>
@@ -504,6 +505,21 @@ export class BloodwakeApp {
         if (this.focusedHumanId) {
           this.sceneApi?.startHumanActionSequence(this.focusedHumanId, button.dataset.humanAction as HumanActionMode);
         }
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-reassert-thrall]')) {
+      button.onclick = async () => {
+        if (!this.state) return;
+        const result = reassertThrallControl(this.state, button.dataset.reassertThrall ?? '');
+        if (result.state === this.state) {
+          this.notify(result.message);
+          return;
+        }
+        this.state = result.state;
+        this.notify(result.message);
+        await this.autoSave('slot-1');
+        this.renderGame();
       };
     }
 

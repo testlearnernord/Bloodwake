@@ -32,7 +32,7 @@ export type ItemSlot = 'Weapon' | 'Armor' | 'Accessory';
 export type QuestStepStatus = 'locked' | 'active' | 'complete';
 export type EnemyType = 'bandit' | 'clergy_hunter' | 'elite_knight';
 export type TaskType = 'construct_room' | 'craft_recipe' | 'gather_resource' | 'guard_stronghold';
-export type HumanStatus = 'wandering' | 'fed' | 'drained' | 'turned';
+export type HumanStatus = 'wandering' | 'fed' | 'drained' | 'turned' | 'enthralled';
 export type ItemCategory = 'material' | 'weapon' | 'armor' | 'accessory' | 'consumable' | 'quest' | 'relic';
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 export type ItemId =
@@ -138,7 +138,7 @@ export interface JobPriorityMap {
   Hunting: JobPriority;
 }
 
-/** Shared fields for all explicit population types. */
+/** Shared operational fields for explicit stronghold population types. */
 export interface PopulationBase {
   id: string;
   name: string;
@@ -148,9 +148,6 @@ export interface PopulationBase {
   traitIds: string[];
   health: number;
   maxHealth: number;
-  morale: number;
-  loyalty: number;
-  ambition: number;
   stress: number;
   combat: number;
   professionSkills: Partial<Record<JobType, number>>;
@@ -161,14 +158,26 @@ export interface PopulationBase {
   equipped: Partial<Record<ItemSlot, ItemId>>;
 }
 
-/** Explicit population type for a human who has been recruited as a servant. */
+/** A mortal prisoner held through vampiric venom and domination. */
 export interface HumanServant extends PopulationBase {
   kind: 'human_servant';
+  familyName: string;
+  factionId: FactionId;
+  bloodResonance: BloodResonance;
+  resolve: number;
+  disposition: number;
+  fear: number;
+  relationships: Record<string, number>;
+  resistance: number;
+  control: number;
 }
 
-/** Explicit population type for a vampire who serves the player. */
+/** An autonomous vampire political subordinate, not a mortal thrall. */
 export interface VampireVassal extends PopulationBase {
   kind: 'vampire_vassal';
+  morale: number;
+  loyalty: number;
+  ambition: number;
   vitae: number;
   maxVitae: number;
 }
@@ -185,6 +194,7 @@ export interface RoomDefinition {
   requiredRoomId?: RoomId;
   workerSlots: number;
   storageCapacity: number;
+  housingCapacity: number;
   productionCapabilities: string[];
   modifiers: ItemModifier;
   allowedJobTypes: JobType[];

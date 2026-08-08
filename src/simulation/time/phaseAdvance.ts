@@ -4,6 +4,7 @@ import { runWorkShift } from '../servants/production';
 import { getDayRestrictionPenalty } from '../traits/traitEffects';
 import { getTraitEffectIds } from '../traits/traitUtils';
 import { replenishHumanPopulation } from '../world/humans';
+import { resolveHumanThrallDay } from '../servants/humanThralls';
 
 export interface PhaseAdvanceResult {
   state: SaveGame;
@@ -21,6 +22,8 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
   let player = { ...state.player };
   let npcs = state.npcs.map((npc) => ({ ...npc }));
   let worldCycle = { ...state.worldCycle };
+  let humanServants = state.humanServants.map((servant) => ({ ...servant, relationships: { ...servant.relationships }, priorities: { ...servant.priorities }, equipped: { ...servant.equipped } }));
+  let inventory = state.inventory.map((entry) => ({ ...entry }));
 
   // Night -> Day: vampires consume stored Vitae; daylight traits remain separate.
   if (nextPhase === 'day') {
@@ -48,6 +51,14 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
       defeatedEnemyIds: [],
     };
     worldCycleChanged = true;
+    const thrallDay = resolveHumanThrallDay({ ...state, humanServants, inventory });
+    humanServants = thrallDay.humanServants;
+    inventory = thrallDay.inventory;
+    for (const event of thrallDay.events) events.push(event);
+    if (thrallDay.escapedHumanIds.length > 0) {
+      const escapedIds = new Set(thrallDay.escapedHumanIds);
+      npcs = npcs.map((human) => escapedIds.has(human.id) ? { ...human, status: 'wandering' as const, fear: Math.min(100, human.fear + 15), disposition: Math.max(-100, human.disposition - 20) } : human);
+    }
     events.push(`Night ${nextDay} begins. The world stirs anew.`);
     npcs = replenishHumanPopulation(npcs, state.seed, nextDay, TARGET_HUMAN_POPULATION);
   }
@@ -57,7 +68,7 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     state.rooms,
     state.craftingQueue,
     state.strategicResources,
-    state.inventory,
+    inventory,
     nextPhase,
     state.seed,
   );
@@ -70,6 +81,7 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     npcs,
     time: { day: nextDay, phase: nextPhase },
     worldCycle,
+    humanServants,
     vampireVassals: shift.vampireVassals,
     rooms: shift.rooms,
     craftingQueue: shift.craftingQueue,

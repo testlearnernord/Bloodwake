@@ -86,3 +86,12 @@ This is deliberately a finisher: a successful combat feed kills the vulnerable t
 - Enemy roster is still limited to one bandit, one clergy hunter, and one elite knight encounter at a time.
 - Combat presentation is intentionally compact and uses generated art rather than hand-authored sprite sheets.
 - Large raids, fortifications, trap networks, and defensive path control remain future-milestone work.
+
+
+## Human Thralls and Vampire Vassals
+
+Human Servants are prisoners under vampiric venom and domination. They are not free citizens of the domain. Their primary relationship to the player is **Control**, opposed by **Resistance**, not Loyalty. Control naturally weakens over time and can be reinforced by the vampire; deprivation accelerates loss of control and a completely broken bond allows escape.
+
+Human Thralls retain their mortal identity: profession, skills/traits, family identity, Blood Resonance and human metadata. This is intentional groundwork for later genetics, family lines, donor selection and the strategic decision between keeping a valuable mortal or turning them into an autonomous Vampire Vassal.
+
+Vampire Vassals remain fundamentally different. They are powerful, immortal political subordinates with Loyalty and Ambition rather than controlled mortal captives. Turning is therefore not a simple upgrade from Human Thrall to better worker.
