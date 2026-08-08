@@ -28,7 +28,6 @@ export type JobPriority = 'Disabled' | 'Low' | 'Normal' | 'High' | 'Critical';
 export type DayPhase = 'day' | 'night';
 export type QualityLevel = 'Poor' | 'Common' | 'Fine' | 'Masterwork';
 export type ItemSlot = 'Weapon' | 'Armor' | 'Accessory';
-export type ServantType = 'human' | 'vampire';
 export type QuestStepStatus = 'locked' | 'active' | 'complete';
 export type EnemyType = 'bandit' | 'clergy_hunter' | 'elite_knight';
 export type TaskType = 'construct_room' | 'craft_recipe' | 'gather_resource' | 'guard_stronghold';
@@ -135,22 +134,6 @@ export interface JobPriorityMap {
   Guarding: JobPriority;
   Research: JobPriority;
   Hunting: JobPriority;
-}
-
-/**
- * @deprecated Legacy compatibility model kept for the current save-v3 format.
- * Do not add new fields here. Use HumanServant or VampireVassal for new code.
- * This type will be removed as part of the save-v4 migration in Milestone 0.6.1b.
- */
-export interface Servant extends CharacterBase {
-  type: ServantType;
-  professionSkills: Partial<Record<JobType, number>>;
-  priorities: JobPriorityMap;
-  currentJob: JobType | null;
-  currentTask: string | null;
-  taskReason: string;
-  hunger: number;
-  equipped: Partial<Record<ItemSlot, ItemId>>;
 }
 
 /** Shared fields for all explicit population types. */

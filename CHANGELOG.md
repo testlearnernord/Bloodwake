@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.1c - Milestone 0.6.1c: Remove obsolete legacy servant compatibility code
+
+- Removed the obsolete `ServantType` and `Servant` compatibility model now that Save v4 uses `HumanServant` and `VampireVassal` directly.
+- Removed `src/simulation/population/legacyPopulation.ts`; save versions 1–3 remain intentionally unsupported instead of being converted.
+- Removed the deprecated `selectTaskForServant` and `servantCanWork` compatibility aliases.
+- Removed legacy-only population conversion tests and updated the remaining crafting fixture to use the current `VampireVassal` model.
+- Added an architecture rule requiring temporary compatibility layers to document their replacement and removal milestone.
+- No gameplay, Save v4 schema, Turn behavior, world synchronization, crafting behavior, or vassal work behavior changed.
+
 ## 0.6.1b - Milestone 0.6.1b: Activate separate human servant and vampire vassal populations
 
 ### Save format v4

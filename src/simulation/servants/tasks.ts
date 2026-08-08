@@ -96,12 +96,3 @@ export const selectTaskForVassal = (
   }
   return best;
 };
-
-/** @deprecated Use selectTaskForVassal instead. */
-export const selectTaskForServant = selectTaskForVassal as unknown as (
-  servant: { id: string; type: string; priorities: Record<string, string>; professionId: string; traitIds: string[]; health: number },
-  rooms: BuiltRoom[],
-  craftingQueue: CraftingOrder[],
-  inventory: InventoryEntry[],
-  phase: DayPhase,
-) => TaskCandidate | null;

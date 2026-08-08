@@ -18,24 +18,40 @@
 - `src/persistence`: IndexedDB save slots, validation, and migration
 - `src/tests`: deterministic unit tests
 
+## Compatibility maintenance rule
+
+Compatibility code is temporary infrastructure, not permanent architecture.
+
+Any new compatibility layer must document:
+- why it exists,
+- which current system replaces it, and
+- the milestone in which it must be removed.
+
+Once a supported transition has ended, obsolete compatibility models, aliases, conversion helpers, and tests must be removed instead of being retained for hypothetical future use.
+
+## Key decisions in Milestone 0.6.1c
+
+- Removed the obsolete `ServantType` and `Servant` compatibility model after Save v4 became authoritative.
+- Removed `legacyPopulation.ts` and its conversion-only tests because save versions 1–3 are intentionally unsupported.
+- Removed the deprecated `selectTaskForServant` and `servantCanWork` aliases. Current code uses `selectTaskForVassal`, `canVassalWorkInPhase`, and `vassalCanWork` directly.
+- Current gameplay behavior is unchanged: `HumanServant` and `VampireVassal` remain the authoritative population models.
+
 ## Key decisions in Milestone 0.6.1b
 
-- **Save format v4 is active.** `SaveGame` replaces `servants: Servant[]` with two separate arrays: `humanServants: HumanServant[]` and `vampireVassals: VampireVassal[]`. The legacy `servants` field is absent from v4 saves; its presence causes rejection.
+- **Save format v4 is active.** `SaveGame` uses two separate arrays: `humanServants: HumanServant[]` and `vampireVassals: VampireVassal[]`. The legacy `servants` field is absent from v4 saves; its presence causes rejection.
 - **Old saves (v1, v2, v3) are intentionally incompatible.** Loading or importing an old save returns a clear error; no partial load, no silent empty population, no resource grants. Players must start a new game.
-- **Population collections are separated.** All former vampire servants become vampire vassals in new games. Human recruitment remains deferred; new games start with an empty `humanServants` list until implemented.
-- **Turn creates a `VampireVassal`.** `applyHumanAction` now appends to `vampireVassals`. Duplicate prevention is enforced at commit time (a vassal is only appended if its ID does not already exist in `vampireVassals`).
+- **Population collections are separated.** Human recruitment remains deferred; new games start with an empty `humanServants` list until implemented.
+- **Turn creates a `VampireVassal`.** `applyHumanAction` appends to `vampireVassals`. Duplicate prevention is enforced at commit time.
 - **Work shift operates on `vampireVassals`.** `runWorkShift` and `selectTaskForVassal` in `src/simulation/servants/` operate on `VampireVassal[]` temporarily until day/night job separation is implemented.
-- **World scene sync uses `vampireVassals`.** `WorldScene.syncVassalsWithState()` replaces `syncServantsWithState()`.
-- **Population overlay shows separate sections.** The Domain Population overlay renders a Human Servants section (showing a placeholder only when empty) and a Vampire Vassals section.
-- **Player-facing terminology updated.** "Turn to Servant" → "Turn into Vassal". The population overlay is titled "Domain Population".
-- **`Servant` type retained** in `src/types/models.ts` as a `@deprecated` reference kept for `legacyPopulation.ts`. It is not used in any production runtime path.
-- **Validation enforces ID uniqueness.** `validateSaveGame` rejects: duplicate IDs within `humanServants`, duplicate IDs within `vampireVassals`, and any ID shared across both collections.
+- **World scene sync uses `vampireVassals`.** `WorldScene.syncVassalsWithState()` is the authoritative vassal world-sync path.
+- **Population overlay shows separate sections.** The Domain Population overlay renders Human Servants and Vampire Vassals separately.
+- **Player-facing terminology updated.** "Turn to Servant" became "Turn into Vassal" and the population overlay is titled "Domain Population".
+- **Validation enforces ID uniqueness.** `validateSaveGame` rejects duplicate IDs within either population collection and any ID shared across both.
 
 ## Key decisions in Milestone 0.6.1a
 
 - Introduced explicit `HumanServant` (discriminator `kind: "human_servant"`) and `VampireVassal` (discriminator `kind: "vampire_vassal"`) types in `src/types/models.ts`.
-- The existing `Servant` type is preserved as a `@deprecated` legacy model for `legacyPopulation.ts` only.
-- Added pure conversion helpers in `src/simulation/population/legacyPopulation.ts`: `convertLegacyHumanServant`, `convertLegacyVampireVassal`, and `splitLegacyServants`. These clone all nested mutable objects and never mutate the source.
+- These explicit population models became authoritative in Milestone 0.6.1b; the temporary compatibility layer was removed in Milestone 0.6.1c.
 
 ## Key decisions in Milestone 0.5
 
@@ -46,7 +62,7 @@
 - Vampire vassal and room world representations are passive scene objects created in `createVassals()` / `createRooms()` and kept in sync by `syncVassalsWithState()` / `syncRoomsWithState()`.
 - Human population replenishment uses deterministic IDs (`human-d{day}-{index}`) derived from world seed and day number to prevent collisions across cycles.
 - Hunger cap and starvation logic live in `advanceWorldPhase()` to keep them testable and centralized.
-- Save format v3 adds `worldCycle` with sanitization and deduplication of identifier arrays.
+- Save format v3 added `worldCycle` with sanitization and deduplication of identifier arrays.
 
 ## Key decisions in Milestone 0.4
 
@@ -76,7 +92,7 @@
 ## Playability integration points
 
 - `src/app/App.ts`: binds truthful overlay state, browser-safe shortcut guards, local UI scale, and human context actions to persistent save data.
-- `src/ui/overlays/overlays.ts`: renders servant usefulness, room/crafting readiness, inheritance summaries, and pause/settings controls.
+- `src/ui/overlays/overlays.ts`: renders population usefulness, room/crafting readiness, inheritance summaries, and pause/settings controls.
 - `src/ui/uiState.ts`: centralizes typing-target checks and browser-safe gameplay shortcut capture rules.
 - `src/persistence/settings.ts`: stores local-only presentation settings such as UI scale.
 
