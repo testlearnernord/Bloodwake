@@ -660,15 +660,16 @@ export class WorldScene extends Phaser.Scene {
     if (!sequence) return;
     const enemy = this.findEnemyById(sequence.enemyId);
     const state = this.bridge.getState();
-    const damage = getCombatFeedFailureDamage(sequence.elite);
-    const nextHealth = Math.max(0, state.player.health - damage);
+    const rawDamage = getCombatFeedFailureDamage(sequence.elite);
+    const mitigatedDamage = applyIncomingDamage(rawDamage, this.bridge.getCombatStats().armor);
+    const nextHealth = Math.max(0, state.player.health - mitigatedDamage);
     this.combatFeedSequence = null;
     this.applyDamageEvent({
       sourceId: enemy?.id ?? sequence.enemyId,
       targetId: 'player',
       actionId: 'predatory_bite_failure',
-      rawDamage: damage,
-      mitigatedDamage: damage,
+      rawDamage,
+      mitigatedDamage,
       stagger: 1,
       worldPosition: { x: this.player.x, y: this.player.y },
     }, now);
@@ -679,8 +680,8 @@ export class WorldScene extends Phaser.Scene {
       this.playerStatePreview = 'hurt';
     }
     this.hintText.setText(nextHealth > 0
-      ? `Predatory Bite failed. The target throws you off for ${damage} damage.`
-      : `Predatory Bite failed. You were killed for ${damage} damage.`);
+      ? `Predatory Bite failed. The target throws you off for ${mitigatedDamage} damage.`
+      : `Predatory Bite failed. You were killed for ${mitigatedDamage} damage.`);
   }
 
   private resolveDodgeDirection(): Phaser.Math.Vector2 {
@@ -1412,7 +1413,8 @@ export class WorldScene extends Phaser.Scene {
                         : enemy.runtime.state === 'return_home'
                           ? 'Breaking Off'
                           : 'Defeated';
-    const distance = Math.round(Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.sprite.x, enemy.sprite.y));
+    const exactDistance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.sprite.x, enemy.sprite.y);
+    const displayedDistance = Math.round(exactDistance);
     return {
       id: enemy.id,
       name: definition.name,
@@ -1421,7 +1423,7 @@ export class WorldScene extends Phaser.Scene {
       maxHealth: enemy.runtime.maxHealth,
       elite: Boolean(definition.elite),
       stateLabel,
-      statusText: `${stateLabel} · ${distance}u${getCombatFeedEligibility({ id: enemy.id, health: enemy.runtime.health, maxHealth: enemy.runtime.maxHealth, elite: Boolean(definition.elite), distance, state: enemy.runtime.state }).ok ? ' · Predatory Bite ready (F)' : ''}`,
+      statusText: `${stateLabel} · ${displayedDistance}u${getCombatFeedEligibility({ id: enemy.id, health: enemy.runtime.health, maxHealth: enemy.runtime.maxHealth, elite: Boolean(definition.elite), distance: exactDistance, state: enemy.runtime.state }).ok ? ' · Predatory Bite ready (F)' : ''}`,
     };
   }
 
