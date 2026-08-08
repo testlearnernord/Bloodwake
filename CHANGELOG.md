@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.1d - Human Metadata and Blood Resonance
+
+- Replaced free-human `bloodQuality` with authoritative `bloodResonance` (1–5) and labels Thin/Common/Rich/Potent/Exceptional.
+- Removed decorative `recruitability`; added deterministic `resolve`, neutral `disposition`, and initial `fear` metadata for future recruitment systems.
+- Added deterministic weighted Blood Resonance generation using 35/35/20/8/2 weights and the existing seeded RNG.
+- Incremented the save format to v5. Saves from v1–v4 are intentionally rejected; no compatibility migration was added.
+- Added strict v5 validation for free-human metadata and rejection of stale `bloodQuality` / `recruitability` fields.
+- Updated the focused-human UI to show labeled Blood Resonance while keeping unused recruitment metadata hidden.
+- Feed, Drain, Turn, hunger, Blood Essence, and inheritance balance are unchanged in this milestone.
+
 ## 0.6.1c - Milestone 0.6.1c: Remove obsolete legacy servant compatibility code
 
 - Removed the obsolete `ServantType` and `Servant` compatibility model now that Save v4 uses `HumanServant` and `VampireVassal` directly.

@@ -8,6 +8,7 @@ export type AttributeKey =
   | 'bloodControl';
 
 export type TraitRarity = 'common' | 'uncommon' | 'rare' | 'legendary' | 'negative';
+export type BloodResonance = 1 | 2 | 3 | 4 | 5;
 export type TraitClassification = 'positive' | 'negative';
 export type TraitInheritanceMode = 'dominant' | 'recessive';
 export type TraitCategory = 'physical' | 'mental' | 'social' | 'mystic' | 'curse';
@@ -104,8 +105,10 @@ export interface CharacterBase {
 export interface HumanCharacter extends CharacterBase {
   familyName: string;
   factionId: FactionId;
-  bloodQuality: number;
-  recruitability: number;
+  bloodResonance: BloodResonance;
+  resolve: number;
+  disposition: number;
+  fear: number;
   status: HumanStatus;
   relationships: Record<string, number>;
 }

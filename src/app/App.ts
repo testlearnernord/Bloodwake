@@ -18,6 +18,7 @@ import { getTraitById } from '../simulation/traits/traitUtils';
 import { addItem, canEquipItem, equipItem, mergeCompatibleStacks, unequipItem } from '../simulation/inventory/inventory';
 import { calculatePlayerCombatStats, useHealingDraught } from '../simulation/combat/stats';
 import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite';
+import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
@@ -450,7 +451,7 @@ export class BloodwakeApp {
     const turnStatus = turnValidation?.ok ? 'Eligible for turning now.' : turnValidation?.reason ?? 'Not eligible for turning.';
     contextPanel.innerHTML = `
       <h3>${htmlEscape(human.name)} ${htmlEscape(human.familyName)}</h3>
-      <p>${htmlEscape(profession.name)} · blood quality ${human.bloodQuality} · recruitability ${human.recruitability}</p>
+      <p>${htmlEscape(profession.name)} · Blood Resonance: ${htmlEscape(getBloodResonanceLabel(human.bloodResonance))} (${human.bloodResonance})</p>
       <p>${htmlEscape(profession.practicalBenefit)}</p>
       <p>Traits: ${traitNames.map(htmlEscape).join(', ') || 'none'}</p>
       <p class="hint">${htmlEscape(turnStatus)}</p>

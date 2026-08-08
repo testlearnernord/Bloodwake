@@ -32,3 +32,20 @@ Core balancing values live in `src/config/balancing.ts`.
 ## Editing guidance
 
 Prefer central constants and deterministic formulas over scattered inline values.
+
+
+## Blood Resonance generation
+
+Blood Resonance is generated deterministically with seeded RNG:
+
+| Resonance | Label | Weight |
+| --- | --- | ---: |
+| 1 | Thin | 35% |
+| 2 | Common | 35% |
+| 3 | Rich | 20% |
+| 4 | Potent | 8% |
+| 5 | Exceptional | 2% |
+
+Valid range: integer 1–5. Total weight: 100%.
+
+Resonance-based Feed, Drain, Blood Stock, Blood Essence, turning, mutation, and max-Vitae effects are not active in 0.6.1d and are deferred to Milestone 0.6.2 or later.

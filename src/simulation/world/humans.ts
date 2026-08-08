@@ -4,6 +4,7 @@ import type { HumanCharacter } from '../../types/models';
 import { applyAttributeDelta, createAttributeSet } from '../../utilities/attributes';
 import { SeededRng } from '../../utilities/rng';
 import { calculateTraitModifiers, resolveTraitSet } from '../traits/traitUtils';
+import { rollBloodResonance } from '../blood/bloodResonance';
 
 const FIRST_NAMES = ['Adela', 'Berta', 'Clara', 'Dieter', 'Egon', 'Frieda', 'Greta', 'Heinrich'];
 const FAMILY_NAMES = ['Klein', 'Waldmann', 'Roth', 'Vogel', 'Falk', 'Stein'];
@@ -40,8 +41,10 @@ const generateSingleHuman = (rng: SeededRng, id: string): HumanCharacter => {
     ambition: rng.nextInt(20, 80),
     stress: 10,
     combat,
-    bloodQuality: rng.nextInt(1, 5),
-    recruitability: rng.nextInt(20, 90),
+    bloodResonance: rollBloodResonance(rng),
+    resolve: rng.nextInt(1, 5),
+    disposition: 0,
+    fear: 0,
     status: 'wandering',
     relationships: {},
   };
