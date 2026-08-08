@@ -19,7 +19,7 @@ import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
 import type { BuiltRoom, EnemyType, HumanCharacter, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
-import { CombatPresentation, type TargetIndicator } from '../combat/CombatPresentation';
+import { CombatPresentation, type CombatFeedPrompt, type TargetIndicator } from '../combat/CombatPresentation';
 import type { CombatActionId, CombatDamageEvent, CombatTargetSnapshot, CombatUiSnapshot, HumanActionMode, LockedTargetHudState } from '../combat/combatTypes';
 import { createBiteSequence, stepBiteSequence, validateHumanAction, type BiteSequenceRuntime } from '../../simulation/combat/bite';
 import {
@@ -37,7 +37,7 @@ import { createProjectile, registerProjectileImpact, resolveProjectileDirection,
 import { cycleLockTarget, selectLockTarget, selectTargetNearPoint, shouldBreakLock } from '../../simulation/combat/targeting';
 import { applyIncomingDamage } from '../../simulation/combat/stats';
 import { getVitaeConditionEffects } from '../../simulation/blood/vitaeCondition';
-import { createCombatFeedRuntime, getCombatFeedEligibility, getCombatFeedFailureDamage, getCombatFeedPrompt, getCombatFeedVitaeGain, pressCombatFeedInput, stepCombatFeedRuntime, type CombatFeedRuntime } from '../../simulation/combat/combatFeed';
+import { createCombatFeedRuntime, getCombatFeedEligibility, getCombatFeedFailureDamage, getCombatFeedPrompt, getCombatFeedVitaeGain, getCombatFeedWindowProgress, isCombatFeedInputWindowOpen, pressCombatFeedInput, stepCombatFeedRuntime, type CombatFeedRuntime } from '../../simulation/combat/combatFeed';
 
 interface SceneEnemy {
   id: string;
@@ -136,6 +136,8 @@ export class WorldScene extends Phaser.Scene {
   private nearbyHumanId: string | null = null;
   private lockedTargetId: string | null = null;
   private targetIndicator: TargetIndicator | null = null;
+  private combatFeedPrompt: CombatFeedPrompt | null = null;
+  private combatFeedPromptCueStep = 0;
   private cursors!: { up: Phaser.Input.Keyboard.Key; down: Phaser.Input.Keyboard.Key; left: Phaser.Input.Keyboard.Key; right: Phaser.Input.Keyboard.Key };
   private dodgeKey!: Phaser.Input.Keyboard.Key;
   private interactKey!: Phaser.Input.Keyboard.Key;
@@ -184,6 +186,7 @@ export class WorldScene extends Phaser.Scene {
     this.cameras.main.startFollow(this.player, true, 0.08, 0.08);
     this.cameras.main.setRoundPixels(true);
     this.targetIndicator = CombatPresentation.createTargetIndicator(this);
+    this.combatFeedPrompt = CombatPresentation.createCombatFeedPrompt(this);
     this.bridge.registerWorldSceneApi({
       startHumanActionSequence: (humanId, mode) => this.startHumanActionSequence(humanId, mode),
     });
@@ -422,6 +425,8 @@ export class WorldScene extends Phaser.Scene {
     }
     this.targetIndicator?.destroy();
     this.targetIndicator = null;
+    this.combatFeedPrompt?.destroy();
+    this.combatFeedPrompt = null;
     this.input.removeAllListeners();
   }
 
@@ -579,23 +584,45 @@ export class WorldScene extends Phaser.Scene {
       return true;
     }
     this.combatFeedSequence = createCombatFeedRuntime(enemy.id, Boolean(definition.elite), now);
+    this.combatFeedPromptCueStep = 0;
     this.playerStatePreview = 'bite_approach';
     enemy.sprite.setVelocity(0, 0);
     enemy.telegraph?.destroy();
     enemy.telegraph = null;
     enemy.runtime.telegraphVisible = false;
+    const startX = this.player.x;
+    const startY = this.player.y;
     const angle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y);
     const landingX = enemy.sprite.x + Math.cos(angle) * 28;
     const landingY = enemy.sprite.y + Math.sin(angle) * 28;
-    this.tweens.add({ targets: this.player, x: landingX, y: landingY, duration: 160, ease: 'Quad.easeOut' });
-    this.hintText.setText('Predatory Bite: close in, then hit F twice on the prompts.');
+    CombatPresentation.showPredatoryPounce(this, startX, startY, landingX, landingY, this.reducedMotion);
+    CombatPresentation.playCombatFeedSound('pounce');
+    this.tweens.add({
+      targets: this.player,
+      x: landingX,
+      y: landingY,
+      duration: 160,
+      ease: 'Quad.easeOut',
+      onComplete: () => {
+        if (enemy.sprite.active) {
+          CombatPresentation.flashSprite(this, enemy.sprite, 0xff758f);
+          CombatPresentation.spawnBloodBurst(this, enemy.sprite.x, enemy.sprite.y, 0x8f1535);
+        }
+      },
+    });
+    this.hintText.setText('Predatory Bite started. Watch the center prompt.');
     return true;
   }
 
   private stepCombatFeedSequence(now: number): void {
-    if (!this.combatFeedSequence) return;
+    if (!this.combatFeedSequence) {
+      CombatPresentation.hideCombatFeedPrompt(this.combatFeedPrompt);
+      return;
+    }
     if (this.bridge.getState().player.health <= 0) {
       this.combatFeedSequence = null;
+      this.combatFeedPromptCueStep = 0;
+      CombatPresentation.hideCombatFeedPrompt(this.combatFeedPrompt);
       return;
     }
     const previousPhase = this.combatFeedSequence.phase;
@@ -609,6 +636,22 @@ export class WorldScene extends Phaser.Scene {
       : this.combatFeedSequence.phase === 'first_window' || this.combatFeedSequence.phase === 'second_window'
         ? 'bite_hold'
         : 'bite_release';
+    if (this.combatFeedPrompt && this.combatFeedSequence.phase !== 'success') {
+      const windowOpen = isCombatFeedInputWindowOpen(this.combatFeedSequence, now);
+      const cueStep = windowOpen ? this.combatFeedSequence.successfulInputs + 1 : 0;
+      if (cueStep > this.combatFeedPromptCueStep) {
+        this.combatFeedPromptCueStep = cueStep;
+        CombatPresentation.playCombatFeedSound('window');
+      }
+      CombatPresentation.updateCombatFeedPrompt(this.combatFeedPrompt, {
+        phase: this.combatFeedSequence.phase as 'pounce' | 'first_window' | 'second_window',
+        windowOpen,
+        progress: getCombatFeedWindowProgress(this.combatFeedSequence, now),
+        successfulInputs: this.combatFeedSequence.successfulInputs,
+        elite: this.combatFeedSequence.elite,
+        now,
+      });
+    }
     if (previousPhase !== this.combatFeedSequence.phase || now >= this.combatFeedSequence.windowOpensAt) {
       this.hintText.setText(getCombatFeedPrompt(this.combatFeedSequence, now));
     }
@@ -626,7 +669,11 @@ export class WorldScene extends Phaser.Scene {
       this.finishCombatFeedSuccess(now);
       return;
     }
-    this.hintText.setText('First bite locked. Wait for F NOW (2/2).');
+    const enemy = this.findEnemyById(result.runtime.enemyId);
+    if (result.accepted && enemy) {
+      CombatPresentation.showBloodSiphon(this, enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y, 3);
+    }
+    this.hintText.setText('First bite locked. Watch the center prompt for the second opening.');
   }
 
   private finishCombatFeedSuccess(now: number): void {
@@ -641,6 +688,11 @@ export class WorldScene extends Phaser.Scene {
     const vitaeGain = getCombatFeedVitaeGain(state.player.vitae, state.player.maxVitae);
     this.bridge.onPlayerVitalsChanged(state.player.health, state.player.vitae + vitaeGain);
     this.combatFeedSequence = null;
+    this.combatFeedPromptCueStep = 0;
+    CombatPresentation.hideCombatFeedPrompt(this.combatFeedPrompt);
+    CombatPresentation.playCombatFeedSound('success');
+    CombatPresentation.showBloodSiphon(this, enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y, 7);
+    CombatPresentation.showCombatFeedResult(this, true, vitaeGain > 0 ? `BLOOD TAKEN  +${vitaeGain} VITAE` : 'TARGET DRAINED');
     this.playerStatePreview = 'bite_release';
     this.applyDamageEvent({
       sourceId: 'player',
@@ -664,6 +716,10 @@ export class WorldScene extends Phaser.Scene {
     const mitigatedDamage = applyIncomingDamage(rawDamage, this.bridge.getCombatStats().armor);
     const nextHealth = Math.max(0, state.player.health - mitigatedDamage);
     this.combatFeedSequence = null;
+    this.combatFeedPromptCueStep = 0;
+    CombatPresentation.hideCombatFeedPrompt(this.combatFeedPrompt);
+    CombatPresentation.playCombatFeedSound('failure');
+    CombatPresentation.showCombatFeedResult(this, false, 'BITE BROKEN');
     this.applyDamageEvent({
       sourceId: enemy?.id ?? sequence.enemyId,
       targetId: 'player',
@@ -850,12 +906,17 @@ export class WorldScene extends Phaser.Scene {
           if (distance <= HOLY_BOLT_PROJECTILE.collisionRadius) {
             const impact = registerProjectileImpact(projectile.runtime, 'player');
             projectile.runtime = impact.projectile;
-            if (impact.applied && !isInvulnerable(this.playerAction, time)) {
-              const state = this.bridge.getState();
+            if (impact.applied) {
               const damage = applyIncomingDamage(HOLY_BOLT_PROJECTILE.damage, this.bridge.getCombatStats().armor);
-              this.bridge.onPlayerVitalsChanged(Math.max(0, state.player.health - damage), state.player.vitae);
-              CombatPresentation.flashSprite(this, this.player, 0xffa8a8, true);
-              CombatPresentation.spawnFloatingDamage(this, this.player.x, this.player.y - 20, damage, '#ffd7d7');
+              this.applyDamageEvent({
+                sourceId: projectile.runtime.sourceId,
+                targetId: 'player',
+                actionId: 'holy_bolt',
+                rawDamage: HOLY_BOLT_PROJECTILE.damage,
+                mitigatedDamage: damage,
+                stagger: HOLY_BOLT_PROJECTILE.stagger,
+                worldPosition: { x: this.player.x, y: this.player.y },
+              }, time);
             }
           }
         }
