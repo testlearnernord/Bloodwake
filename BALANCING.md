@@ -48,7 +48,7 @@ Blood Resonance is generated deterministically with seeded RNG:
 
 Valid range: integer 1–5. Total weight: 100%.
 
-Blood Resonance generation is active. Resonance-based Feed/Drain rewards are deferred specifically to 0.6.2b; Blood Stock waits for its Dominion/upkeep use.
+Blood Resonance generation and Feed/Drain reward scaling are active in 0.6.2b. Blood Stock still waits for its actual donor/storage/upkeep source-and-sink loop.
 
 ## Unified Vampire Vitae (0.6.2a)
 
@@ -66,4 +66,20 @@ Vitae is both personal vampire blood reserve and supernatural ability energy.
 - Dodge speed is not modified by Vitae condition.
 - Vampire Vassal strategic blood upkeep is intentionally deferred until Blood Stock/Dominion exists.
 - Human Food consumption is a separate future Human Servant system.
-- Resonance-based Feed/Drain rewards remain deferred to 0.6.2b.
+## Blood Choices (0.6.2b)
+
+| Resonance | Feed base Vitae | Drain Vitae | Drain Blood Essence |
+| --- | ---: | ---: | ---: |
+| 1 Thin | 2 | 3 | 1 |
+| 2 Common | 2 | 4 | 1 |
+| 3 Rich | 3 | 5 | 1 |
+| 4 Potent | 3 | 6 | 2 |
+| 5 Exceptional | 4 | 7 | 2 |
+
+- Feed formula: `1 + ceil(resonance / 2)`; the target survives.
+- Blood Hunter adds `+1 Vitae` to Feed only.
+- Drain formula: `2 + resonance`; resonance 4-5 also yield `2 Blood Essence`, otherwise `1`.
+- Vitae gains clamp to the player's current max Vitae.
+- A fed human is spent for the rest of the current night: Feed, Drain, and Turn are all blocked until next-night recovery.
+- Drain permanently removes that human on the next replenishment pass.
+- Blood Stock is not introduced here because its donor/storage/upkeep loop belongs to later Human Servant / Dominion work.

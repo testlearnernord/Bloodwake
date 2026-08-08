@@ -31,8 +31,6 @@ export const INHERITANCE_BALANCING = {
 } as const;
 
 export const TURN_COST_VITAE = 3;
-export const FEED_VITAE_GAIN = 2;
-export const DRAIN_ESSENCE_GAIN = 1;
 export const BITE_RANGE = 60;
 
 export const PLAYER_VITAE_UPKEEP_PER_DAWN = 1;

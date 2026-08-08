@@ -1,4 +1,5 @@
-import { DRAIN_ESSENCE_GAIN, FEED_VITAE_GAIN, TURN_COST_VITAE } from '../../config/balancing';
+import { TURN_COST_VITAE } from '../../config/balancing';
+import { calculateBloodChoiceOutcome } from '../blood/bloodChoices';
 import { inheritVampire } from '../bloodlines/inheritance';
 import { completeQuestStep } from '../quests/quests';
 import type { HumanActionMode } from '../../game/combat/combatTypes';
@@ -58,6 +59,9 @@ export const validateHumanAction = (state: SaveGame, human: HumanCharacter | und
   if (!human) {
     return { ok: false, reason: 'No human target.' };
   }
+  if (human.status === 'fed') {
+    return { ok: false, reason: 'Target is recovering from feeding until the next night.' };
+  }
   if (human.status === 'drained' || human.status === 'turned') {
     return { ok: false, reason: 'Target is no longer valid.' };
   }
@@ -92,18 +96,28 @@ export const applyHumanAction = (
     nextState.npcs = nextState.npcs.map((npc) => (npc.id === humanId ? { ...npc, status } : npc));
   };
   if (mode === 'feed') {
-    nextState.player.vitae = Math.min(nextState.player.maxVitae, nextState.player.vitae + FEED_VITAE_GAIN);
+    const outcome = calculateBloodChoiceOutcome(nextState, human, 'feed');
+    nextState.player.vitae += outcome.actualVitaeGain;
     updateHumanStatus('fed');
     nextState.quests = completeQuestStep(nextState.quests, 'awakening', 'feed');
-    nextState.lastEventLog.unshift(`Fed on ${human.name} and left them alive.`);
-    return { state: nextState, message: 'Vitae restored by feeding.' };
+    nextState.lastEventLog.unshift(`Fed on ${human.name} and left them alive. Restored ${outcome.actualVitaeGain} Vitae.`);
+    return {
+      state: nextState,
+      message: outcome.actualVitaeGain > 0
+        ? `Restored ${outcome.actualVitaeGain} Vitae by feeding.`
+        : 'Vitae is already full; the target survives but yields no usable Vitae.',
+    };
   }
   if (mode === 'drain') {
-    nextState.player.vitae = Math.min(nextState.player.maxVitae, nextState.player.vitae + FEED_VITAE_GAIN);
-    nextState.strategicResources.bloodEssence += DRAIN_ESSENCE_GAIN;
+    const outcome = calculateBloodChoiceOutcome(nextState, human, 'drain');
+    nextState.player.vitae += outcome.actualVitaeGain;
+    nextState.strategicResources.bloodEssence += outcome.bloodEssenceGain;
     updateHumanStatus('drained');
-    nextState.lastEventLog.unshift(`Drained ${human.name} for Blood Essence.`);
-    return { state: nextState, message: 'Blood Essence increased.' };
+    nextState.lastEventLog.unshift(`Drained ${human.name}: +${outcome.actualVitaeGain} Vitae, +${outcome.bloodEssenceGain} Blood Essence.`);
+    return {
+      state: nextState,
+      message: `Drained ${outcome.actualVitaeGain} Vitae and ${outcome.bloodEssenceGain} Blood Essence.`,
+    };
   }
   const result = inheritVampire(nextState.player, human, `${nextState.seed}-${nextState.characterRoll}`);
   nextState.player.vitae -= TURN_COST_VITAE;
@@ -140,7 +154,6 @@ export const applyHumanAction = (
     taskReason: 'Newly turned and awaiting direction.',
     equipped: {},
   };
-  // Prevent duplicate: only add if no vassal with this id exists
   if (!nextState.vampireVassals.some((v) => v.id === vassal.id)) {
     nextState.vampireVassals = [...nextState.vampireVassals, vassal];
   }
