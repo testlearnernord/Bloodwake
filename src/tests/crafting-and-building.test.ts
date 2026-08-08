@@ -2,9 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { queueRoomConstruction } from '../simulation/building/building';
 import { completeCraftingOrder, queueCraftingOrder } from '../simulation/crafting/crafting';
 import { addItem, consumeItems, hasItems } from '../simulation/inventory/inventory';
-import type { Servant } from '../types/models';
+import type { VampireVassal } from '../types/models';
 
-const servant: Servant = {
+const vassal: VampireVassal = {
+  kind: 'vampire_vassal',
   id: 'smith',
   name: 'Hilda',
   age: 33,
@@ -26,7 +27,8 @@ const servant: Servant = {
   ambition: 40,
   stress: 5,
   combat: 2,
-  type: 'human',
+  vitae: 2,
+  maxVitae: 8,
   professionSkills: { Crafting: 2 },
   priorities: {
     Building: 'Normal',
@@ -77,7 +79,7 @@ describe('crafting results', () => {
         { itemId: 'wood', quantity: 2 },
       ],
       queue[0],
-      servant,
+      vassal,
       'craft-seed',
     );
     expect(result.inventory.find((entry) => entry.itemId === 'simple_sword')?.quantity).toBe(1);
