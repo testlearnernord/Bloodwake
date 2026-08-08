@@ -81,6 +81,17 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isRecord(value.player) || !isRecord(value.time) || !Array.isArray(value.lastEventLog)) {
     return false;
   }
+  if ('hunger' in value.player) {
+    return false;
+  }
+  if (
+    typeof value.player.vitae !== 'number' ||
+    !Number.isFinite(value.player.vitae) ||
+    typeof value.player.maxVitae !== 'number' ||
+    !Number.isFinite(value.player.maxVitae)
+  ) {
+    return false;
+  }
   if (!isValidSettings(value.settings)) {
     return false;
   }
@@ -91,7 +102,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!requiredArrays.every((field) => Array.isArray(value[field]))) {
     return false;
   }
-  // Validate v5 free-human metadata. Old decorative fields are no longer accepted.
+  // Validate v6 free-human metadata. Old decorative fields are no longer accepted.
   const npcs = value.npcs as unknown[];
   for (const record of npcs) {
     if (!isRecord(record) || typeof record.id !== 'string') {
@@ -118,12 +129,12 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   const humanServants = value.humanServants as unknown[];
   const vampireVassals = value.vampireVassals as unknown[];
   for (const record of humanServants) {
-    if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'human_servant') {
+    if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'human_servant' || 'hunger' in record) {
       return false;
     }
   }
   for (const record of vampireVassals) {
-    if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'vampire_vassal') {
+    if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'vampire_vassal' || 'hunger' in record) {
       return false;
     }
   }
@@ -166,7 +177,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const normalizeV5 = (value: SaveGame): SaveGame => {
+const normalizeV6 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -208,10 +219,13 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
       throw new Error('Save file version is newer than this build supports.');
     }
   }
+  if (isRecord(value) && isRecord(value.player) && 'hunger' in value.player) {
+    throw new Error('Imported save still includes legacy hunger data and is incompatible with this build.');
+  }
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  return normalizeV5(value);
+  return normalizeV6(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

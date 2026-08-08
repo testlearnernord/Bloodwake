@@ -7,6 +7,7 @@ import { getTraitById } from '../../simulation/traits/traitUtils';
 import { canCraftRecipe } from '../../simulation/crafting/crafting';
 import { getItemQuantity, hasItems } from '../../simulation/inventory/inventory';
 import { calculatePlayerCombatStats } from '../../simulation/combat/stats';
+import { getVitaeCondition } from '../../simulation/blood/vitaeCondition';
 import { selectTaskForVassal } from '../../simulation/servants/tasks';
 import type { BuiltRoom, InventoryEntry, ItemCategory, ItemId, SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
@@ -106,7 +107,7 @@ export const renderOverlay = (
         <section>
           <h3>${htmlEscape(state.player.name)}</h3>
           <p>Profession: ${htmlEscape(state.player.professionId)}</p>
-          <p>Vitae Capacity: ${state.player.maxVitae} · Hunger: ${state.player.hunger}</p>
+          <p>Vitae: ${state.player.vitae}/${state.player.maxVitae} · ${htmlEscape(getVitaeCondition(state.player.vitae, state.player.maxVitae))}</p>
           <p>Attack ${combatStats.attackDamage} · Armor ${combatStats.armor} · Healing ${combatStats.healingPower}</p>
           <h4>Attributes</h4>
           <ul>${Object.entries(combatStats.finalAttributes)

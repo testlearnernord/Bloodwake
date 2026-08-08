@@ -48,4 +48,22 @@ Blood Resonance is generated deterministically with seeded RNG:
 
 Valid range: integer 1–5. Total weight: 100%.
 
-Resonance-based Feed, Drain, Blood Stock, Blood Essence, turning, mutation, and max-Vitae effects are not active in 0.6.1d and are deferred to Milestone 0.6.2 or later.
+Blood Resonance generation is active. Resonance-based Feed/Drain rewards are deferred specifically to 0.6.2b; Blood Stock waits for its Dominion/upkeep use.
+
+## Unified Vampire Vitae (0.6.2a)
+
+Vitae is both personal vampire blood reserve and supernatural ability energy.
+
+| Condition | Vitae ratio | Attack | Movement |
+| --- | --- | ---: | ---: |
+| Sated | >= 50% | 100% | 100% |
+| Thirsty | >= 25% and < 50% | 90% | 95% |
+| Starved | > 0% and < 25% | 75% | 85% |
+| Bloodless | 0% | 60% | 75% |
+
+- Player upkeep: `1 Vitae` on Night -> Day only.
+- Low Vitae does not directly deal health damage.
+- Dodge speed is not modified by Vitae condition.
+- Vampire Vassal strategic blood upkeep is intentionally deferred until Blood Stock/Dominion exists.
+- Human Food consumption is a separate future Human Servant system.
+- Resonance-based Feed/Drain rewards remain deferred to 0.6.2b.

@@ -1,5 +1,6 @@
 import { ITEMS_BY_ID } from '../../data/items';
 import type { AttributeSet, InventoryEntry, ItemSlot, VampireCharacter } from '../../types/models';
+import { getVitaeConditionEffects } from '../blood/vitaeCondition';
 
 export interface CombatStats {
   attackDamage: number;
@@ -50,7 +51,7 @@ export const calculatePlayerCombatStats = (player: VampireCharacter): CombatStat
   };
 
   return {
-    attackDamage: Math.max(1, attackDamage),
+    attackDamage: Math.max(1, Math.round(attackDamage * getVitaeConditionEffects(player.vitae, player.maxVitae).attackMultiplier)),
     armor: Math.max(0, armor),
     healingPower: Math.max(0, healingPower),
     baseAttributes: { ...player.attributes },

@@ -6,11 +6,7 @@
  * pure simulation logic (no Phaser canvas, no IndexedDB, no network).
  *
  * Scenarios covered:
- *  - Drain hunger reduction is exactly DRAIN_HUNGER_REDUCTION (not just ≤ feed)
  *  - Turning a human creates *exactly one* new servant and no more
- *  - Multiple-dawn starvation: health falls by exactly STARVATION_HEALTH_DAMAGE each applicable dawn
- *  - Starvation health floor stays ≥ 1 across many dawns without feeding
- *  - Feeding after starvation reduces hunger by exactly FEED_HUNGER_REDUCTION
  *  - No duplicate servants/rooms/enemies/resource-nodes after a save-state round-trip
  *  - Two distinct rooms placed → exactly two unique room entries (by composite id)
  *  - Turned human absent from next-night NPC list
@@ -19,20 +15,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  DRAIN_HUNGER_REDUCTION,
-  FEED_HUNGER_REDUCTION,
-  MAX_HUNGER,
-  STARVATION_HEALTH_DAMAGE,
-  TARGET_HUMAN_POPULATION,
-} from '../config/balancing';
+import { TARGET_HUMAN_POPULATION } from '../config/balancing';
 import { createNewGameState } from '../app/state';
-import {
-  advanceWorldPhase,
-  applyDrainHungerReduction,
-} from '../simulation/time/phaseAdvance';
-import { getDayRestrictionPenalty } from '../simulation/traits/traitEffects';
-import { getTraitEffectIds } from '../simulation/traits/traitUtils';
+import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
 import { applyHumanAction } from '../simulation/combat/bite';
 import { migrateSaveGame } from '../persistence/saveStore';
 import { queueRoomConstruction } from '../simulation/building/building';
@@ -46,38 +31,6 @@ const fullCycle = (seed: string) => {
   const { state: night } = advanceWorldPhase(day); // day→night
   return { initial, day, night };
 };
-
-// ─── Drain hunger exact value ─────────────────────────────────────────────────
-
-describe('drain hunger: exact reduction', () => {
-  it('reduces hunger by exactly DRAIN_HUNGER_REDUCTION', () => {
-    const before = 8;
-    expect(applyDrainHungerReduction(before)).toBe(before - DRAIN_HUNGER_REDUCTION);
-  });
-
-  it('clamps to zero rather than going negative', () => {
-    expect(applyDrainHungerReduction(DRAIN_HUNGER_REDUCTION - 1)).toBe(0);
-    expect(applyDrainHungerReduction(0)).toBe(0);
-  });
-
-  it('applyHumanAction(drain) reduces hunger by exactly DRAIN_HUNGER_REDUCTION', () => {
-    const state = createNewGameState({ seed: 'drain-exact' });
-    state.player.hunger = 8;
-    const humanId = state.npcs[0]?.id ?? '';
-    const { state: next } = applyHumanAction(state, humanId, 'drain');
-    expect(next.player.hunger).toBe(8 - DRAIN_HUNGER_REDUCTION);
-  });
-
-  it('feed after drain reduces hunger by exactly FEED_HUNGER_REDUCTION', () => {
-    const state = createNewGameState({ seed: 'feed-after-drain' });
-    state.player.hunger = MAX_HUNGER;
-    const [first, second] = state.npcs;
-    const { state: afterDrain } = applyHumanAction(state, first?.id ?? '', 'drain');
-    const hungerAfterDrain = afterDrain.player.hunger;
-    const { state: afterFeed } = applyHumanAction(afterDrain, second?.id ?? '', 'feed');
-    expect(afterFeed.player.hunger).toBe(Math.max(0, hungerAfterDrain - FEED_HUNGER_REDUCTION));
-  });
-});
 
 // ─── Vassal turn: exactly one new vassal ─────────────────────────────────────
 
@@ -111,62 +64,6 @@ describe('vassal turn: exactly one new vassal per action', () => {
     const { state: s2 } = applyHumanAction(s1, h2, 'turn');
     const ids = s2.vampireVassals.map((v) => v.id);
     expect(new Set(ids).size).toBe(ids.length);
-  });
-});
-
-// ─── Multi-dawn starvation ────────────────────────────────────────────────────
-
-describe('multi-dawn starvation damage', () => {
-  it('health decreases by exactly STARVATION_HEALTH_DAMAGE on the first applicable dawn', () => {
-    const state = createNewGameState({ seed: 'starv-exact' });
-    state.player.hunger = MAX_HUNGER;
-    const hBefore = state.player.health;
-    const penalty = getDayRestrictionPenalty(getTraitEffectIds(state.player.traitIds));
-    const { state: day } = advanceWorldPhase(state);
-    // Starvation damage plus any daylight restriction penalty (e.g. sun_cursed)
-    const expectedHealth = Math.max(1, Math.max(1, hBefore - penalty) - STARVATION_HEALTH_DAMAGE);
-    expect(day.player.health).toBe(expectedHealth);
-  });
-
-  it('health decreases by exactly STARVATION_HEALTH_DAMAGE on a second consecutive starving dawn', () => {
-    const state = createNewGameState({ seed: 'starv-second-dawn' });
-    state.player.hunger = MAX_HUNGER;
-    const penalty = getDayRestrictionPenalty(getTraitEffectIds(state.player.traitIds));
-    const { state: day1 } = advanceWorldPhase(state); // night→day (first dawn)
-    const h1 = day1.player.health;
-    const { state: night2 } = advanceWorldPhase(day1); // day→night
-    night2.player.hunger = MAX_HUNGER;
-    const { state: day2 } = advanceWorldPhase(night2); // night→day (second dawn)
-    // Starvation damage plus any daylight restriction penalty (e.g. sun_cursed)
-    const expectedHealth = Math.max(1, Math.max(1, h1 - penalty) - STARVATION_HEALTH_DAMAGE);
-    expect(day2.player.health).toBe(expectedHealth);
-  });
-
-  it('health never falls below 1 across five consecutive starving dawns', () => {
-    let state = createNewGameState({ seed: 'starv-floor-multi' });
-    state.player.health = 2; // nearly dead to stress the floor
-    for (let i = 0; i < 5; i++) {
-      state.player.hunger = MAX_HUNGER;
-      const { state: day } = advanceWorldPhase(state); // night→day
-      expect(day.player.health).toBeGreaterThanOrEqual(1);
-      const { state: night } = advanceWorldPhase(day); // day→night
-      state = night;
-    }
-  });
-
-  it('feeding after starvation reduces hunger by exactly FEED_HUNGER_REDUCTION', () => {
-    const state = createNewGameState({ seed: 'starv-feed-recovery' });
-    state.player.hunger = MAX_HUNGER;
-    const humanId = state.npcs[0]?.id ?? '';
-    const { state: afterFeed } = applyHumanAction(state, humanId, 'feed');
-    expect(afterFeed.player.hunger).toBe(Math.max(0, MAX_HUNGER - FEED_HUNGER_REDUCTION));
-  });
-
-  it('no starvation event is emitted on a non-starving dawn', () => {
-    const state = createNewGameState({ seed: 'no-starv-event' });
-    state.player.hunger = 0;
-    const { events } = advanceWorldPhase(state); // night→day
-    expect(events.some((e) => e.toLowerCase().includes('starvation'))).toBe(false);
   });
 });
 

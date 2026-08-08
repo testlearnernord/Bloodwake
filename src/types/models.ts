@@ -123,7 +123,6 @@ export interface VampireCharacter extends CharacterBase {
   vitae: number;
   maxVitae: number;
   bloodEssence: number;
-  hunger: number;
   memoryFragments: string[];
   professionSkills: Partial<Record<JobType, number>>;
   equipment: EquipmentLoadout;
@@ -159,7 +158,6 @@ export interface PopulationBase {
   currentJob: JobType | null;
   currentTask: string | null;
   taskReason: string;
-  hunger: number;
   equipped: Partial<Record<ItemSlot, ItemId>>;
 }
 

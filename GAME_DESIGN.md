@@ -5,24 +5,28 @@
 1. Generate a deterministic starting vampire from world seed + character roll.
 2. Explore the world at night and collect physical items (resource nodes persist as depleted until a new night).
 3. Lock hostile targets with predictable controls and fight; defeated enemies are recorded and not re-rewarded during the same night.
-4. Feed on humans to restore Vitae and reduce hunger; drain for Blood Essence and more hunger relief; turn willing candidates into vampire servants.
-5. Turned servants appear in Ruined Stronghold and are assigned work priorities.
+4. Feed on humans to restore Vitae, drain them for Vitae and Blood Essence, or turn selected candidates into vampire vassals.
+5. Turned vampire vassals appear in Ruined Stronghold and are assigned work priorities.
 6. Rooms placed in the 4×4 Stronghold grid appear as visual representations at their grid positions.
-7. Advance to day (hunger increases, starvation at max hunger damages health); advance to the next night (resources respawn, enemies respawn, human population replenishes to target 5).
+7. Advance to day (personal Vitae upkeep is paid and daylight traits apply); advance to the next night (resources respawn, enemies respawn, human population replenishes to target 5).
 8. Expand the stronghold, craft gear, and progress the awakening quest.
 
 ## World refresh cycle
 
-- **Night → Day**: hunger increases once. No world respawn.
+- **Night → Day**: player Vitae upkeep is paid once. No world respawn.
 - **Day → Night**: day number increments; world cycle increments; collected resource node and defeated enemy depletion resets; human population replenishes.
 - The memory fragment collectible does not respawn once discovered.
 
-## Hunger model
+## Vitae model
 
-- Hunger is capped at `MAX_HUNGER = 10`.
-- Feeding reduces hunger by 3 (cannot go below 0).
-- Draining reduces hunger by 4 (cannot go below 0).
-- At maximum hunger each dawn: health decreases by `STARVATION_HEALTH_DAMAGE = 2` (floor 1) and an event is logged.
+- Vitae is a vampire's personal blood reserve and supernatural energy.
+- Vampire abilities spend Vitae; feeding restores it.
+- The player consumes 1 Vitae at each dawn as baseline sustenance.
+- Vitae condition is derived rather than saved: Sated (>=50%), Thirsty (25-<50%), Starved (>0-<25%), Bloodless (0).
+- Low Vitae reduces player attack damage and normal/orbital movement, but does not directly damage health.
+- Ordinary Food is for humans, not vampires. Human Servant Food consumption arrives with the human economy.
+- Vampire Vassal domain-scale blood supply is deferred until Blood Stock/Dominion gives it a real source and sink.
+- Resonance-based Feed/Drain reward differentiation will be implemented in 0.6.2b.
 
 ## Human population
 
@@ -67,7 +71,7 @@
 
 ## Why turning matters
 
-- Blood quality and profession hint at whether a human is a better fuel source or a better servant candidate.
+- Blood Resonance and profession help distinguish a valuable blood source from a valuable future servant or vassal candidate.
 - A turned servant should immediately connect back into building, crafting, gathering, or guarding.
 - Better servants and better gear should feed back into stronger combat performance and future turn choices.
 

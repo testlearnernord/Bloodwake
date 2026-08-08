@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.6.2a - Unified Vampire Vitae
+
+- Removed ordinary vampire hunger and the dawn starvation-damage system.
+- Vitae is now the player's single personal blood reserve and supernatural ability resource.
+- Added derived Sated / Thirsty / Starved / Bloodless states with attack and movement penalties.
+- Added 1 Vitae player upkeep at dawn; low Vitae does not directly damage health.
+- Removed the Hunger HUD/CSS and folded blood condition feedback into the Vitae bar.
+- Renamed Feral Hunger to Feral Thirst with no legacy alias.
+- Removed the fake Wood -> Food gathering side effect; Food remains reserved for future Human Servants.
+- Respawn no longer manufactures free Vitae.
+- Save format is v6; v1-v5 saves remain intentionally unsupported with no migration.
+- Vampire Vassal Blood Stock/upkeep is deferred until Dominion, and Resonance Feed/Drain balancing remains 0.6.2b.
+
 ## 0.6.1d - Human Metadata and Blood Resonance
 
 - Replaced free-human `bloodQuality` with authoritative `bloodResonance` (1–5) and labels Thin/Common/Rich/Potent/Exceptional.

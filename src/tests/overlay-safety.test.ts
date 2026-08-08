@@ -102,7 +102,6 @@ describe('overlay rendering safety', () => {
         currentJob: null,
         currentTask: null,
         taskReason: 'Awaiting recruitment systems.',
-        hunger: 0,
         equipped: {},
       },
     ];

@@ -34,6 +34,7 @@ import { computeFreeMovement, computeLockedMovement, type MovementInput } from '
 import { createProjectile, registerProjectileImpact, resolveProjectileDirection, stepProjectile, type CombatProjectile } from '../../simulation/combat/projectiles';
 import { cycleLockTarget, selectLockTarget, selectTargetNearPoint, shouldBreakLock } from '../../simulation/combat/targeting';
 import { applyIncomingDamage } from '../../simulation/combat/stats';
+import { getVitaeConditionEffects } from '../../simulation/blood/vitaeCondition';
 
 interface SceneEnemy {
   id: string;
@@ -442,12 +443,14 @@ export class WorldScene extends Phaser.Scene {
       return;
     }
     const input = this.getMovementInput();
+    const state = this.bridge.getState();
+    const movementSpeed = PLAYER_MOVE_SPEED * getVitaeConditionEffects(state.player.vitae, state.player.maxVitae).movementMultiplier;
     const pointer = this.input.activePointer;
     const lockedEnemy = this.getLockedEnemy();
     const moving = input.up || input.down || input.left || input.right;
     const movement = lockedEnemy
-      ? computeLockedMovement(input, { x: this.player.x, y: this.player.y }, { x: lockedEnemy.sprite.x, y: lockedEnemy.sprite.y }, PLAYER_MOVE_SPEED)
-      : computeFreeMovement(input, PLAYER_MOVE_SPEED, { x: pointer.worldX - this.player.x, y: pointer.worldY - this.player.y });
+      ? computeLockedMovement(input, { x: this.player.x, y: this.player.y }, { x: lockedEnemy.sprite.x, y: lockedEnemy.sprite.y }, movementSpeed)
+      : computeFreeMovement(input, movementSpeed, { x: pointer.worldX - this.player.x, y: pointer.worldY - this.player.y });
     const actionMultiplier = this.playerAction.actionId ? PLAYER_ACTIONS_BY_ID[this.playerAction.actionId].movementMultiplier : 1;
     this.player.setVelocity(movement.velocity.x * actionMultiplier, movement.velocity.y * actionMultiplier);
     if (lockedEnemy) {

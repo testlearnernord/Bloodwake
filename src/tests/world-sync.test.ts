@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  MAX_HUNGER,
-  FEED_HUNGER_REDUCTION,
-  TARGET_HUMAN_POPULATION,
-} from '../config/balancing';
+import { PLAYER_VITAE_UPKEEP_PER_DAWN, TARGET_HUMAN_POPULATION } from '../config/balancing';
 import { createNewGameState } from '../app/state';
-import { advanceWorldPhase, applyFeedHungerReduction, applyDrainHungerReduction } from '../simulation/time/phaseAdvance';
+import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
 import { replenishHumanPopulation } from '../simulation/world/humans';
 import { applyHumanAction } from '../simulation/combat/bite';
 import { migrateSaveGame } from '../persistence/saveStore';
@@ -27,11 +23,11 @@ describe('phase lifecycle: night → day', () => {
     expect(next.time.day).toBe(1);
   });
 
-  it('increases hunger once', () => {
+  it('consumes exactly one Vitae at dawn', () => {
     const state = createNewGameState({ seed: 'test' });
-    const before = state.player.hunger;
+    const before = state.player.vitae;
     const { state: next } = advanceWorldPhase(state);
-    expect(next.player.hunger).toBeGreaterThan(before);
+    expect(next.player.vitae).toBe(Math.max(0, before - PLAYER_VITAE_UPKEEP_PER_DAWN));
   });
 
   it('does not change world cycle', () => {
@@ -101,114 +97,27 @@ describe('phase lifecycle: idempotent', () => {
     const r1 = advanceWorldPhase(state);
     const r2 = advanceWorldPhase(state);
     expect(r1.state.time.phase).toBe(r2.state.time.phase);
-    expect(r1.state.player.hunger).toBe(r2.state.player.hunger);
+    expect(r1.state.player.vitae).toBe(r2.state.player.vitae);
   });
 });
 
-// ─── Hunger ─────────────────────────────────────────────────────────────────
+// ─── Vitae and daylight ──────────────────────────────────────────────────────
 
-describe('hunger model', () => {
-  it('hunger cannot exceed MAX_HUNGER', () => {
-    const state = createNewGameState({ seed: 'h' });
-    state.player.hunger = MAX_HUNGER - 1;
-    const { state: next } = advanceWorldPhase(state);
-    expect(next.player.hunger).toBeLessThanOrEqual(MAX_HUNGER);
+describe('vitae upkeep and daylight', () => {
+  it('does not consume a second upkeep point on day -> night', () => {
+    const state = createNewGameState({ seed: 'vitae-cycle' });
+    const { state: day } = advanceWorldPhase(state);
+    const before = day.player.vitae;
+    const { state: night } = advanceWorldPhase(day);
+    expect(night.player.vitae).toBe(before);
   });
 
-  it('feeding reduces hunger', () => {
-    const before = 6;
-    expect(applyFeedHungerReduction(before)).toBe(before - FEED_HUNGER_REDUCTION);
-  });
-
-  it('draining reduces hunger at least as much as feeding', () => {
-    const before = 6;
-    expect(applyDrainHungerReduction(before)).toBeLessThanOrEqual(applyFeedHungerReduction(before));
-  });
-
-  it('hunger cannot become negative from feeding', () => {
-    expect(applyFeedHungerReduction(0)).toBe(0);
-    expect(applyFeedHungerReduction(1)).toBe(0);
-  });
-
-  it('hunger cannot become negative from draining', () => {
-    expect(applyDrainHungerReduction(0)).toBe(0);
-  });
-
-  it('hunger reduction is applied when feeding a human', () => {
-    const state = createNewGameState({ seed: 'feed-test' });
-    state.player.vitae = 5;
-    state.player.hunger = 8;
-    const humanId = state.npcs[0]?.id ?? '';
-    const { state: next } = applyHumanAction(state, humanId, 'feed');
-    expect(next.player.hunger).toBeLessThan(8);
-  });
-
-  it('hunger reduction is applied when draining a human', () => {
-    const state = createNewGameState({ seed: 'drain-test' });
-    state.player.hunger = 8;
-    const humanId = state.npcs[0]?.id ?? '';
-    const { state: next } = applyHumanAction(state, humanId, 'drain');
-    expect(next.player.hunger).toBeLessThan(8);
-  });
-
-  it('maximum hunger causes configured dawn damage', () => {
-    const state = createNewGameState({ seed: 'starvation' });
-    state.player.hunger = MAX_HUNGER;
-    const before = state.player.health;
-    const { state: next, events } = advanceWorldPhase(state);
-    expect(next.player.health).toBeLessThan(before);
-    expect(next.player.health).toBeGreaterThanOrEqual(1); // cannot reduce to 0
-    expect(events.some((e) => e.includes('Starvation') || e.includes('starv'))).toBe(true);
-  });
-
-  it('starvation damage repeats on a later dawn if still starving', () => {
-    const state = createNewGameState({ seed: 'starvation-2' });
-    state.player.hunger = MAX_HUNGER;
-    const { state: day1 } = advanceWorldPhase(state); // night→day
-    const h1 = day1.player.health;
-    // Advance to night, then day again without feeding
-    const { state: night2 } = advanceWorldPhase(day1); // day→night
-    night2.player.hunger = MAX_HUNGER;
-    const { state: day2 } = advanceWorldPhase(night2); // night→day
-    expect(day2.player.health).toBeLessThanOrEqual(h1);
-  });
-
-  it('starvation cannot reduce health below 1', () => {
-    const state = createNewGameState({ seed: 'starvation-floor' });
-    state.player.hunger = MAX_HUNGER;
-    state.player.health = 1;
-    const { state: next } = advanceWorldPhase(state);
-    expect(next.player.health).toBeGreaterThanOrEqual(1);
-  });
-
-  it('produces event message for reaching maximum hunger', () => {
-    const state = createNewGameState({ seed: 'hunger-msg' });
-    state.player.hunger = MAX_HUNGER - 1;
-    const { events } = advanceWorldPhase(state);
-    expect(events.some((e) => e.includes('limit') || e.includes('starv'))).toBe(true);
-  });
-
-  it('does not repeat the max-hunger event when already starving', () => {
-    const state = createNewGameState({ seed: 'hunger-repeat' });
-    state.player.hunger = MAX_HUNGER;
-    const { events } = advanceWorldPhase(state);
-    expect(events.some((e) => e.includes('Hunger reaches its limit'))).toBe(false);
-  });
-
-  it('produces event message for starvation damage', () => {
-    const state = createNewGameState({ seed: 'dmg-msg' });
-    state.player.hunger = MAX_HUNGER;
-    const { events } = advanceWorldPhase(state);
-    expect(events.some((e) => e.includes('Starvation') || e.includes('starv'))).toBe(true);
-  });
-
-  it('applies daylight penalty even when not starving', () => {
+  it('keeps Sun-Cursed daylight damage separate from Vitae upkeep', () => {
     const state = createNewGameState({ seed: 'daylight-penalty' });
     state.player.traitIds = ['sun_cursed'];
-    state.player.hunger = 0;
-    const before = state.player.health;
+    const beforeHealth = state.player.health;
     const { state: next, events } = advanceWorldPhase(state);
-    expect(next.player.health).toBe(before - 1);
+    expect(next.player.health).toBe(beforeHealth - 1);
     expect(events).toContain('Daylight weakens you. (-1 health penalty applied)');
   });
 });

@@ -41,7 +41,6 @@ const vassal: VampireVassal = {
   currentJob: null,
   currentTask: null,
   taskReason: '',
-  hunger: 0,
   equipped: {},
 };
 

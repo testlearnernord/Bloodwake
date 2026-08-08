@@ -285,7 +285,6 @@ export class BloodwakeApp {
       onRespawn: () => {
         if (!this.state) return;
         this.state.player.health = this.state.player.maxHealth;
-        this.state.player.vitae = Math.max(2, this.state.player.vitae);
         this.state.lastEventLog.unshift('You collapse and reform beside the coffin.');
         this.notify('You reformed at the coffin.');
         this.renderGame();
@@ -756,7 +755,7 @@ export class BloodwakeApp {
     this.state = result.state;
 
     for (const event of result.events) {
-      if (event.includes('Hunger reaches its limit') || event.includes('Starvation saps')) {
+      if (event.includes('Dawn deepens your thirst') || event.includes('Daylight weakens you')) {
         this.notify(event.replace('[Phase] ', ''));
       }
     }

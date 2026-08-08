@@ -4,9 +4,17 @@ Save data is stored as versioned JSON in IndexedDB.
 
 ## Current version
 
-- `version: 5`
+- `version: 6`
 
-## Version 5 key fields
+## Version 6 key fields
+
+
+### Version 6 breaking change
+
+- Ordinary `hunger` was removed from `player`, `vampireVassals`, and shared population records.
+- Vitae is the only personal vampire blood/sustenance resource.
+- Saves containing stale vampire/population `hunger` fields are rejected.
+- v1-v5 saves are intentionally unsupported; there is no automatic migration.
 
 - `seed` (world seed)
 - `characterRoll` (deterministic vampire generation roll)
@@ -44,7 +52,7 @@ Free humans in `npcs` now use:
 
 The obsolete `bloodQuality` and `recruitability` fields are not part of v5 and cause validation failure if present on an NPC record.
 Blood Resonance generation is deterministic and weighted 35/35/20/8/2 for resonance levels 1–5.
-Recruitment mechanics for Resolve, Disposition, and Fear are deferred. Resonance-based Feed/Drain effects are deferred to Milestone 0.6.2.
+Recruitment mechanics for Resolve, Disposition, and Fear are deferred. Resonance-based Feed/Drain effects are deferred specifically to Milestone 0.6.2b.
 
 ## v4 population fields
 
@@ -59,7 +67,7 @@ ID uniqueness rules enforced at load time:
 
 ## Old save compatibility
 
-**Saves at version 1, 2, 3, or 4 are intentionally incompatible with v5.**  
+**Saves at versions 1 through 5 are intentionally incompatible with v6.**  
 Loading or importing an old save returns a clear error: *"This save belongs to an incompatible older game version."*  
 No partial load, no silent empty population, no resource grants will occur.  
 Players must start a new game.  
@@ -90,4 +98,4 @@ The memory fragment collectible is never stored in `defeatedEnemyIds`; its colle
 ## Compatibility notes
 
 - Storage/database key names are intentionally unchanged to avoid breaking existing browser storage.
-- Future schema updates should remain additive and explicit.
+- Future schema updates must be versioned and explicit. Breaking changes may reject old saves instead of retaining migration or compatibility shims.
