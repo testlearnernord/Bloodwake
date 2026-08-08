@@ -15,7 +15,7 @@ import { ENEMY_ATTACKS_BY_ID } from '../../data/enemyAttacks';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
-import type { BuiltRoom, EnemyType, HumanCharacter, ItemId, Servant } from '../../types/models';
+import type { BuiltRoom, EnemyType, HumanCharacter, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
 import { CombatPresentation, type TargetIndicator } from '../combat/CombatPresentation';
 import type { CombatActionId, CombatDamageEvent, CombatTargetSnapshot, CombatUiSnapshot, HumanActionMode, LockedTargetHudState } from '../combat/combatTypes';
@@ -66,8 +66,8 @@ interface SceneProjectile {
   lastTrailAt: number;
 }
 
-interface SceneServant {
-  servantId: string;
+interface SceneVassal {
+  vassalId: string;
   sprite: Phaser.GameObjects.Rectangle;
   nameLabel: Phaser.GameObjects.Text;
   jobLabel: Phaser.GameObjects.Text;
@@ -126,7 +126,7 @@ export class WorldScene extends Phaser.Scene {
   private enemies: SceneEnemy[] = [];
   private resources: SceneResourceNode[] = [];
   private projectiles: SceneProjectile[] = [];
-  private servants: SceneServant[] = [];
+  private vassals: SceneVassal[] = [];
   private rooms: SceneRoom[] = [];
   private memoryFragment: Phaser.GameObjects.Rectangle | null = null;
   private nearbyHumanId: string | null = null;
@@ -170,7 +170,7 @@ export class WorldScene extends Phaser.Scene {
     this.createEnemies();
     this.createResources();
     this.createMemoryFragment();
-    this.createServants();
+    this.createVassals();
     this.createRooms();
     this.createUiHints();
     this.configureInput();
@@ -195,7 +195,7 @@ export class WorldScene extends Phaser.Scene {
     }
     this.syncHumansWithState();
     this.syncMemoryWithState();
-    this.syncServantsWithState();
+    this.syncVassalsWithState();
     this.syncRoomsWithState();
     this.syncResourcesWithState();
     this.syncEnemiesWithState();
@@ -308,24 +308,24 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private createServants(): void {
+  private createVassals(): void {
     const state = this.bridge.getState();
-    this.servants = [];
-    state.servants.forEach((servant, index) => {
-      this.spawnServantVisual(servant, index);
+    this.vassals = [];
+    state.vampireVassals.forEach((vassal, index) => {
+      this.spawnVassalVisual(vassal, index);
     });
   }
 
-  private spawnServantVisual(servant: Servant, index: number): void {
+  private spawnVassalVisual(vassal: VampireVassal, index: number): void {
     const col = index % 3;
     const row = Math.floor(index / 3);
     const x = 60 + col * 70;
     const y = 540 + row * 60;
     const sprite = this.add.rectangle(x, y, 22, 22, 0x8b0000).setDepth(4).setStrokeStyle(1, 0xff6b6b);
-    const nameLabel = this.add.text(x, y - 18, servant.name, { color: '#ff6b6b', fontSize: '10px' }).setOrigin(0.5).setDepth(5);
-    const jobText = servant.currentJob ? servant.currentJob : 'Idle';
+    const nameLabel = this.add.text(x, y - 18, vassal.name, { color: '#ff6b6b', fontSize: '10px' }).setOrigin(0.5).setDepth(5);
+    const jobText = vassal.currentJob ? vassal.currentJob : 'Idle';
     const jobLabel = this.add.text(x, y + 15, jobText, { color: '#aaaaaa', fontSize: '9px' }).setOrigin(0.5).setDepth(5);
-    this.servants.push({ servantId: servant.id, sprite, nameLabel, jobLabel });
+    this.vassals.push({ vassalId: vassal.id, sprite, nameLabel, jobLabel });
   }
 
   private createRooms(): void {
@@ -1085,12 +1085,12 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private syncServantsWithState(): void {
+  private syncVassalsWithState(): void {
     const state = this.bridge.getState();
-    const existingIds = new Set(this.servants.map((s) => s.servantId));
-    // Remove servants no longer in state
-    this.servants = this.servants.filter((entry) => {
-      if (!state.servants.some((s) => s.id === entry.servantId)) {
+    const existingIds = new Set(this.vassals.map((v) => v.vassalId));
+    // Remove vassals no longer in state
+    this.vassals = this.vassals.filter((entry) => {
+      if (!state.vampireVassals.some((v) => v.id === entry.vassalId)) {
         entry.sprite.destroy();
         entry.nameLabel.destroy();
         entry.jobLabel.destroy();
@@ -1098,16 +1098,15 @@ export class WorldScene extends Phaser.Scene {
       }
       return true;
     });
-    // Add new servants
-    state.servants.forEach((servant, index) => {
-      if (!existingIds.has(servant.id)) {
-        this.spawnServantVisual(servant, index);
-        existingIds.add(servant.id);
+    // Add new vassals, update existing ones
+    state.vampireVassals.forEach((vassal, index) => {
+      if (!existingIds.has(vassal.id)) {
+        this.spawnVassalVisual(vassal, index);
+        existingIds.add(vassal.id);
       } else {
-        // Update job label
-        const entry = this.servants.find((s) => s.servantId === servant.id);
+        const entry = this.vassals.find((v) => v.vassalId === vassal.id);
         if (entry) {
-          entry.jobLabel.setText(servant.currentJob ?? 'Idle');
+          entry.jobLabel.setText(vassal.currentJob ?? 'Idle');
         }
       }
     });

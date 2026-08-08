@@ -223,11 +223,14 @@ describe('bite pipeline', () => {
     const turnState = createNewGameState({ seed: 'turn' });
     turnState.player.vitae = 5;
     const turned = applyHumanAction(turnState, turnState.npcs[0]?.id ?? '', 'turn');
-    expect(turned.state.servants).toHaveLength(1);
+    expect(turned.state.vampireVassals).toHaveLength(1);
     expect(turned.state.player.vitae).toBe(2);
     expect(turned.state.inheritanceHistory).toHaveLength(1);
     expect(turned.state.npcs[0]?.status).toBe('turned');
-    expect(turned.state.servants[0]?.taskReason).toContain('awaiting direction');
+    expect(turned.state.vampireVassals[0]?.taskReason).toContain('awaiting direction');
+    expect(turned.state.vampireVassals[0]).not.toHaveProperty('bloodEssence');
+    expect(turned.state.vampireVassals[0]).not.toHaveProperty('memoryFragments');
+    expect(turned.state.vampireVassals[0]).not.toHaveProperty('equipment');
   });
 
   it('reports blocked turn attempts without mutating state', () => {
@@ -241,6 +244,6 @@ describe('bite pipeline', () => {
     const result = applyHumanAction(state, state.npcs[0]?.id ?? '', 'turn');
     expect(result.state).toBe(state);
     expect(result.message).toContain('Vitae');
-    expect(state.servants).toHaveLength(0);
+    expect(state.vampireVassals).toHaveLength(0);
   });
 });

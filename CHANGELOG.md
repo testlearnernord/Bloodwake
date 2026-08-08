@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.6.1b - Milestone 0.6.1b: Activate separate human servant and vampire vassal populations
+
+### Save format v4
+
+- `SAVE_FORMAT_VERSION` incremented from 3 to 4.
+- `SaveGame.servants: Servant[]` removed. Replaced by two explicit population arrays:
+  - `humanServants: HumanServant[]` — recruited human servants (new games start empty until recruitment is implemented).
+  - `vampireVassals: VampireVassal[]` — vampire vassals created by the Turn action.
+- New games initialize both arrays as empty.
+- Saves at version 1, 2, or 3 are intentionally incompatible. Loading or importing an old save returns a clear error; no partial load, no resource grants, no silent empty population.
+- Existing old save slots remain deletable.
+
+### Validation
+
+- `validateSaveGame` now requires `humanServants` and `vampireVassals` arrays and rejects any save that contains the legacy `servants` field.
+- Population records are validated: each `humanServant` must have `kind: "human_servant"`, each `vampireVassal` must have `kind: "vampire_vassal"`.
+- Duplicate IDs rejected: no duplicates within `humanServants`, no duplicates within `vampireVassals`, no ID shared across both collections.
+
+### Turn action
+
+- `applyHumanAction` with `mode: "turn"` now creates a `VampireVassal` and appends it to `vampireVassals`.
+- Duplicate prevention: a vassal is only appended if its ID is not already present in `vampireVassals`.
+- Log message updated: *"Turned {name} into a fledgling vampire vassal."*
+
+### Work simulation
+
+- `runWorkShift` and `selectTaskForVassal` now operate on `VampireVassal[]` temporarily until day/night job separation is implemented.
+- Vampire vassals work at night only.
+- Human servant day work remains deferred.
+
+### World scene
+
+- `WorldScene.createVassals()` / `syncVassalsWithState()` replaces the former servant equivalents.
+- Vampire vassal tokens still appear as dark-red sprites with name and job labels.
+- Sync is duplicate-safe (add/remove by vassal ID without duplication).
+
+### Player-facing terminology
+
+- "Turn to Servant" button renamed to **"Turn into Vassal"**.
+- Population overlay title changed from "Servants" to **"Domain Population"**.
+- Overlay now shows two separate sections: **Human Servants** (with an empty-state message only when none exist) and **Vampire Vassals**.
+
+### Deferred
+
+- Human recruitment is not implemented. New games start with an empty `humanServants` list until a future milestone adds recruitment.
+- Day-phase human servant work is not implemented.
+- No Blood Stock, Dominion, torpor, housing, food upkeep, raids, or sunlight mechanics.
+
 ## 0.6.1a - Milestone 0.6.1a: Add human servant and vampire vassal population types
 
 ### Population type foundation
@@ -12,12 +60,10 @@
   - `convertLegacyVampireVassal(servant)`: converts a vampire Servant to VampireVassal.
   - `splitLegacyServants(servants)`: splits a mixed legacy array into separate `humanServants` and `vampireVassals` arrays.
 - Helpers clone nested mutable objects (priorities, equipped, attributes, traitIds) and never mutate the source.
-- The current `SaveGame` still uses the legacy `servants: Servant[]` collection. No save-format change occurs in this milestone.
-- Save-v4 migration and runtime adoption of the new types are intentionally deferred to Milestone 0.6.1b.
 
-## 0.5.0
+## 0.5.0 - Milestone 0.5: Synchronize servants, rooms, world respawns, and hunger
 
-### World cycle and persistence
+
 
 - Added `WorldCycleState` to `SaveGame`: tracks `cycle`, `collectedResourceNodeIds`, and `defeatedEnemyIds`.
 - Incremented `SAVE_FORMAT_VERSION` to 3.

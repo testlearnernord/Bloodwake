@@ -368,14 +368,14 @@ describe('enemy lifecycle', () => {
 
 // ─── Servant World Representation ───────────────────────────────────────────
 
-describe('servant state', () => {
-  it('turning a human creates a servant in state', () => {
+describe('vampire vassal state', () => {
+  it('turning a human creates a vampire vassal in state', () => {
     const state = createNewGameState({ seed: 'servant-test' });
     state.player.vitae = 5;
     const humanId = state.npcs[0]?.id ?? '';
     const { state: next } = applyHumanAction(state, humanId, 'turn');
-    expect(next.servants).toHaveLength(1);
-    expect(next.servants[0]?.type).toBe('vampire');
+    expect(next.vampireVassals).toHaveLength(1);
+    expect(next.vampireVassals[0]?.kind).toBe('vampire_vassal');
   });
 
   it('turned human no longer appears as NPC', () => {
@@ -387,14 +387,14 @@ describe('servant state', () => {
     expect(human?.status).toBe('turned');
   });
 
-  it('turned servant is preserved after full night cycle', () => {
+  it('vampire vassal is preserved after full night cycle', () => {
     const state = createNewGameState({ seed: 'cycle-servant' });
     state.player.vitae = 5;
     const humanId = state.npcs[0]?.id ?? '';
-    const { state: withServant } = applyHumanAction(state, humanId, 'turn');
-    const { state: day } = advanceWorldPhase(withServant);
+    const { state: withVassal } = applyHumanAction(state, humanId, 'turn');
+    const { state: day } = advanceWorldPhase(withVassal);
     const { state: night } = advanceWorldPhase(day);
-    expect(night.servants).toHaveLength(1);
+    expect(night.vampireVassals).toHaveLength(1);
   });
 });
 
@@ -416,38 +416,40 @@ describe('room state', () => {
   });
 });
 
-// ─── Save Migration ──────────────────────────────────────────────────────────
+// ─── Save v4 Round-Trip ──────────────────────────────────────────────────────
 
-describe('save migration v2 → v3', () => {
-  it('migrates v2 save successfully', () => {
-    const v2 = createNewGameState({ seed: 'migrate' });
-    const asV2 = { ...v2, version: 2 };
-    const migrated = migrateSaveGame(asV2);
+describe('save v4 round-trip', () => {
+  it('v4 save migrates to the same version', () => {
+    const state = createNewGameState({ seed: 'migrate' });
+    const migrated = migrateSaveGame({ ...state });
     expect(migrated.version).toBe(SAVE_FORMAT_VERSION);
   });
 
-  it('existing servants are preserved after migration', () => {
+  it('rejects v2 saves with incompatibility error', () => {
+    const base = createNewGameState({ seed: 'migrate-old' });
+    const asV2 = { ...base, version: 2, servants: [], humanServants: undefined, vampireVassals: undefined };
+    expect(() => migrateSaveGame(asV2)).toThrow(/incompatible older game version/);
+  });
+
+  it('rejects v3 saves with incompatibility error', () => {
+    const base = createNewGameState({ seed: 'migrate-v3' });
+    const asV3 = { ...base, version: 3, servants: [], humanServants: undefined, vampireVassals: undefined };
+    expect(() => migrateSaveGame(asV3)).toThrow(/incompatible older game version/);
+  });
+
+  it('vampire vassals are preserved after v4 round-trip', () => {
     const state = createNewGameState({ seed: 'migrate-servants' });
     state.player.vitae = 5;
     const humanId = state.npcs[0]?.id ?? '';
-    const { state: withServant } = applyHumanAction(state, humanId, 'turn');
-    const asV2 = { ...withServant, version: 2 };
-    const migrated = migrateSaveGame(asV2);
-    expect(migrated.servants).toHaveLength(1);
-  });
-
-  it('initializes worldCycle with zero depletion for old saves', () => {
-    const v2 = createNewGameState({ seed: 'migrate-wc' });
-    const asV2 = { ...v2, version: 2 };
-    const migrated = migrateSaveGame(asV2);
-    expect(migrated.worldCycle.collectedResourceNodeIds).toHaveLength(0);
-    expect(migrated.worldCycle.defeatedEnemyIds).toHaveLength(0);
+    const { state: withVassal } = applyHumanAction(state, humanId, 'turn');
+    const migrated = migrateSaveGame({ ...withVassal });
+    expect(migrated.vampireVassals).toHaveLength(1);
   });
 
   it('rejects malformed world-cycle identifiers', () => {
-    const v3 = createNewGameState({ seed: 'migrate-bad' });
+    const v4 = createNewGameState({ seed: 'migrate-bad' });
     const withBadIds = {
-      ...v3,
+      ...v4,
       worldCycle: { cycle: 1, collectedResourceNodeIds: ['INVALID ID!', 'valid-id'], defeatedEnemyIds: [] },
     };
     const migrated = migrateSaveGame(withBadIds);
@@ -455,10 +457,10 @@ describe('save migration v2 → v3', () => {
     expect(migrated.worldCycle.collectedResourceNodeIds).toContain('valid-id');
   });
 
-  it('normalizes world-cycle identifiers to lowercase during migration', () => {
-    const v3 = createNewGameState({ seed: 'migrate-case' });
+  it('normalizes world-cycle identifiers to lowercase', () => {
+    const v4 = createNewGameState({ seed: 'migrate-case' });
     const withUppercaseIds = {
-      ...v3,
+      ...v4,
       worldCycle: { cycle: 1, collectedResourceNodeIds: ['WOOD-node'], defeatedEnemyIds: ['BANDIT-1'] },
     };
     const migrated = migrateSaveGame(withUppercaseIds);
@@ -469,9 +471,9 @@ describe('save migration v2 → v3', () => {
   });
 
   it('deduplicates world cycle identifier arrays', () => {
-    const v3 = createNewGameState({ seed: 'migrate-dup' });
+    const v4 = createNewGameState({ seed: 'migrate-dup' });
     const withDups = {
-      ...v3,
+      ...v4,
       worldCycle: {
         cycle: 1,
         collectedResourceNodeIds: ['wood-node', 'wood-node', 'herb-node'],
@@ -483,11 +485,10 @@ describe('save migration v2 → v3', () => {
     expect(migrated.worldCycle.defeatedEnemyIds.filter((id) => id === 'bandit-1').length).toBe(1);
   });
 
-  it('inventory remains intact after migration', () => {
-    const v2 = createNewGameState({ seed: 'migrate-inv' });
-    const woodBefore = v2.inventory.find((e) => e.itemId === 'wood')?.quantity ?? 0;
-    const asV2 = { ...v2, version: 2 };
-    const migrated = migrateSaveGame(asV2);
+  it('inventory remains intact after v4 round-trip', () => {
+    const v4 = createNewGameState({ seed: 'migrate-inv' });
+    const woodBefore = v4.inventory.find((e) => e.itemId === 'wood')?.quantity ?? 0;
+    const migrated = migrateSaveGame({ ...v4 });
     expect(migrated.inventory.find((e) => e.itemId === 'wood')?.quantity).toBe(woodBefore);
   });
 });

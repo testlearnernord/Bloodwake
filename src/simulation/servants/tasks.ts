@@ -1,26 +1,24 @@
 import { JOB_PRIORITY_WEIGHT, WORK_PHASES } from '../../config/balancing';
 import { PROFESSIONS_BY_ID } from '../../data/professions';
 import { RECIPES_BY_ID } from '../../data/recipes';
-import type { BuiltRoom, CraftingOrder, DayPhase, InventoryEntry, JobType, Servant, TaskCandidate } from '../../types/models';
+import type { BuiltRoom, CraftingOrder, DayPhase, InventoryEntry, JobType, TaskCandidate, VampireVassal } from '../../types/models';
 import { getItemQuantity } from '../inventory/inventory';
 import { getTraitById } from '../traits/traitUtils';
 
-export const canServantWorkInPhase = (servant: Servant, phase: DayPhase): boolean => {
-  const role = servant.type === 'human' ? 'human' : 'vampire';
-  return WORK_PHASES[role].includes(phase);
-};
+export const canVassalWorkInPhase = (_vassal: VampireVassal, phase: DayPhase): boolean =>
+  WORK_PHASES['vampire'].includes(phase);
 
 export const createTaskCandidates = (
-  servant: Servant,
+  vassal: VampireVassal,
   rooms: BuiltRoom[],
   craftingQueue: CraftingOrder[],
   inventory: InventoryEntry[],
 ): TaskCandidate[] => {
-  const profession = PROFESSIONS_BY_ID[servant.professionId];
+  const profession = PROFESSIONS_BY_ID[vassal.professionId];
   const professionBonuses = profession.jobBonuses;
   const traitBonusFor = (jobType: JobType): number => {
     const tag = jobType === 'Building' ? 'builder' : jobType.toLowerCase();
-    return servant.traitIds.reduce((score, traitId) => {
+    return vassal.traitIds.reduce((score, traitId) => {
       const trait = getTraitById(traitId);
       return score + (trait.tags.includes(tag) ? 1 : 0);
     }, 0);
@@ -29,7 +27,7 @@ export const createTaskCandidates = (
   const unfinishedRoom = rooms.find((room) => room.status === 'under_construction');
   if (unfinishedRoom) {
     const jobType: JobType = 'Building';
-    const priority = JOB_PRIORITY_WEIGHT[servant.priorities[jobType]];
+    const priority = JOB_PRIORITY_WEIGHT[vassal.priorities[jobType]];
     tasks.push({
       id: unfinishedRoom.id,
       type: 'construct_room',
@@ -41,7 +39,7 @@ export const createTaskCandidates = (
   const queuedOrder = craftingQueue.find((order) => order.status === 'queued');
   if (queuedOrder && rooms.some((room) => room.roomId === RECIPES_BY_ID[queuedOrder.recipeId].requiredRoomId && room.status === 'built')) {
     const jobType: JobType = 'Crafting';
-    const priority = JOB_PRIORITY_WEIGHT[servant.priorities[jobType]];
+    const priority = JOB_PRIORITY_WEIGHT[vassal.priorities[jobType]];
     tasks.push({
       id: queuedOrder.id,
       type: 'craft_recipe',
@@ -51,7 +49,7 @@ export const createTaskCandidates = (
     });
   }
   const jobType: JobType = 'Gathering';
-  const priority = JOB_PRIORITY_WEIGHT[servant.priorities[jobType]];
+  const priority = JOB_PRIORITY_WEIGHT[vassal.priorities[jobType]];
   const lowWood = getItemQuantity(inventory, 'wood') < 8;
   if (lowWood || getItemQuantity(inventory, 'herbs') < 3) {
     tasks.push({
@@ -66,35 +64,44 @@ export const createTaskCandidates = (
     id: 'guard-post',
     type: 'guard_stronghold',
     jobType: 'Guarding',
-    score: JOB_PRIORITY_WEIGHT[servant.priorities.Guarding] + (professionBonuses.Guarding ?? 0) + traitBonusFor('Guarding'),
+    score: JOB_PRIORITY_WEIGHT[vassal.priorities.Guarding] + (professionBonuses.Guarding ?? 0) + traitBonusFor('Guarding'),
     reason: 'No urgent work; standing watch keeps the keep safe.',
   });
   return tasks;
 };
 
-export const selectTaskForServant = (
-  servant: Servant,
+export const selectTaskForVassal = (
+  vassal: VampireVassal,
   rooms: BuiltRoom[],
   craftingQueue: CraftingOrder[],
   inventory: InventoryEntry[],
   phase: DayPhase,
 ): TaskCandidate | null => {
-  if (!canServantWorkInPhase(servant, phase)) {
+  if (!canVassalWorkInPhase(vassal, phase)) {
     return {
       id: 'rest',
       type: 'guard_stronghold',
       jobType: 'Guarding',
       score: -1,
-      reason: `${servant.type === 'human' ? 'Human servants' : 'Vampire servants'} cannot work during ${phase}.`,
+      reason: `Vampire vassals cannot work during ${phase}.`,
     };
   }
-  if (servant.health <= 3) {
+  if (vassal.health <= 3) {
     return { id: 'recover', type: 'guard_stronghold', jobType: 'Guarding', score: -1, reason: 'Too wounded to work.' };
   }
-  const candidates = createTaskCandidates(servant, rooms, craftingQueue, inventory).sort((left, right) => right.score - left.score);
+  const candidates = createTaskCandidates(vassal, rooms, craftingQueue, inventory).sort((left, right) => right.score - left.score);
   const best = candidates[0] ?? null;
   if (!best || best.score <= 0) {
     return { id: 'idle', type: 'guard_stronghold', jobType: 'Guarding', score: 0, reason: 'No enabled tasks are available.' };
   }
   return best;
 };
+
+/** @deprecated Use selectTaskForVassal instead. */
+export const selectTaskForServant = selectTaskForVassal as unknown as (
+  servant: { id: string; type: string; priorities: Record<string, string>; professionId: string; traitIds: string[]; health: number },
+  rooms: BuiltRoom[],
+  craftingQueue: CraftingOrder[],
+  inventory: InventoryEntry[],
+  phase: DayPhase,
+) => TaskCandidate | null;

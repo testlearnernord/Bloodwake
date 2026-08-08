@@ -1,6 +1,6 @@
 import { getDayRestrictionPenalty } from '../traits/traitEffects';
 import { getTraitEffectIds } from '../traits/traitUtils';
-import type { DayPhase, Servant, VampireCharacter } from '../../types/models';
+import type { DayPhase, VampireCharacter, VampireVassal } from '../../types/models';
 
 export const togglePhase = (phase: DayPhase): DayPhase => (phase === 'night' ? 'day' : 'night');
 
@@ -18,5 +18,9 @@ export const applyDayRestriction = (player: VampireCharacter, phase: DayPhase): 
   };
 };
 
-export const servantCanWork = (servant: Servant, phase: DayPhase): boolean =>
+export const vassalCanWork = (vassal: VampireVassal, phase: DayPhase): boolean =>
+  vassal.kind === 'vampire_vassal' && phase === 'night';
+
+/** @deprecated Use vassalCanWork. Retained for tests that have not yet migrated. */
+export const servantCanWork = (servant: { type: string }, phase: DayPhase): boolean =>
   (servant.type === 'human' && phase === 'day') || (servant.type === 'vampire' && phase === 'night');

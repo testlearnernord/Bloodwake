@@ -79,29 +79,29 @@ describe('drain hunger: exact reduction', () => {
   });
 });
 
-// ─── Servant turn: exactly one new servant ────────────────────────────────────
+// ─── Vassal turn: exactly one new vassal ─────────────────────────────────────
 
-describe('servant turn: exactly one new servant per action', () => {
-  it('creates exactly one servant when turning the first human', () => {
+describe('vassal turn: exactly one new vassal per action', () => {
+  it('creates exactly one vampire vassal when turning the first human', () => {
     const state = createNewGameState({ seed: 'turn-one' });
     state.player.vitae = 5;
-    const before = state.servants.length;
+    const before = state.vampireVassals.length;
     const humanId = state.npcs[0]?.id ?? '';
     const { state: next } = applyHumanAction(state, humanId, 'turn');
-    expect(next.servants.length).toBe(before + 1);
+    expect(next.vampireVassals.length).toBe(before + 1);
   });
 
-  it('does not add more than one servant per turn call', () => {
+  it('does not add more than one vassal per turn call', () => {
     const state = createNewGameState({ seed: 'turn-no-extra' });
     state.player.vitae = 20;
     const humanId = state.npcs[0]?.id ?? '';
     const { state: once } = applyHumanAction(state, humanId, 'turn');
     // Attempt to turn the already-turned human a second time
     const { state: twice } = applyHumanAction(once, humanId, 'turn');
-    expect(twice.servants.length).toBe(once.servants.length); // no extra servant
+    expect(twice.vampireVassals.length).toBe(once.vampireVassals.length); // no extra vassal
   });
 
-  it('servant list IDs are unique after turning', () => {
+  it('vampire vassal IDs are unique after turning multiple humans', () => {
     const state = createNewGameState({ seed: 'servant-ids' });
     state.player.vitae = 10;
     const h1 = state.npcs[0]?.id ?? '';
@@ -109,7 +109,7 @@ describe('servant turn: exactly one new servant per action', () => {
     const { state: s1 } = applyHumanAction(state, h1, 'turn');
     s1.player.vitae = 10;
     const { state: s2 } = applyHumanAction(s1, h2, 'turn');
-    const ids = s2.servants.map((s) => s.id);
+    const ids = s2.vampireVassals.map((v) => v.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 });
@@ -173,13 +173,13 @@ describe('multi-dawn starvation damage', () => {
 // ─── Save round-trip: no duplicate entities ───────────────────────────────────
 
 describe('save round-trip: no duplicate entities', () => {
-  it('servants are not duplicated after migration round-trip', () => {
+  it('vampire vassals are not duplicated after migration round-trip', () => {
     const state = createNewGameState({ seed: 'rt-servants' });
     state.player.vitae = 5;
     const humanId = state.npcs[0]?.id ?? '';
-    const { state: withServant } = applyHumanAction(state, humanId, 'turn');
-    const migrated = migrateSaveGame({ ...withServant });
-    const ids = migrated.servants.map((s) => s.id);
+    const { state: withVassal } = applyHumanAction(state, humanId, 'turn');
+    const migrated = migrateSaveGame({ ...withVassal });
+    const ids = migrated.vampireVassals.map((v) => v.id);
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.length).toBe(1);
   });

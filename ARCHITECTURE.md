@@ -18,13 +18,24 @@
 - `src/persistence`: IndexedDB save slots, validation, and migration
 - `src/tests`: deterministic unit tests
 
+## Key decisions in Milestone 0.6.1b
+
+- **Save format v4 is active.** `SaveGame` replaces `servants: Servant[]` with two separate arrays: `humanServants: HumanServant[]` and `vampireVassals: VampireVassal[]`. The legacy `servants` field is absent from v4 saves; its presence causes rejection.
+- **Old saves (v1, v2, v3) are intentionally incompatible.** Loading or importing an old save returns a clear error; no partial load, no silent empty population, no resource grants. Players must start a new game.
+- **Population collections are separated.** All former vampire servants become vampire vassals in new games. Human recruitment remains deferred; new games start with an empty `humanServants` list until implemented.
+- **Turn creates a `VampireVassal`.** `applyHumanAction` now appends to `vampireVassals`. Duplicate prevention is enforced at commit time (a vassal is only appended if its ID does not already exist in `vampireVassals`).
+- **Work shift operates on `vampireVassals`.** `runWorkShift` and `selectTaskForVassal` in `src/simulation/servants/` operate on `VampireVassal[]` temporarily until day/night job separation is implemented.
+- **World scene sync uses `vampireVassals`.** `WorldScene.syncVassalsWithState()` replaces `syncServantsWithState()`.
+- **Population overlay shows separate sections.** The Domain Population overlay renders a Human Servants section (showing a placeholder only when empty) and a Vampire Vassals section.
+- **Player-facing terminology updated.** "Turn to Servant" → "Turn into Vassal". The population overlay is titled "Domain Population".
+- **`Servant` type retained** in `src/types/models.ts` as a `@deprecated` reference kept for `legacyPopulation.ts`. It is not used in any production runtime path.
+- **Validation enforces ID uniqueness.** `validateSaveGame` rejects: duplicate IDs within `humanServants`, duplicate IDs within `vampireVassals`, and any ID shared across both collections.
+
 ## Key decisions in Milestone 0.6.1a
 
 - Introduced explicit `HumanServant` (discriminator `kind: "human_servant"`) and `VampireVassal` (discriminator `kind: "vampire_vassal"`) types in `src/types/models.ts`.
-- The existing `Servant` type is preserved as a temporary legacy compatibility model; it is marked `@deprecated` and will be removed in the save-v4 migration (Milestone 0.6.1b).
-- The current `SaveGame` still uses the legacy `servants: Servant[]` collection; no save-format changes occur in this milestone.
-- Added pure conversion helpers in `src/simulation/population/legacyPopulation.ts`: `convertLegacyHumanServant`, `convertLegacyVampireVassal`, and `splitLegacyServants`. These clone all nested mutable objects and never mutate the source. They are intentionally not wired into the production runtime yet.
-- Save-v4 migration and runtime adoption of the new population types are deferred to Milestone 0.6.1b.
+- The existing `Servant` type is preserved as a `@deprecated` legacy model for `legacyPopulation.ts` only.
+- Added pure conversion helpers in `src/simulation/population/legacyPopulation.ts`: `convertLegacyHumanServant`, `convertLegacyVampireVassal`, and `splitLegacyServants`. These clone all nested mutable objects and never mutate the source.
 
 ## Key decisions in Milestone 0.5
 
@@ -32,7 +43,7 @@
 - Created `advanceWorldPhase()` in `src/simulation/time/phaseAdvance.ts` as the single authoritative lifecycle function for phase transitions.
 - Resource nodes and enemy instances use stable string IDs defined in `WorldScene`; depletion is stored in save state, not Phaser objects.
 - `WorldScene.syncWorldCycleWithState()` rebuilds world entities when a new night begins, using the cycle number as the trigger.
-- Servant and room world representations are passive scene objects created in `createServants()` / `createRooms()` and kept in sync by `syncServantsWithState()` / `syncRoomsWithState()`.
+- Vampire vassal and room world representations are passive scene objects created in `createVassals()` / `createRooms()` and kept in sync by `syncVassalsWithState()` / `syncRoomsWithState()`.
 - Human population replenishment uses deterministic IDs (`human-d{day}-{index}`) derived from world seed and day number to prevent collisions across cycles.
 - Hunger cap and starvation logic live in `advanceWorldPhase()` to keep them testable and centralized.
 - Save format v3 adds `worldCycle` with sanitization and deduplication of identifier arrays.

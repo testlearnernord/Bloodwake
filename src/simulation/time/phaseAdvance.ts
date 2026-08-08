@@ -67,9 +67,9 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     npcs = replenishHumanPopulation(npcs, state.seed, nextDay, TARGET_HUMAN_POPULATION);
   }
 
-  // Run work shift for servants
+  // Run work shift for vampire vassals
   const shift = runWorkShift(
-    state.servants,
+    state.vampireVassals,
     state.rooms,
     state.craftingQueue,
     state.strategicResources,
@@ -88,7 +88,7 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     npcs,
     time: { day: nextDay, phase: nextPhase },
     worldCycle,
-    servants: shift.servants,
+    vampireVassals: shift.vampireVassals,
     rooms: shift.rooms,
     craftingQueue: shift.craftingQueue,
     strategicResources: shift.strategicResources,

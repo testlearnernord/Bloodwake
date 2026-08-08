@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
-import { renderOverlay } from '../ui/overlays/overlays';
+import { getRecipeReadiness, renderOverlay } from '../ui/overlays/overlays';
 
 const ALL_MENUS = ['character', 'inventory', 'servants', 'stronghold', 'crafting', 'journal', 'pause'] as const;
 
@@ -69,6 +69,69 @@ describe('overlay rendering safety', () => {
       // Should start with the panel div, not with a header or body directly
       expect(trimmed, `${menu} should start with overlay-panel`).toMatch(/^<div class="overlay-panel">/);
     }
+  });
+
+  it('renders human servants when the save contains them', () => {
+    const state = createNewGameState({ seed: 'human-servants', playerName: 'Tester' });
+    const human = state.npcs[0]!;
+    state.humanServants = [
+      {
+        kind: 'human_servant',
+        id: `servant-${human.id}`,
+        name: human.name,
+        age: human.age,
+        professionId: human.professionId,
+        attributes: { ...human.attributes },
+        traitIds: [...human.traitIds],
+        health: human.health,
+        maxHealth: human.maxHealth,
+        morale: human.morale,
+        loyalty: human.loyalty,
+        ambition: human.ambition,
+        stress: human.stress,
+        combat: human.combat,
+        professionSkills: {},
+        priorities: {
+          Building: 'Low',
+          Crafting: 'Disabled',
+          Gathering: 'Normal',
+          Guarding: 'Low',
+          Research: 'Disabled',
+          Hunting: 'Disabled',
+        },
+        currentJob: null,
+        currentTask: null,
+        taskReason: 'Awaiting recruitment systems.',
+        hunger: 0,
+        equipped: {},
+      },
+    ];
+
+    const html = renderOverlay('servants', state, null, 'all', 'workshop');
+    expect(html).toContain(human.name);
+    expect(html).not.toContain('No human servants recruited yet.');
+  });
+});
+
+describe('overlay readiness text', () => {
+  it('uses vassal terminology for missing crafters', () => {
+    const state = createNewGameState({ seed: 'crafting-vassal-text', playerName: 'Tester' });
+    state.rooms.push({
+      id: 'room-workshop-1-0',
+      roomId: 'workshop',
+      x: 1,
+      y: 0,
+      width: 1,
+      height: 1,
+      status: 'built',
+      progress: 0,
+      assignedWorkerIds: [],
+    });
+
+    expect(getRecipeReadiness(state, 'wood_planks')).toEqual({
+      ready: false,
+      reason: 'Need a vassal with Crafting enabled.',
+    });
   });
 });
 

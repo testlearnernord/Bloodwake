@@ -3,10 +3,18 @@ import { ITEMS_BY_ID } from '../../data/items';
 import { PROFESSIONS_BY_ID } from '../../data/professions';
 import { RECIPES_BY_ID } from '../../data/recipes';
 import { ROOMS_BY_ID } from '../../data/rooms';
-import type { CraftingOrder, InventoryEntry, QualityLevel, Servant } from '../../types/models';
+import type { CraftingOrder, InventoryEntry, QualityLevel } from '../../types/models';
 import { SeededRng } from '../../utilities/rng';
 import { getTraitById } from '../traits/traitUtils';
 import { addItem, consumeItems, hasItems, mergeCompatibleStacks } from '../inventory/inventory';
+
+/** Minimal worker interface accepted by crafting functions. */
+interface CraftWorker {
+  id: string;
+  professionId: string;
+  traitIds: string[];
+  professionSkills: Partial<Record<string, number>>;
+}
 
 export const canCraftRecipe = (inventory: InventoryEntry[], recipeId: string): boolean => {
   const recipe = RECIPES_BY_ID[recipeId];
@@ -29,7 +37,7 @@ export const queueCraftingOrder = (craftingQueue: CraftingOrder[], recipeId: str
   ];
 };
 
-const scoreCraftQuality = (servant: Servant, recipeId: string, seed: string): QualityLevel => {
+const scoreCraftQuality = (servant: CraftWorker, recipeId: string, seed: string): QualityLevel => {
   const recipe = RECIPES_BY_ID[recipeId];
   const profession = PROFESSIONS_BY_ID[servant.professionId];
   const relevantRoom = ROOMS_BY_ID[recipe.requiredRoomId];
@@ -56,7 +64,7 @@ const scoreCraftQuality = (servant: Servant, recipeId: string, seed: string): Qu
 export const completeCraftingOrder = (
   inventory: InventoryEntry[],
   order: CraftingOrder,
-  servant: Servant,
+  servant: CraftWorker,
   seed: string,
 ): { inventory: InventoryEntry[]; order: CraftingOrder } => {
   const recipe = RECIPES_BY_ID[order.recipeId];

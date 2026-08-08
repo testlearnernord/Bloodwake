@@ -3,82 +3,60 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
 import { exportSaveGame, importSaveGame, loadFromSlot, migrateSaveGame, saveToSlot, validateSaveGame } from '../persistence/saveStore';
 import { applyHumanAction } from '../simulation/combat/bite';
+import { SAVE_FORMAT_VERSION } from '../config/game';
 
 describe('save serialization and validation', () => {
   beforeEach(() => {
     indexedDB.deleteDatabase('bloodwake-db');
   });
 
-  it('serializes and reloads a save slot', async () => {
+  it('serializes and reloads a save slot (v4)', async () => {
     const state = createNewGameState({ seed: 'save-seed' });
     await saveToSlot('slot-test', state);
     const loaded = await loadFromSlot('slot-test');
     expect(loaded?.seed).toBe('save-seed');
-    expect(loaded?.version).toBe(3);
+    expect(loaded?.version).toBe(4);
   });
 
-  it('exports and imports a valid save payload', () => {
+  it('exports and imports a valid v4 save payload', () => {
     const state = createNewGameState({ seed: 'save-export', characterRoll: 2 });
     const exported = exportSaveGame(state);
     const imported = importSaveGame(exported);
     expect(imported.seed).toBe('save-export');
     expect(imported.characterRoll).toBe(2);
+    expect(imported.humanServants).toEqual([]);
+    expect(imported.vampireVassals).toEqual([]);
   });
 
   it('rejects invalid imported saves', () => {
     expect(validateSaveGame({ nope: true })).toBe(false);
   });
 
-  it('migrates a v1 save to v2 without deleting servants', () => {
-    const v2 = createNewGameState({ seed: 'old-save' });
-    const v1Like = {
-      ...v2,
-      version: 1,
-      title: 'Vampire Breed',
-      characterRoll: undefined,
-      strategicResources: undefined,
-      resources: {
-        Wood: 6,
-        Stone: 3,
-        'Iron Ore': 2,
-        Leather: 1,
-        Herbs: 1,
-        Food: 2,
-        'Blood Essence': 4,
-        Security: 2,
-      },
-      inventory: [{ itemId: 'memory_talisman', quantity: 1, quality: 'Common' }],
-      servants: [
-        {
-          ...v2.player,
-          id: 'servant-legacy',
-          type: 'human',
-          priorities: {
-            Building: 'Normal',
-            Crafting: 'Normal',
-            Gathering: 'Normal',
-            Guarding: 'Normal',
-            Research: 'Disabled',
-            Hunting: 'Low',
-          },
-          currentJob: null,
-          currentTask: null,
-          taskReason: 'Legacy servant',
-          equipped: {},
-        },
-      ],
-    };
-    const migrated = migrateSaveGame(v1Like);
-    expect(migrated.version).toBe(3);
-    expect(migrated.title).toBe('Bloodwake');
-    expect(migrated.characterRoll).toBe(0);
-    expect(migrated.strategicResources.bloodEssence).toBe(4);
-    expect(migrated.strategicResources.security).toBe(2);
-    expect(migrated.inventory.find((entry) => entry.itemId === 'wood')?.quantity).toBe(6);
-    expect(migrated.servants.length).toBe(1);
+  it('rejects v1 saves with a clear incompatibility error', () => {
+    const base = createNewGameState({ seed: 'old-save' });
+    const v1Like = { ...base, version: 1, servants: [], humanServants: undefined, vampireVassals: undefined };
+    expect(() => migrateSaveGame(v1Like)).toThrow(/incompatible older game version/);
   });
 
-  it('rejects malformed inventory entries in v2 saves', () => {
+  it('rejects v2 saves with a clear incompatibility error', () => {
+    const base = createNewGameState({ seed: 'old-v2' });
+    const v2Like = { ...base, version: 2, servants: [], humanServants: undefined, vampireVassals: undefined };
+    expect(() => migrateSaveGame(v2Like)).toThrow(/incompatible older game version/);
+  });
+
+  it('rejects v3 saves with a clear incompatibility error', () => {
+    const base = createNewGameState({ seed: 'old-v3' });
+    const v3Like = { ...base, version: 3, servants: [], humanServants: undefined, vampireVassals: undefined };
+    expect(() => migrateSaveGame(v3Like)).toThrow(/incompatible older game version/);
+  });
+
+  it('rejects saves newer than the current version', () => {
+    const base = createNewGameState({ seed: 'future' });
+    const future = { ...base, version: SAVE_FORMAT_VERSION + 1 };
+    expect(() => migrateSaveGame(future)).toThrow(/newer than this build/);
+  });
+
+  it('rejects malformed inventory entries in v4 saves', () => {
     const state = createNewGameState({ seed: 'malformed' });
     const malformed = { ...state, inventory: [{ itemId: 'wood', quantity: -2 }] };
     expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
@@ -90,13 +68,65 @@ describe('save serialization and validation', () => {
     expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
   });
 
-  it('preserves turned servants across save export and reload', () => {
+  it('preserves turned vampire vassals across v4 save export and reload', () => {
     const state = createNewGameState({ seed: 'turned-save' });
     state.player.vitae = 5;
     const turned = applyHumanAction(state, state.npcs[0]?.id ?? '', 'turn').state;
     const loaded = importSaveGame(exportSaveGame(turned));
-    expect(loaded.servants).toHaveLength(1);
-    expect(loaded.servants[0]?.type).toBe('vampire');
+    expect(loaded.vampireVassals).toHaveLength(1);
+    expect(loaded.vampireVassals[0]?.kind).toBe('vampire_vassal');
     expect(loaded.inheritanceHistory).toHaveLength(1);
+  });
+
+  it('new game has no servants field', () => {
+    const state = createNewGameState({ seed: 'no-servants-field' });
+    expect('servants' in state).toBe(false);
+  });
+
+  it('new game initializes both population arrays as empty', () => {
+    const state = createNewGameState({ seed: 'init-pop' });
+    expect(state.humanServants).toEqual([]);
+    expect(state.vampireVassals).toEqual([]);
+  });
+
+  it('rejects v4 saves that still contain a legacy servants field', () => {
+    const state = createNewGameState({ seed: 'legacy-servants' });
+    const withLegacy = { ...state, servants: [] };
+    expect(validateSaveGame(withLegacy)).toBe(false);
+    expect(() => migrateSaveGame(withLegacy)).toThrow();
+  });
+
+  it('rejects v4 saves with malformed humanServants records', () => {
+    const state = createNewGameState({ seed: 'malformed-hs' });
+    const bad = { ...state, humanServants: [{ id: 'x', kind: 'wrong_kind' }] };
+    expect(validateSaveGame(bad)).toBe(false);
+  });
+
+  it('rejects v4 saves with malformed vampireVassals records', () => {
+    const state = createNewGameState({ seed: 'malformed-vv' });
+    const bad = { ...state, vampireVassals: [{ id: 'x', kind: 'wrong_kind' }] };
+    expect(validateSaveGame(bad)).toBe(false);
+  });
+
+  it('rejects v4 saves with duplicate IDs within humanServants', () => {
+    const state = createNewGameState({ seed: 'dup-hs' });
+    const dup = { ...state, humanServants: [{ id: 'dup-1', kind: 'human_servant' }, { id: 'dup-1', kind: 'human_servant' }] };
+    expect(validateSaveGame(dup)).toBe(false);
+  });
+
+  it('rejects v4 saves with duplicate IDs within vampireVassals', () => {
+    const state = createNewGameState({ seed: 'dup-vv' });
+    const dup = { ...state, vampireVassals: [{ id: 'dup-1', kind: 'vampire_vassal' }, { id: 'dup-1', kind: 'vampire_vassal' }] };
+    expect(validateSaveGame(dup)).toBe(false);
+  });
+
+  it('rejects v4 saves with a shared ID across both population collections', () => {
+    const state = createNewGameState({ seed: 'cross-dup' });
+    const cross = {
+      ...state,
+      humanServants: [{ id: 'shared-1', kind: 'human_servant' }],
+      vampireVassals: [{ id: 'shared-1', kind: 'vampire_vassal' }],
+    };
+    expect(validateSaveGame(cross)).toBe(false);
   });
 });

@@ -9,7 +9,7 @@ import { completeQuestStep } from '../simulation/quests/quests';
 import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
 import { loadSettings, saveSettings } from '../persistence/settings';
 import { deleteSlot, exportSaveGame, importSaveGame, listSaveSlots, loadFromSlot, saveToSlot } from '../persistence/saveStore';
-import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, Servant } from '../types/models';
+import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, VampireVassal } from '../types/models';
 import { createDefaultSeed } from '../utilities/rng';
 import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
@@ -457,7 +457,7 @@ export class BloodwakeApp {
       <div class="button-row compact">
         ${humanActions
           .map(
-            ({ mode, validation }) => `<button data-human-action="${mode}" ${validation.ok ? '' : 'disabled'}>${mode === 'turn' ? 'Turn to Servant' : mode[0].toUpperCase() + mode.slice(1)}</button>`,
+            ({ mode, validation }) => `<button data-human-action="${mode}" ${validation.ok ? '' : 'disabled'}>${mode === 'turn' ? 'Turn into Vassal' : mode[0].toUpperCase() + mode.slice(1)}</button>`,
           )
           .join('')}
       </div>
@@ -508,15 +508,15 @@ export class BloodwakeApp {
     for (const select of this.root.querySelectorAll<HTMLSelectElement>('select[data-servant-id]')) {
       select.onchange = () => {
         if (!this.state) return;
-        const servantId = select.dataset.servantId;
-        const jobType = select.dataset.jobType as keyof Servant['priorities'];
-        this.state.servants = this.state.servants.map((servant) =>
-          servant.id === servantId
-            ? { ...servant, priorities: { ...servant.priorities, [jobType]: select.value as JobPriority } }
-            : servant,
+        const vassalId = select.dataset.servantId;
+        const jobType = select.dataset.jobType as keyof VampireVassal['priorities'];
+        this.state.vampireVassals = this.state.vampireVassals.map((vassal) =>
+          vassal.id === vassalId
+            ? { ...vassal, priorities: { ...vassal.priorities, [jobType]: select.value as JobPriority } }
+            : vassal,
         );
         this.completeStepForEvent('assign');
-        this.notify('Servant priorities updated.');
+        this.notify('Vampire vassal priorities updated.');
         this.renderGame();
       };
     }
@@ -764,12 +764,12 @@ export class BloodwakeApp {
       this.notify(`Night ${this.state.time.day} begins.`);
     }
 
-    if (result.state.servants.some((servant) => servant.currentJob && servant.currentTask)) {
+    if (result.state.vampireVassals.some((vassal) => vassal.currentJob && vassal.currentTask)) {
       this.completeStepForEvent('assign');
     }
     if (wasQueuedSimpleSword && this.state.craftingQueue.some((order) => order.recipeId === 'simple_sword' && order.status === 'complete')) {
       this.completeStepForEvent('craft');
-      this.notify('Your servants completed a Simple Sword.');
+      this.notify('Your vampire vassals completed a Simple Sword.');
     }
     saveSettings(this.state.settings);
     await this.autoSave('slot-1');

@@ -4,15 +4,16 @@ Save data is stored as versioned JSON in IndexedDB.
 
 ## Current version
 
-- `version: 3`
+- `version: 4`
 
-## Version 3 key fields
+## Version 4 key fields
 
 - `seed` (world seed)
 - `characterRoll` (deterministic vampire generation roll)
 - `player` (includes `equipment`)
 - `npcs`
-- `servants`
+- `humanServants` — array of recruited human servants *(new in v4; new games start empty pending recruitment implementation)*
+- `vampireVassals` — array of vampire vassals created by the Turn action *(new in v4; replaces `servants`)*
 - `strategicResources`
   - `bloodEssence`
   - `security`
@@ -24,7 +25,7 @@ Save data is stored as versioned JSON in IndexedDB.
 - `constructionTasks`
 - `craftingQueue`
 - `time`
-- `worldCycle` *(new in v3)*
+- `worldCycle`
   - `cycle` — monotonically increasing world cycle number; increments each new night
   - `collectedResourceNodeIds` — stable node IDs collected during the current cycle (cleared on new night)
   - `defeatedEnemyIds` — stable enemy instance IDs defeated during the current cycle (cleared on new night)
@@ -33,23 +34,31 @@ Save data is stored as versioned JSON in IndexedDB.
 - `inheritanceHistory`
 - `lastEventLog`
 
-## v2 → v3 migration behavior
+## v4 population fields
 
-- Preserves all player, NPCs, servants, rooms, construction, crafting queue, quests, collectibles, inheritance history, and logs.
-- Adds `worldCycle` with `cycle: 0`, empty `collectedResourceNodeIds`, empty `defeatedEnemyIds`.
-- Sanitizes any existing `worldCycle` identifiers: rejects non-alphanumeric/non-hyphen IDs, IDs longer than 64 characters, deduplicates arrays, and caps each array at 500 entries.
+`humanServants` is an array of `HumanServant` objects (each with `kind: "human_servant"`).  
+`vampireVassals` is an array of `VampireVassal` objects (each with `kind: "vampire_vassal"`).  
+The legacy `servants` field is **not present** in v4 saves. Any save that contains `servants` will be rejected.
 
-## v1 → v2 migration behavior
+ID uniqueness rules enforced at load time:
+- No duplicate IDs within `humanServants`.
+- No duplicate IDs within `vampireVassals`.
+- No ID may appear in both collections.
 
-- Preserves player, NPCs, servants, rooms, construction, crafting queue, quests, collectibles, inheritance history, and logs.
-- Keeps existing servants (including legacy starter servants) untouched.
-- Normalizes title to `Bloodwake`.
-- Adds `characterRoll` default `0` when missing.
-- Adds `player.equipment` default `{}` when missing.
-- Converts legacy tangible resource counters into inventory item entries.
-- Converts legacy `Blood Essence`/`Security` into `strategicResources`.
-- Merges duplicate compatible stacks.
-- Rejects malformed saves with useful errors.
+## Old save compatibility
+
+**Saves at version 1, 2, or 3 are intentionally incompatible with v4.**  
+Loading or importing an old save returns a clear error: *"This save belongs to an incompatible older game version."*  
+No partial load, no silent empty population, no resource grants will occur.  
+Players must start a new game.  
+Existing old save slots remain deletable.
+
+## v3 → v4 breaking changes
+
+- `servants` removed; replaced by `humanServants` and `vampireVassals`.
+- No automatic migration from v1/v2/v3 to v4.
+- Human recruitment is deferred; new games start with an empty `humanServants` list until implemented.
+- Day-phase human servant work is deferred; vampire vassals work only at night.
 
 ## World cycle node and enemy IDs
 
