@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.2c Hotfix - Combat Feeding Presentation & Clergy Damage
+
+- Holy Bolt impacts now use the same authoritative damage/death/respawn pipeline as melee attacks, fixing the Clergy Hunter being unable to finish the player correctly.
+- Predatory Bite now has a large centered QTE panel with an explicit `F` prompt, two-step counter, and visible shrinking timing bar.
+- Added a stronger pounce trail/impact, blood-siphon particles, result flashes, camera feedback, and lightweight procedural audio cues.
+- The visible timing bar is driven by the same deterministic QTE state used by gameplay; no second UI-only timer was introduced.
+
 ## 0.6.2c - Combat Feeding
 
 - Added Predatory Bite as a contextual `F` combat finisher against a locked vulnerable hostile.

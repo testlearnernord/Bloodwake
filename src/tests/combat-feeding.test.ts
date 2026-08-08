@@ -4,6 +4,8 @@ import {
   getCombatFeedEligibility,
   getCombatFeedFailureDamage,
   getCombatFeedVitaeGain,
+  getCombatFeedWindowProgress,
+  isCombatFeedInputWindowOpen,
   pressCombatFeedInput,
   stepCombatFeedRuntime,
 } from '../simulation/combat/combatFeed';
@@ -51,6 +53,18 @@ describe('combat feeding QTE', () => {
     const elite = createCombatFeedRuntime('elite', true, 0);
     expect(normal.windowClosesAt - normal.windowOpensAt).toBeGreaterThan(elite.windowClosesAt - elite.windowOpensAt);
     expect(getCombatFeedFailureDamage(true)).toBeGreaterThan(getCombatFeedFailureDamage(false));
+  });
+
+  it('exposes deterministic timing-window progress for the visible QTE', () => {
+    let runtime = createCombatFeedRuntime('bandit', false, 0);
+    expect(isCombatFeedInputWindowOpen(runtime, 100)).toBe(false);
+    expect(getCombatFeedWindowProgress(runtime, 100)).toBe(0);
+    runtime = stepCombatFeedRuntime(runtime, runtime.windowOpensAt);
+    expect(isCombatFeedInputWindowOpen(runtime, runtime.windowOpensAt)).toBe(true);
+    expect(getCombatFeedWindowProgress(runtime, runtime.windowOpensAt)).toBe(0);
+    const midpoint = runtime.windowOpensAt + (runtime.windowClosesAt - runtime.windowOpensAt) / 2;
+    expect(getCombatFeedWindowProgress(runtime, midpoint)).toBeCloseTo(0.5);
+    expect(getCombatFeedWindowProgress(runtime, runtime.windowClosesAt)).toBe(1);
   });
 });
 

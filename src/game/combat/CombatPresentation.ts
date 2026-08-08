@@ -8,6 +8,24 @@ export interface TargetIndicator {
   destroy(): void;
 }
 
+export interface CombatFeedPrompt {
+  container: Phaser.GameObjects.Container;
+  keyBadge: Phaser.GameObjects.Text;
+  instruction: Phaser.GameObjects.Text;
+  stepText: Phaser.GameObjects.Text;
+  progressFill: Phaser.GameObjects.Rectangle;
+  destroy(): void;
+}
+
+export interface CombatFeedPromptState {
+  phase: 'pounce' | 'first_window' | 'second_window';
+  windowOpen: boolean;
+  progress: number;
+  successfulInputs: number;
+  elite: boolean;
+  now: number;
+}
+
 const drawSilhouette = (
   graphics: Phaser.GameObjects.Graphics,
   key: string,
@@ -31,6 +49,8 @@ const drawSilhouette = (
 };
 
 export class CombatPresentation {
+  private static combatAudioContext: AudioContext | null = null;
+
   static ensureTextures(scene: Phaser.Scene): void {
     if (!scene.textures.exists('pixel-token')) {
       const graphics = scene.add.graphics();
@@ -48,6 +68,144 @@ export class CombatPresentation {
 
   static createShadow(scene: Phaser.Scene, x: number, y: number, width: number, height: number): Phaser.GameObjects.Ellipse {
     return scene.add.ellipse(x, y + 11, width, height, 0x000000, 0.28).setDepth(1);
+  }
+
+  static createCombatFeedPrompt(scene: Phaser.Scene): CombatFeedPrompt {
+    const panel = scene.add.rectangle(0, 0, 370, 150, 0x07090d, 0.94).setStrokeStyle(2, 0xb91c3c, 0.95);
+    const title = scene.add.text(0, -55, 'PREDATORY BITE', { color: '#ffd7df', fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5);
+    const keyBadge = scene.add.text(0, -8, 'F', {
+      color: '#ffffff',
+      fontSize: '30px',
+      fontStyle: 'bold',
+      backgroundColor: '#7f1029',
+      padding: { x: 15, y: 6 },
+    }).setOrigin(0.5);
+    const instruction = scene.add.text(0, 30, 'CLOSING IN…', { color: '#f8f9fa', fontSize: '14px', fontStyle: 'bold' }).setOrigin(0.5);
+    const progressBack = scene.add.rectangle(0, 57, 280, 10, 0x343a40, 1);
+    const progressFill = scene.add.rectangle(-140, 57, 280, 10, 0xb91c3c, 1).setOrigin(0, 0.5);
+    const stepText = scene.add.text(0, 74, 'READY', { color: '#adb5bd', fontSize: '11px' }).setOrigin(0.5);
+    const container = scene.add.container(640, 205, [panel, title, keyBadge, instruction, progressBack, progressFill, stepText])
+      .setDepth(50)
+      .setScrollFactor(0)
+      .setVisible(false);
+    return {
+      container,
+      keyBadge,
+      instruction,
+      stepText,
+      progressFill,
+      destroy: () => container.destroy(true),
+    };
+  }
+
+  static hideCombatFeedPrompt(prompt: CombatFeedPrompt | null): void {
+    prompt?.container.setVisible(false);
+  }
+
+  static updateCombatFeedPrompt(prompt: CombatFeedPrompt, state: CombatFeedPromptState): void {
+    prompt.container.setVisible(true);
+    const accent = state.elite ? '#f8e16c' : '#ff758f';
+    const fillColor = state.elite ? 0xf8e16c : 0xb91c3c;
+    prompt.progressFill.setFillStyle(fillColor, 1);
+    if (state.phase === 'pounce') {
+      prompt.keyBadge.setAlpha(0.35).setScale(0.9);
+      prompt.instruction.setText('LEAPING TO THE TARGET…').setColor('#f8f9fa');
+      prompt.stepText.setText(state.elite ? 'ELITE GRAPPLE' : 'CLOSE THE DISTANCE').setColor(accent);
+      prompt.progressFill.setDisplaySize(0, 10);
+      return;
+    }
+    const step = state.successfulInputs + 1;
+    if (!state.windowOpen) {
+      prompt.keyBadge.setAlpha(0.45).setScale(0.9);
+      prompt.instruction.setText(step === 2 ? 'HOLD… WAIT FOR THE SECOND OPENING' : 'WAIT FOR THE OPENING').setColor('#ced4da');
+      prompt.stepText.setText(`${Math.min(step, 2)}/2`).setColor(accent);
+      prompt.progressFill.setDisplaySize(0, 10);
+      return;
+    }
+    const pulse = 1 + Math.sin(state.now / 55) * 0.08;
+    prompt.keyBadge.setAlpha(1).setScale(pulse);
+    prompt.instruction.setText('BITE NOW').setColor('#ffffff');
+    prompt.stepText.setText(`${Math.min(step, 2)}/2 · HIT F`).setColor(accent);
+    prompt.progressFill.setDisplaySize(Math.max(2, 280 * (1 - state.progress)), 10);
+  }
+
+  static showCombatFeedResult(scene: Phaser.Scene, success: boolean, text: string): void {
+    const result = scene.add.text(640, 205, text, {
+      color: success ? '#ffd7df' : '#ffffff',
+      fontSize: '24px',
+      fontStyle: 'bold',
+      backgroundColor: success ? '#551021' : '#2b1114',
+      padding: { x: 18, y: 10 },
+    }).setOrigin(0.5).setDepth(60).setScrollFactor(0).setScale(0.82);
+    scene.tweens.add({
+      targets: result,
+      scale: 1,
+      alpha: { from: 1, to: 0 },
+      y: 185,
+      duration: 520,
+      ease: 'Quad.easeOut',
+      onComplete: () => result.destroy(),
+    });
+  }
+
+  static showPredatoryPounce(scene: Phaser.Scene, startX: number, startY: number, endX: number, endY: number, reducedMotion: boolean): void {
+    const streak = scene.add.graphics().setDepth(6);
+    streak.lineStyle(reducedMotion ? 3 : 7, 0xb91c3c, 0.72);
+    streak.lineBetween(startX, startY, endX, endY);
+    const impactRing = scene.add.circle(endX, endY, 17, 0x000000, 0).setStrokeStyle(3, 0xff758f, 0.9).setDepth(6);
+    scene.tweens.add({ targets: streak, alpha: 0, duration: reducedMotion ? 90 : 190, onComplete: () => streak.destroy() });
+    scene.tweens.add({
+      targets: impactRing,
+      scale: reducedMotion ? 1.15 : 1.85,
+      alpha: 0,
+      duration: reducedMotion ? 100 : 240,
+      onComplete: () => impactRing.destroy(),
+    });
+    scene.cameras.main.shake(reducedMotion ? 35 : 75, 0.0018, false);
+  }
+
+  static showBloodSiphon(scene: Phaser.Scene, fromX: number, fromY: number, toX: number, toY: number, amount = 4): void {
+    for (let index = 0; index < amount; index += 1) {
+      const orb = scene.add.circle(fromX, fromY, 3 + (index % 2), 0xc1123f, 0.95).setDepth(9);
+      scene.tweens.add({
+        targets: orb,
+        x: toX,
+        y: toY,
+        alpha: { from: 0.95, to: 0.15 },
+        scale: { from: 1, to: 0.55 },
+        delay: index * 38,
+        duration: 180 + index * 24,
+        ease: 'Sine.easeIn',
+        onComplete: () => orb.destroy(),
+      });
+    }
+  }
+
+  static playCombatFeedSound(cue: 'pounce' | 'window' | 'success' | 'failure'): void {
+    if (typeof window === 'undefined' || typeof window.AudioContext === 'undefined') return;
+    const context = CombatPresentation.combatAudioContext ?? new window.AudioContext();
+    CombatPresentation.combatAudioContext = context;
+    if (context.state === 'suspended') void context.resume();
+    const now = context.currentTime;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const profile = cue === 'pounce'
+      ? { type: 'sawtooth' as OscillatorType, from: 180, to: 72, volume: 0.045, duration: 0.16 }
+      : cue === 'window'
+        ? { type: 'sine' as OscillatorType, from: 540, to: 760, volume: 0.055, duration: 0.085 }
+        : cue === 'success'
+          ? { type: 'sawtooth' as OscillatorType, from: 150, to: 48, volume: 0.065, duration: 0.23 }
+          : { type: 'square' as OscillatorType, from: 125, to: 62, volume: 0.045, duration: 0.13 };
+    oscillator.type = profile.type;
+    oscillator.frequency.setValueAtTime(profile.from, now);
+    oscillator.frequency.exponentialRampToValueAtTime(profile.to, now + profile.duration);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(profile.volume, now + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + profile.duration);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + profile.duration + 0.02);
   }
 
   static createTargetIndicator(scene: Phaser.Scene): TargetIndicator {

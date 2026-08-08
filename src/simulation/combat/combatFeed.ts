@@ -113,6 +113,17 @@ export const getCombatFeedVitaeGain = (currentVitae: number, maxVitae: number): 
 export const getCombatFeedFailureDamage = (elite: boolean): number =>
   elite ? COMBAT_FEED_ELITE_FAILURE_DAMAGE : COMBAT_FEED_FAILURE_DAMAGE;
 
+export const isCombatFeedInputWindowOpen = (runtime: CombatFeedRuntime, now: number): boolean =>
+  (runtime.phase === 'first_window' || runtime.phase === 'second_window') &&
+  now >= runtime.windowOpensAt &&
+  now <= runtime.windowClosesAt;
+
+export const getCombatFeedWindowProgress = (runtime: CombatFeedRuntime, now: number): number => {
+  if (!isCombatFeedInputWindowOpen(runtime, now)) return 0;
+  const duration = Math.max(1, runtime.windowClosesAt - runtime.windowOpensAt);
+  return Math.max(0, Math.min(1, (now - runtime.windowOpensAt) / duration));
+};
+
 export const getCombatFeedPrompt = (runtime: CombatFeedRuntime, now: number): string => {
   if (runtime.phase === 'pounce') return 'Predatory Bite: pouncing...';
   if (runtime.phase === 'first_window') return now >= runtime.windowOpensAt ? 'Predatory Bite: F NOW (1/2)' : 'Predatory Bite: wait...';
