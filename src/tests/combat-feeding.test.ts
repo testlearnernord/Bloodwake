@@ -3,9 +3,9 @@ import {
   createCombatFeedRuntime,
   getCombatFeedEligibility,
   getCombatFeedFailureDamage,
+  getCombatFeedMarkerProgress,
   getCombatFeedVitaeGain,
-  getCombatFeedWindowProgress,
-  isCombatFeedInputWindowOpen,
+  isCombatFeedTimingHit,
   pressCombatFeedInput,
   stepCombatFeedRuntime,
 } from '../simulation/combat/combatFeed';
@@ -27,44 +27,69 @@ describe('combat feeding eligibility', () => {
   });
 });
 
-describe('combat feeding QTE', () => {
-  it('requires two timed inputs and succeeds deterministically', () => {
-    let runtime = createCombatFeedRuntime('bandit', false, 0);
-    runtime = stepCombatFeedRuntime(runtime, 180);
+const centerOfActiveZone = (runtime: ReturnType<typeof createCombatFeedRuntime>, roundIndex: 0 | 1): number =>
+  runtime.windowOpensAt + runtime.roundDurationMs * (runtime.successZoneStarts[roundIndex] + runtime.successZoneSize / 2);
+
+describe('combat feeding circular QTE', () => {
+  it('generates deterministic but seed-dependent green sectors in safe parts of the circle', () => {
+    const first = createCombatFeedRuntime('bandit', false, 100, 'stable-seed');
+    const same = createCombatFeedRuntime('bandit', false, 100, 'stable-seed');
+    const other = createCombatFeedRuntime('bandit', false, 100, 'other-seed');
+    expect(first.successZoneStarts).toEqual(same.successZoneStarts);
+    expect(first.successZoneStarts).not.toEqual(other.successZoneStarts);
+    for (const zoneStart of first.successZoneStarts) {
+      expect(zoneStart).toBeGreaterThanOrEqual(0.18);
+      expect(zoneStart + first.successZoneSize).toBeLessThanOrEqual(0.9);
+    }
+  });
+
+  it('requires two clean hits inside the random green sectors', () => {
+    let runtime = createCombatFeedRuntime('bandit', false, 0, 'two-clean-hits');
+    runtime = stepCombatFeedRuntime(runtime, runtime.windowOpensAt);
     expect(runtime.phase).toBe('first_window');
-    const first = pressCombatFeedInput(runtime, 200);
+    const firstAt = centerOfActiveZone(runtime, 0);
+    expect(isCombatFeedTimingHit(runtime, firstAt)).toBe(true);
+    const first = pressCombatFeedInput(runtime, firstAt);
     expect(first.accepted).toBe(true);
     expect(first.succeeded).toBe(false);
-    const secondAt = first.runtime.windowOpensAt + 10;
+    const secondAt = centerOfActiveZone(first.runtime, 1);
+    expect(isCombatFeedTimingHit(first.runtime, secondAt)).toBe(true);
     const second = pressCombatFeedInput(first.runtime, secondAt);
     expect(second.succeeded).toBe(true);
     expect(second.runtime.successfulInputs).toBe(2);
   });
 
-  it('fails on an early mash or a missed window', () => {
-    const early = pressCombatFeedInput(createCombatFeedRuntime('bandit', false, 0), 40);
-    expect(early.failed).toBe(true);
-    const timedOut = stepCombatFeedRuntime(createCombatFeedRuntime('bandit', false, 0), 1000);
+  it('makes button mashing fail instead of brute-forcing the skill check', () => {
+    const duringPounce = pressCombatFeedInput(createCombatFeedRuntime('bandit', false, 0, 'mash'), 40);
+    expect(duringPounce.failed).toBe(true);
+
+    let runtime = createCombatFeedRuntime('bandit', false, 0, 'outside-green');
+    runtime = stepCombatFeedRuntime(runtime, runtime.windowOpensAt);
+    expect(isCombatFeedTimingHit(runtime, runtime.windowOpensAt)).toBe(false);
+    expect(pressCombatFeedInput(runtime, runtime.windowOpensAt).failed).toBe(true);
+  });
+
+  it('fails if the marker completes a circle without a hit', () => {
+    const runtime = createCombatFeedRuntime('bandit', false, 0, 'timeout');
+    const timedOut = stepCombatFeedRuntime(runtime, runtime.windowClosesAt + 1);
     expect(timedOut.phase).toBe('failure');
   });
 
-  it('gives elites a shorter timing window', () => {
-    const normal = createCombatFeedRuntime('bandit', false, 0);
-    const elite = createCombatFeedRuntime('elite', true, 0);
-    expect(normal.windowClosesAt - normal.windowOpensAt).toBeGreaterThan(elite.windowClosesAt - elite.windowOpensAt);
+  it('gives elites a faster marker and a smaller green sector', () => {
+    const normal = createCombatFeedRuntime('bandit', false, 0, 'normal');
+    const elite = createCombatFeedRuntime('elite', true, 0, 'elite');
+    expect(normal.roundDurationMs).toBeGreaterThan(elite.roundDurationMs);
+    expect(normal.successZoneSize).toBeGreaterThan(elite.successZoneSize);
     expect(getCombatFeedFailureDamage(true)).toBeGreaterThan(getCombatFeedFailureDamage(false));
   });
 
-  it('exposes deterministic timing-window progress for the visible QTE', () => {
-    let runtime = createCombatFeedRuntime('bandit', false, 0);
-    expect(isCombatFeedInputWindowOpen(runtime, 100)).toBe(false);
-    expect(getCombatFeedWindowProgress(runtime, 100)).toBe(0);
+  it('exposes marker progress from zero to one for the visible ring', () => {
+    let runtime = createCombatFeedRuntime('bandit', false, 0, 'progress');
+    expect(getCombatFeedMarkerProgress(runtime, 100)).toBe(0);
     runtime = stepCombatFeedRuntime(runtime, runtime.windowOpensAt);
-    expect(isCombatFeedInputWindowOpen(runtime, runtime.windowOpensAt)).toBe(true);
-    expect(getCombatFeedWindowProgress(runtime, runtime.windowOpensAt)).toBe(0);
-    const midpoint = runtime.windowOpensAt + (runtime.windowClosesAt - runtime.windowOpensAt) / 2;
-    expect(getCombatFeedWindowProgress(runtime, midpoint)).toBeCloseTo(0.5);
-    expect(getCombatFeedWindowProgress(runtime, runtime.windowClosesAt)).toBe(1);
+    expect(getCombatFeedMarkerProgress(runtime, runtime.windowOpensAt)).toBe(0);
+    expect(getCombatFeedMarkerProgress(runtime, runtime.windowOpensAt + runtime.roundDurationMs / 2)).toBeCloseTo(0.5);
+    expect(getCombatFeedMarkerProgress(runtime, runtime.windowClosesAt)).toBe(1);
   });
 });
 

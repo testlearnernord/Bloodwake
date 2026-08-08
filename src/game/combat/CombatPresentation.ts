@@ -10,17 +10,19 @@ export interface TargetIndicator {
 
 export interface CombatFeedPrompt {
   container: Phaser.GameObjects.Container;
+  ringGraphics: Phaser.GameObjects.Graphics;
   keyBadge: Phaser.GameObjects.Text;
   instruction: Phaser.GameObjects.Text;
   stepText: Phaser.GameObjects.Text;
-  progressFill: Phaser.GameObjects.Rectangle;
   destroy(): void;
 }
 
 export interface CombatFeedPromptState {
   phase: 'pounce' | 'first_window' | 'second_window';
-  windowOpen: boolean;
-  progress: number;
+  roundStarted: boolean;
+  markerProgress: number;
+  successZoneStarts: [number, number];
+  successZoneSize: number;
   successfulInputs: number;
   elite: boolean;
   now: number;
@@ -71,29 +73,28 @@ export class CombatPresentation {
   }
 
   static createCombatFeedPrompt(scene: Phaser.Scene): CombatFeedPrompt {
-    const panel = scene.add.rectangle(0, 0, 370, 150, 0x07090d, 0.94).setStrokeStyle(2, 0xb91c3c, 0.95);
-    const title = scene.add.text(0, -55, 'PREDATORY BITE', { color: '#ffd7df', fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5);
-    const keyBadge = scene.add.text(0, -8, 'F', {
+    const panel = scene.add.rectangle(0, 0, 440, 235, 0x07090d, 0.95).setStrokeStyle(2, 0xb91c3c, 0.95);
+    const title = scene.add.text(0, -92, 'PREDATORY BITE', { color: '#ffd7df', fontSize: '18px', fontStyle: 'bold' }).setOrigin(0.5);
+    const instruction = scene.add.text(0, -64, 'GET READY', { color: '#f8f9fa', fontSize: '14px', fontStyle: 'bold' }).setOrigin(0.5);
+    const ringGraphics = scene.add.graphics();
+    const keyBadge = scene.add.text(0, 72, 'F', {
       color: '#ffffff',
-      fontSize: '30px',
+      fontSize: '28px',
       fontStyle: 'bold',
       backgroundColor: '#7f1029',
-      padding: { x: 15, y: 6 },
+      padding: { x: 14, y: 5 },
     }).setOrigin(0.5);
-    const instruction = scene.add.text(0, 30, 'CLOSING IN…', { color: '#f8f9fa', fontSize: '14px', fontStyle: 'bold' }).setOrigin(0.5);
-    const progressBack = scene.add.rectangle(0, 57, 280, 10, 0x343a40, 1);
-    const progressFill = scene.add.rectangle(-140, 57, 280, 10, 0xb91c3c, 1).setOrigin(0, 0.5);
-    const stepText = scene.add.text(0, 74, 'READY', { color: '#adb5bd', fontSize: '11px' }).setOrigin(0.5);
-    const container = scene.add.container(640, 205, [panel, title, keyBadge, instruction, progressBack, progressFill, stepText])
+    const stepText = scene.add.text(0, 103, 'TWO BLOOD WINDOWS', { color: '#adb5bd', fontSize: '11px' }).setOrigin(0.5);
+    const container = scene.add.container(640, 220, [panel, title, instruction, ringGraphics, keyBadge, stepText])
       .setDepth(50)
       .setScrollFactor(0)
       .setVisible(false);
     return {
       container,
+      ringGraphics,
       keyBadge,
       instruction,
       stepText,
-      progressFill,
       destroy: () => container.destroy(true),
     };
   }
@@ -104,29 +105,62 @@ export class CombatPresentation {
 
   static updateCombatFeedPrompt(prompt: CombatFeedPrompt, state: CombatFeedPromptState): void {
     prompt.container.setVisible(true);
-    const accent = state.elite ? '#f8e16c' : '#ff758f';
-    const fillColor = state.elite ? 0xf8e16c : 0xb91c3c;
-    prompt.progressFill.setFillStyle(fillColor, 1);
+    const graphics = prompt.ringGraphics;
+    graphics.clear();
+    const activeRound = state.phase === 'first_window' ? 0 : state.phase === 'second_window' ? 1 : -1;
+    const eliteAccent = state.elite ? 0xf8e16c : 0xff758f;
+    const centers = [-82, 82] as const;
+    const radius = 47;
+    const tau = Math.PI * 2;
+
+    centers.forEach((centerX, index) => {
+      const completed = index < state.successfulInputs;
+      const active = index === activeRound;
+      graphics.lineStyle(7, completed ? 0x2dc653 : active ? eliteAccent : 0x495057, completed ? 1 : active ? 0.8 : 0.35);
+      graphics.strokeCircle(centerX, 3, radius);
+
+      if (completed) {
+        graphics.fillStyle(0x2dc653, 0.95);
+        graphics.fillCircle(centerX, 3, 7);
+        return;
+      }
+      if (!active) return;
+
+      const zoneStart = index === 0 ? state.successZoneStarts[0] : state.successZoneStarts[1];
+      const zoneEnd = zoneStart + state.successZoneSize;
+      graphics.lineStyle(11, 0x2dc653, 1);
+      graphics.beginPath();
+      graphics.arc(centerX, 3, radius, -Math.PI / 2 + zoneStart * tau, -Math.PI / 2 + zoneEnd * tau, false);
+      graphics.strokePath();
+
+      if (state.roundStarted) {
+        const angle = -Math.PI / 2 + state.markerProgress * tau;
+        const innerX = centerX + Math.cos(angle) * (radius - 13);
+        const innerY = 3 + Math.sin(angle) * (radius - 13);
+        const outerX = centerX + Math.cos(angle) * (radius + 10);
+        const outerY = 3 + Math.sin(angle) * (radius + 10);
+        graphics.lineStyle(4, 0xffffff, 1);
+        graphics.lineBetween(innerX, innerY, outerX, outerY);
+        graphics.fillStyle(0xffffff, 1);
+        graphics.fillCircle(outerX, outerY, 5);
+      }
+    });
+
     if (state.phase === 'pounce') {
-      prompt.keyBadge.setAlpha(0.35).setScale(0.9);
-      prompt.instruction.setText('LEAPING TO THE TARGET…').setColor('#f8f9fa');
-      prompt.stepText.setText(state.elite ? 'ELITE GRAPPLE' : 'CLOSE THE DISTANCE').setColor(accent);
-      prompt.progressFill.setDisplaySize(0, 10);
+      prompt.keyBadge.setAlpha(0.35).setScale(0.9).setColor('#ffffff');
+      prompt.instruction.setText('PREDATORY LEAP...').setColor('#f8f9fa');
+      prompt.stepText.setText(state.elite ? 'ELITE PREY · TWO CIRCLES' : 'TWO CIRCLES · TWO CLEAN HITS').setColor(state.elite ? '#f8e16c' : '#ffb3c1');
       return;
     }
-    const step = state.successfulInputs + 1;
-    if (!state.windowOpen) {
-      prompt.keyBadge.setAlpha(0.45).setScale(0.9);
-      prompt.instruction.setText(step === 2 ? 'HOLD… WAIT FOR THE SECOND OPENING' : 'WAIT FOR THE OPENING').setColor('#ced4da');
-      prompt.stepText.setText(`${Math.min(step, 2)}/2`).setColor(accent);
-      prompt.progressFill.setDisplaySize(0, 10);
-      return;
-    }
-    const pulse = 1 + Math.sin(state.now / 55) * 0.08;
-    prompt.keyBadge.setAlpha(1).setScale(pulse);
-    prompt.instruction.setText('BITE NOW').setColor('#ffffff');
-    prompt.stepText.setText(`${Math.min(step, 2)}/2 · HIT F`).setColor(accent);
-    prompt.progressFill.setDisplaySize(Math.max(2, 280 * (1 - state.progress)), 10);
+
+    const roundNumber = activeRound + 1;
+    prompt.keyBadge.setAlpha(state.roundStarted ? 1 : 0.45).setScale(state.roundStarted ? 1 : 0.9).setColor('#ffffff');
+    prompt.instruction
+      .setText(state.roundStarted ? 'PRESS F WHEN THE MARKER ENTERS GREEN' : `CIRCLE ${roundNumber} · GET READY`)
+      .setColor(state.roundStarted ? '#ffffff' : '#ced4da');
+    prompt.stepText
+      .setText(`${roundNumber}/2${state.elite ? ' · ELITE TIMING' : ''}`)
+      .setColor(state.elite ? '#f8e16c' : '#ffb3c1');
   }
 
   static showCombatFeedResult(scene: Phaser.Scene, success: boolean, text: string): void {
