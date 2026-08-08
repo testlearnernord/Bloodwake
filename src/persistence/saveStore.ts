@@ -78,6 +78,9 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isRecord(value.player) || !isRecord(value.time) || !Array.isArray(value.lastEventLog)) {
     return false;
   }
+  if (!isRecord(value.settings) || typeof value.settings.volume !== 'number' || !Number.isFinite(value.settings.volume) || typeof value.settings.uiScale !== 'number' || !Number.isFinite(value.settings.uiScale)) {
+    return false;
+  }
   // Reject saves that still carry the legacy servants field
   if ('servants' in value) {
     return false;

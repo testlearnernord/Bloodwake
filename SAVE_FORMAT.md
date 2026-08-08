@@ -6,7 +6,7 @@ Save data is stored as versioned JSON in IndexedDB.
 
 - `version: 5`
 
-## Version 4 key fields
+## Version 5 key fields
 
 - `seed` (world seed)
 - `characterRoll` (deterministic vampire generation roll)
