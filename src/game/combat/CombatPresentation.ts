@@ -185,7 +185,7 @@ export class CombatPresentation {
     if (typeof window === 'undefined' || typeof window.AudioContext === 'undefined') return;
     const context = CombatPresentation.combatAudioContext ?? new window.AudioContext();
     CombatPresentation.combatAudioContext = context;
-    if (context.state === 'suspended') void context.resume();
+    if (context.state === 'suspended') context.resume().catch(() => { /* autoplay policy: blocked resume is presentation-only */ });
     const now = context.currentTime;
     const oscillator = context.createOscillator();
     const gain = context.createGain();
