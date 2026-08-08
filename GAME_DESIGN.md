@@ -28,6 +28,12 @@
 - Vampire Vassal domain-scale blood supply is deferred until Blood Stock/Dominion gives it a real source and sink.
 - Blood Resonance now makes Feed a renewable, nonlethal Vitae choice and Drain a larger one-time Vitae/Essence payout that kills the target. A fed human cannot be used again until the next night.
 
+## Combat feeding
+
+A Bloodless vampire must always have a skill-based route back into the supernatural combat loop. Predatory Bite lets the player execute a vulnerable hostile for Vitae without inventing a second vampire hunger resource. Normal enemies become feedable at low health or when staggered; elites demand a lower health threshold or a successful stagger and tighter timing. Failed attempts hurt and knock the player away.
+
+This is deliberately a finisher: a successful combat feed kills the vulnerable target, so one enemy cannot become an infinite Vitae source. Future bosses can override this with phase-specific rules.
+
 ## Human population
 
 - Active target: `TARGET_HUMAN_POPULATION = 5` (wandering humans in Village Edge).

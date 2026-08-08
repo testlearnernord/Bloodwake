@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import {
   BITE_RANGE,
   COFFIN_RESPAWN_FADE_MS,
+  COMBAT_FEED_KNOCKBACK_MS,
+  COMBAT_FEED_KNOCKBACK_SPEED,
   DODGE_SPEED,
   LOCK_BREAK_RANGE,
   LOCK_RANGE,
@@ -35,6 +37,7 @@ import { createProjectile, registerProjectileImpact, resolveProjectileDirection,
 import { cycleLockTarget, selectLockTarget, selectTargetNearPoint, shouldBreakLock } from '../../simulation/combat/targeting';
 import { applyIncomingDamage } from '../../simulation/combat/stats';
 import { getVitaeConditionEffects } from '../../simulation/blood/vitaeCondition';
+import { createCombatFeedRuntime, getCombatFeedEligibility, getCombatFeedFailureDamage, getCombatFeedPrompt, getCombatFeedVitaeGain, pressCombatFeedInput, stepCombatFeedRuntime, type CombatFeedRuntime } from '../../simulation/combat/combatFeed';
 
 interface SceneEnemy {
   id: string;
@@ -145,6 +148,9 @@ export class WorldScene extends Phaser.Scene {
   private hintText!: Phaser.GameObjects.Text;
   private playerAction: PlayerActionRuntime = createInitialPlayerActionRuntime();
   private biteSequence: BiteSequenceRuntime | null = null;
+  private combatFeedSequence: CombatFeedRuntime | null = null;
+  private combatFeedKnockbackUntil = 0;
+  private combatFeedKnockbackVelocity: { x: number; y: number } | null = null;
   private dodgeVelocity: { x: number; y: number } | null = null;
   private playerStatePreview = 'idle';
   private playerHealthPreview = 0;
@@ -356,7 +362,7 @@ export class WorldScene extends Phaser.Scene {
 
   private createUiHints(): void {
     this.hintText = this.add
-      .text(24, 680, 'WASD move · Ctrl lock · Tab next · Shift+Tab prev · MMB cursor lock · Q Blood Lance · F feed', {
+      .text(24, 680, 'WASD move · Ctrl lock · Tab next · Shift+Tab prev · MMB cursor lock · Q Blood Lance · F Bite/Feed', {
         color: '#f8f9fa',
         fontSize: '16px',
       })
@@ -429,7 +435,15 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private updateMovement(time: number): void {
-    if (this.playerAction.state === 'dead' || this.biteSequence) {
+    if (time < this.combatFeedKnockbackUntil && this.combatFeedKnockbackVelocity) {
+      this.player.setVelocity(this.combatFeedKnockbackVelocity.x, this.combatFeedKnockbackVelocity.y);
+      this.playerStatePreview = 'hurt';
+      return;
+    }
+    if (this.combatFeedKnockbackVelocity && time >= this.combatFeedKnockbackUntil) {
+      this.combatFeedKnockbackVelocity = null;
+    }
+    if (this.playerAction.state === 'dead' || this.biteSequence || this.combatFeedSequence) {
       this.player.setVelocity(0, 0);
       return;
     }
@@ -499,8 +513,14 @@ export class WorldScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.interactKey)) {
       this.interactNearbyObject();
     }
-    if (Phaser.Input.Keyboard.JustDown(this.biteKey) && this.nearbyHumanId) {
-      this.startHumanActionSequence(this.nearbyHumanId, 'feed');
+    if (Phaser.Input.Keyboard.JustDown(this.biteKey)) {
+      if (this.combatFeedSequence) {
+        this.handleCombatFeedInput(time);
+      } else if (this.lockedTargetId) {
+        this.tryStartCombatFeed(time);
+      } else if (this.nearbyHumanId) {
+        this.startHumanActionSequence(this.nearbyHumanId, 'feed');
+      }
     }
     if (Phaser.Input.Keyboard.JustDown(this.rangedKey)) {
       this.tryStartPlayerAction('blood_lance', time);
@@ -514,7 +534,7 @@ export class WorldScene extends Phaser.Scene {
     const state = this.bridge.getState();
     const started = startAction(PLAYER_ACTIONS_BY_ID[actionId], this.playerAction, {
       now,
-      blocked: this.bridge.isGameplayInputBlocked() || Boolean(this.biteSequence),
+      blocked: this.bridge.isGameplayInputBlocked() || Boolean(this.biteSequence) || Boolean(this.combatFeedSequence),
       dead: state.player.health <= 0,
       activeMenuOpen: this.bridge.isInputBlocked(),
       currentVitae: state.player.vitae,
@@ -537,6 +557,132 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  private tryStartCombatFeed(now: number): boolean {
+    const enemy = this.getLockedEnemy();
+    if (!enemy) return false;
+    if (this.bridge.isGameplayInputBlocked() || this.biteSequence || this.combatFeedSequence || this.playerAction.actionId) {
+      this.hintText.setText('You cannot start Predatory Bite during another action.');
+      return true;
+    }
+    const definition = ENEMIES_BY_ID[enemy.runtime.type];
+    const distance = Phaser.Math.Distance.Between(this.player.x, this.player.y, enemy.sprite.x, enemy.sprite.y);
+    const eligibility = getCombatFeedEligibility({
+      id: enemy.id,
+      health: enemy.runtime.health,
+      maxHealth: enemy.runtime.maxHealth,
+      elite: Boolean(definition.elite),
+      distance,
+      state: enemy.runtime.state,
+    });
+    if (!eligibility.ok) {
+      this.hintText.setText(eligibility.reason);
+      return true;
+    }
+    this.combatFeedSequence = createCombatFeedRuntime(enemy.id, Boolean(definition.elite), now);
+    this.playerStatePreview = 'bite_approach';
+    enemy.sprite.setVelocity(0, 0);
+    enemy.telegraph?.destroy();
+    enemy.telegraph = null;
+    enemy.runtime.telegraphVisible = false;
+    const angle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y);
+    const landingX = enemy.sprite.x + Math.cos(angle) * 28;
+    const landingY = enemy.sprite.y + Math.sin(angle) * 28;
+    this.tweens.add({ targets: this.player, x: landingX, y: landingY, duration: 160, ease: 'Quad.easeOut' });
+    this.hintText.setText('Predatory Bite: close in, then hit F twice on the prompts.');
+    return true;
+  }
+
+  private stepCombatFeedSequence(now: number): void {
+    if (!this.combatFeedSequence) return;
+    if (this.bridge.getState().player.health <= 0) {
+      this.combatFeedSequence = null;
+      return;
+    }
+    const previousPhase = this.combatFeedSequence.phase;
+    this.combatFeedSequence = stepCombatFeedRuntime(this.combatFeedSequence, now);
+    if (this.combatFeedSequence.phase === 'failure') {
+      this.finishCombatFeedFailure(now);
+      return;
+    }
+    this.playerStatePreview = this.combatFeedSequence.phase === 'pounce'
+      ? 'bite_approach'
+      : this.combatFeedSequence.phase === 'first_window' || this.combatFeedSequence.phase === 'second_window'
+        ? 'bite_hold'
+        : 'bite_release';
+    if (previousPhase !== this.combatFeedSequence.phase || now >= this.combatFeedSequence.windowOpensAt) {
+      this.hintText.setText(getCombatFeedPrompt(this.combatFeedSequence, now));
+    }
+  }
+
+  private handleCombatFeedInput(now: number): void {
+    if (!this.combatFeedSequence) return;
+    const result = pressCombatFeedInput(this.combatFeedSequence, now);
+    this.combatFeedSequence = result.runtime;
+    if (result.failed) {
+      this.finishCombatFeedFailure(now);
+      return;
+    }
+    if (result.succeeded) {
+      this.finishCombatFeedSuccess(now);
+      return;
+    }
+    this.hintText.setText('First bite locked. Wait for F NOW (2/2).');
+  }
+
+  private finishCombatFeedSuccess(now: number): void {
+    const sequence = this.combatFeedSequence;
+    if (!sequence) return;
+    const enemy = this.findEnemyById(sequence.enemyId);
+    if (!enemy) {
+      this.combatFeedSequence = null;
+      return;
+    }
+    const state = this.bridge.getState();
+    const vitaeGain = getCombatFeedVitaeGain(state.player.vitae, state.player.maxVitae);
+    this.bridge.onPlayerVitalsChanged(state.player.health, state.player.vitae + vitaeGain);
+    this.combatFeedSequence = null;
+    this.playerStatePreview = 'bite_release';
+    this.applyDamageEvent({
+      sourceId: 'player',
+      targetId: enemy.id,
+      actionId: 'bite',
+      rawDamage: enemy.runtime.health,
+      mitigatedDamage: enemy.runtime.health,
+      stagger: 0,
+      worldPosition: { x: enemy.sprite.x, y: enemy.sprite.y },
+    }, now);
+    CombatPresentation.spawnBloodBurst(this, enemy.sprite.x, enemy.sprite.y, 0xb51f4a);
+    this.hintText.setText(vitaeGain > 0 ? `Predatory Bite executed the target. +${vitaeGain} Vitae.` : 'Predatory Bite executed the target. Vitae was already full.');
+  }
+
+  private finishCombatFeedFailure(now: number): void {
+    const sequence = this.combatFeedSequence;
+    if (!sequence) return;
+    const enemy = this.findEnemyById(sequence.enemyId);
+    const state = this.bridge.getState();
+    const damage = getCombatFeedFailureDamage(sequence.elite);
+    const nextHealth = Math.max(0, state.player.health - damage);
+    this.combatFeedSequence = null;
+    this.applyDamageEvent({
+      sourceId: enemy?.id ?? sequence.enemyId,
+      targetId: 'player',
+      actionId: 'predatory_bite_failure',
+      rawDamage: damage,
+      mitigatedDamage: damage,
+      stagger: 1,
+      worldPosition: { x: this.player.x, y: this.player.y },
+    }, now);
+    if (nextHealth > 0 && enemy) {
+      const away = new Phaser.Math.Vector2(this.player.x - enemy.sprite.x, this.player.y - enemy.sprite.y).normalize();
+      this.combatFeedKnockbackVelocity = { x: away.x * COMBAT_FEED_KNOCKBACK_SPEED, y: away.y * COMBAT_FEED_KNOCKBACK_SPEED };
+      this.combatFeedKnockbackUntil = now + COMBAT_FEED_KNOCKBACK_MS;
+      this.playerStatePreview = 'hurt';
+    }
+    this.hintText.setText(nextHealth > 0
+      ? `Predatory Bite failed. The target throws you off for ${damage} damage.`
+      : `Predatory Bite failed. You were killed for ${damage} damage.`);
+  }
+
   private resolveDodgeDirection(): Phaser.Math.Vector2 {
     const lockedEnemy = this.getLockedEnemy();
     const input = this.getMovementInput();
@@ -555,6 +701,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private stepPlayerAction(time: number): void {
+    this.stepCombatFeedSequence(time);
     if (this.biteSequence) {
       const biteStep = stepBiteSequence(this.biteSequence, time);
       this.biteSequence = biteStep.finished ? null : biteStep.runtime;
@@ -783,6 +930,13 @@ export class WorldScene extends Phaser.Scene {
     const playerArmor = this.bridge.getCombatStats().armor;
     for (const enemy of this.enemies) {
       if (!enemy.sprite.active || enemy.runtime.health <= 0) {
+        continue;
+      }
+      if (this.combatFeedSequence?.enemyId === enemy.id) {
+        enemy.sprite.setVelocity(0, 0);
+        enemy.telegraph?.destroy();
+        enemy.telegraph = null;
+        enemy.runtime.telegraphVisible = false;
         continue;
       }
       enemy.runtime.position = { x: enemy.sprite.x, y: enemy.sprite.y };
@@ -1267,7 +1421,7 @@ export class WorldScene extends Phaser.Scene {
       maxHealth: enemy.runtime.maxHealth,
       elite: Boolean(definition.elite),
       stateLabel,
-      statusText: `${stateLabel} · ${distance}u`,
+      statusText: `${stateLabel} · ${distance}u${getCombatFeedEligibility({ id: enemy.id, health: enemy.runtime.health, maxHealth: enemy.runtime.maxHealth, elite: Boolean(definition.elite), distance, state: enemy.runtime.state }).ok ? ' · Predatory Bite ready (F)' : ''}`,
     };
   }
 
@@ -1291,8 +1445,11 @@ export class WorldScene extends Phaser.Scene {
         const definition = PLAYER_ACTIONS_BY_ID[actionId];
         const readyAt = this.playerAction.cooldowns[actionId] ?? 0;
         let disabledReason: string | null = null;
-        if (actionId === 'bite' && !this.nearbyHumanId) {
-          disabledReason = 'No human in range';
+        if (actionId === 'bite') {
+          const lockedEnemy = this.getLockedEnemy();
+          const distance = lockedEnemy ? Phaser.Math.Distance.Between(this.player.x, this.player.y, lockedEnemy.sprite.x, lockedEnemy.sprite.y) : Number.POSITIVE_INFINITY;
+          const combatFeedReady = lockedEnemy ? getCombatFeedEligibility({ id: lockedEnemy.id, health: lockedEnemy.runtime.health, maxHealth: lockedEnemy.runtime.maxHealth, elite: Boolean(ENEMIES_BY_ID[lockedEnemy.runtime.type].elite), distance, state: lockedEnemy.runtime.state }).ok : false;
+          if (!this.nearbyHumanId && !combatFeedReady && !this.combatFeedSequence) disabledReason = lockedEnemy ? 'Target not vulnerable' : 'No feed target';
         } else if (actionId === 'heavy' && state.player.vitae < definition.vitaeCost) {
           disabledReason = 'Needs Vitae';
         } else if (actionId === 'blood_lance' && state.player.vitae < definition.vitaeCost) {
@@ -1310,7 +1467,7 @@ export class WorldScene extends Phaser.Scene {
           cooldownMs: definition.cooldownMs,
           cooldownRemainingMs: Math.max(0, Math.round(readyAt - time)),
           vitaeCost: definition.vitaeCost,
-          active: this.playerAction.actionId === actionId || (actionId === 'bite' && this.biteSequence !== null),
+          active: this.playerAction.actionId === actionId || (actionId === 'bite' && (this.biteSequence !== null || this.combatFeedSequence !== null)),
           disabledReason,
         };
       }),

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.6.2c - Combat Feeding
+
+- Added Predatory Bite as a contextual `F` combat finisher against a locked vulnerable hostile.
+- Normal enemies become vulnerable at 35% health or while staggered; elites use a 20% threshold or stagger.
+- Combat feeding uses two deterministic timing inputs after the pounce; elites have tighter windows.
+- Success executes the vulnerable enemy and restores up to 2 Vitae, giving a zero-Vitae player a route back into supernatural abilities.
+- Failed attempts damage and knock the player away, with higher failure damage against elites.
+- The locked-target HUD advertises when Predatory Bite is ready, while the existing Bite ability remains contextual for nearby humans.
+- Successful execution prevents infinite Vitae farming from a single enemy without introducing another persisted blood counter.
+- Save format remains v6; no schema or migration changes are required.
+- Boss-specific combat feeding remains deferred until regional/boss progression exists.
+
 ## 0.6.2b - Blood Choices
 
 - Blood Resonance now determines Feed and Drain rewards instead of decorative metadata.
