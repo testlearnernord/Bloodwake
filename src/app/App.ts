@@ -23,7 +23,8 @@ import { getBloodChoicePreview } from '../simulation/blood/bloodChoices';
 import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
 import { reassertThrallControl } from '../simulation/servants/humanThralls';
 import { elevateThrallToVassal } from '../simulation/servants/thrallElevation';
-import { bindThrallAsBloodDonor } from '../simulation/servants/bloodDonors';
+import { bindThrallAsBloodDonor, validateBindThrallAsBloodDonor } from '../simulation/servants/bloodDonors';
+import { BLOOD_DONOR_HOLD_MS, renderBloodDonorConfirmation } from '../ui/confirmations/bloodDonorConfirmation';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
@@ -52,6 +53,8 @@ export class BloodwakeApp {
   private sceneApi: WorldSceneApi | null = null;
   private combatUi: CombatUiSnapshot | null = null;
   private hudInterval: number | null = null;
+  private pendingBloodDonorId: string | null = null;
+  private bloodDonorHoldTimer: number | null = null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -66,6 +69,8 @@ export class BloodwakeApp {
     this.tooltipManager = null;
     this.toastManager = null;
     this.activeMenu = null;
+    this.pendingBloodDonorId = null;
+    this.cancelBloodDonorHold();
     this.sceneApi = null;
     this.combatUi = null;
     if (this.hudInterval !== null) {
@@ -188,9 +193,9 @@ export class BloodwakeApp {
         }
         return calculatePlayerCombatStats(this.state.player);
       },
-      isInputBlocked: () => this.activeMenu !== null,
+      isInputBlocked: () => this.activeMenu !== null || this.pendingBloodDonorId !== null,
       isGameplayInputBlocked: () =>
-        this.activeMenu !== null || !document.hasFocus() || isTypingTarget(document.activeElement),
+        this.activeMenu !== null || this.pendingBloodDonorId !== null || !document.hasFocus() || isTypingTarget(document.activeElement),
       getReducedMotion: () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
       registerWorldSceneApi: (api) => {
         this.sceneApi = api;
@@ -340,16 +345,20 @@ export class BloodwakeApp {
     if (this.activeMenu) {
       overlayRoot.classList.remove('hidden');
       overlayRoot.innerHTML = renderOverlay(this.activeMenu, this.state, this.selectedItemId, this.selectedFilter, this.selectedRoomId);
-      this.phaserGame?.scene.pause('world');
       const closeButton = overlayRoot.querySelector<HTMLButtonElement>('[data-close-overlay]');
       closeButton?.focus();
     } else {
       overlayRoot.classList.add('hidden');
       overlayRoot.innerHTML = '';
-      this.phaserGame?.scene.resume('world');
     }
 
     this.bindGameActions();
+    this.renderBloodDonorConfirmationRoot();
+    if (this.activeMenu || this.pendingBloodDonorId) {
+      this.phaserGame?.scene.pause('world');
+    } else {
+      this.phaserGame?.scene.resume('world');
+    }
   }
 
   private createPreviewContent(state: SaveGame): DocumentFragment {
@@ -526,26 +535,18 @@ export class BloodwakeApp {
     }
 
     for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-bind-blood-donor]')) {
-      button.onclick = async () => {
+      button.onclick = () => {
         if (!this.state) return;
         const servantId = button.dataset.bindBloodDonor ?? '';
         const servant = this.state.humanServants.find((candidate) => candidate.id === servantId);
-        if (!servant) return;
-        const confirmed = window.confirm(
-          `Permanently bind ${servant.name} ${servant.familyName} as a Blood Donor?\n\n`
-          + `This cannot be reversed. ${servant.name} will be removed from all ordinary work and remain bound to the Blood Cellar until death.\n\n`
-          + `Profession: ${PROFESSIONS_BY_ID[servant.professionId].name}\nBlood Resonance: ${servant.bloodResonance}\nHealth: ${servant.health}/${servant.maxHealth}`,
-        );
-        if (!confirmed) return;
-        const result = bindThrallAsBloodDonor(this.state, servantId);
-        if (result.state === this.state) {
-          this.notify(result.message);
+        const validation = validateBindThrallAsBloodDonor(this.state, servant);
+        if (!validation.ok || !servant) {
+          this.notify(validation.ok ? 'Human Thrall is not available.' : validation.reason);
           return;
         }
-        this.state = result.state;
-        this.notify(result.message);
-        await this.autoSave('slot-1');
-        this.renderGame();
+        this.pendingBloodDonorId = servantId;
+        this.renderBloodDonorConfirmationRoot();
+        this.phaserGame?.scene.pause('world');
       };
     }
 
@@ -761,9 +762,97 @@ export class BloodwakeApp {
     }
   }
 
+  private cancelBloodDonorHold(): void {
+    if (this.bloodDonorHoldTimer !== null) {
+      window.clearTimeout(this.bloodDonorHoldTimer);
+      this.bloodDonorHoldTimer = null;
+    }
+    const button = this.root.querySelector<HTMLButtonElement>('[data-confirm-blood-donor-hold]');
+    button?.classList.remove('holding');
+    button?.setAttribute('aria-pressed', 'false');
+  }
+
+  private renderBloodDonorConfirmationRoot(): void {
+    const confirmationRoot = this.root.querySelector<HTMLElement>('#confirmation-root');
+    if (!confirmationRoot) return;
+    const servant = this.state && this.pendingBloodDonorId
+      ? this.state.humanServants.find((candidate) => candidate.id === this.pendingBloodDonorId)
+      : null;
+    if (!servant) {
+      this.pendingBloodDonorId = null;
+      this.cancelBloodDonorHold();
+      confirmationRoot.classList.add('hidden');
+      confirmationRoot.innerHTML = '';
+      return;
+    }
+
+    confirmationRoot.classList.remove('hidden');
+    confirmationRoot.innerHTML = renderBloodDonorConfirmation(servant);
+    const cancelButton = confirmationRoot.querySelector<HTMLButtonElement>('[data-cancel-blood-donor]');
+    const holdButton = confirmationRoot.querySelector<HTMLButtonElement>('[data-confirm-blood-donor-hold]');
+
+    cancelButton?.addEventListener('click', () => {
+      this.pendingBloodDonorId = null;
+      this.cancelBloodDonorHold();
+      this.renderBloodDonorConfirmationRoot();
+    });
+
+    if (holdButton) {
+      const startHold = (): void => {
+        if (this.bloodDonorHoldTimer !== null || !this.pendingBloodDonorId) return;
+        holdButton.classList.add('holding');
+        holdButton.setAttribute('aria-pressed', 'true');
+        this.bloodDonorHoldTimer = window.setTimeout(() => {
+          this.bloodDonorHoldTimer = null;
+          void this.commitBloodDonorBinding();
+        }, BLOOD_DONOR_HOLD_MS);
+      };
+      const stopHold = (): void => this.cancelBloodDonorHold();
+      holdButton.onpointerdown = (event) => {
+        event.preventDefault();
+        startHold();
+      };
+      holdButton.onpointerup = stopHold;
+      holdButton.onpointerleave = stopHold;
+      holdButton.onpointercancel = stopHold;
+      holdButton.onkeydown = (event) => {
+        if ((event.key === 'Enter' || event.key === ' ') && !event.repeat) {
+          event.preventDefault();
+          startHold();
+        }
+      };
+      holdButton.onkeyup = (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          stopHold();
+        }
+      };
+      holdButton.onclick = (event) => event.preventDefault();
+    }
+
+    cancelButton?.focus();
+  }
+
+  private async commitBloodDonorBinding(): Promise<void> {
+    if (!this.state || !this.pendingBloodDonorId) return;
+    const servantId = this.pendingBloodDonorId;
+    this.pendingBloodDonorId = null;
+    this.cancelBloodDonorHold();
+    const result = bindThrallAsBloodDonor(this.state, servantId);
+    this.renderBloodDonorConfirmationRoot();
+    if (result.state === this.state) {
+      this.notify(result.message);
+      return;
+    }
+    this.state = result.state;
+    this.notify(result.message);
+    await this.autoSave('slot-1');
+    this.renderGame();
+  }
+
   private installGlobalShortcuts(): void {
     window.onkeydown = (event: KeyboardEvent) => {
-      const gameplayFocused = Boolean(this.state) && this.root.querySelector('.game-app') !== null && !this.activeMenu;
+      const gameplayFocused = Boolean(this.state) && this.root.querySelector('.game-app') !== null && !this.activeMenu && !this.pendingBloodDonorId;
       if (shouldCaptureGameplayKey(event, gameplayFocused)) {
         event.preventDefault();
       }
@@ -781,6 +870,12 @@ export class BloodwakeApp {
       };
       if (event.key === 'Escape') {
         event.preventDefault();
+        if (this.pendingBloodDonorId) {
+          this.pendingBloodDonorId = null;
+          this.cancelBloodDonorHold();
+          this.renderBloodDonorConfirmationRoot();
+          return;
+        }
         if (this.activeMenu) {
           this.openOrCloseMenu(null);
         } else {

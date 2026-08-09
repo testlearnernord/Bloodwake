@@ -350,8 +350,8 @@ export class WorldScene extends Phaser.Scene {
     const anchor = getDomainPopulationAnchor('human_thrall', index);
     const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 22, 10);
     const sprite = this.add.image(anchor.x, anchor.y, 'thrall-token').setDepth(5);
-    const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${thrall.name} ${thrall.familyName}`, { color: '#e7d8c9', fontSize: '9px' }).setOrigin(0.5).setDepth(6);
-    const jobLabel = this.add.text(anchor.x, anchor.y + 20, 'Thrall · Idle', { color: '#aeb8c4', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${thrall.name} ${thrall.familyName}`, { color: '#e7d8c9', fontSize: '9px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6);
+    const jobLabel = this.add.text(anchor.x, anchor.y + 20, '', { color: '#aeb8c4', fontSize: '8px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6).setVisible(false);
     this.thralls.push({ thrallId: thrall.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime(), plan: null, planCacheKey: null });
   }
 
@@ -374,8 +374,8 @@ export class WorldScene extends Phaser.Scene {
     const anchor = this.getBloodDonorAnchor(donor);
     const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 22, 10);
     const sprite = this.add.image(anchor.x, anchor.y, 'thrall-token').setTint(0x8f2638).setDepth(5);
-    const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${donor.name} ${donor.familyName}`, { color: '#f0b8bd', fontSize: '9px' }).setOrigin(0.5).setDepth(6);
-    const statusLabel = this.add.text(anchor.x, anchor.y + 20, 'Blood Donor · Bound', { color: '#cf6679', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${donor.name} ${donor.familyName}`, { color: '#f0b8bd', fontSize: '9px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6);
+    const statusLabel = this.add.text(anchor.x, anchor.y + 20, 'Bound Donor', { color: '#cf6679', fontSize: '8px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6);
     this.donors.push({ donorId: donor.id, sprite, shadow, nameLabel, statusLabel });
   }
 
@@ -418,8 +418,8 @@ export class WorldScene extends Phaser.Scene {
     const anchor = getDomainPopulationAnchor('vampire_vassal', index);
     const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 24, 11);
     const sprite = this.add.image(anchor.x, anchor.y, 'vassal-token').setDepth(5);
-    const nameLabel = this.add.text(anchor.x, anchor.y - 29, vassal.name, { color: '#ff9aaa', fontSize: '10px' }).setOrigin(0.5).setDepth(6);
-    const jobLabel = this.add.text(anchor.x, anchor.y + 21, 'Vassal · Idle', { color: '#c8a6d8', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    const nameLabel = this.add.text(anchor.x, anchor.y - 29, vassal.name, { color: '#ff9aaa', fontSize: '10px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6);
+    const jobLabel = this.add.text(anchor.x, anchor.y + 21, '', { color: '#c8a6d8', fontSize: '8px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6).setVisible(false);
     this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime(), plan: null, planCacheKey: null });
   }
 
@@ -1460,7 +1460,8 @@ export class WorldScene extends Phaser.Scene {
       entry.sprite.setPosition(step.position.x, step.position.y);
       entry.shadow.setPosition(step.position.x, step.position.y + 11);
       entry.nameLabel.setPosition(step.position.x, step.position.y - 27);
-      entry.jobLabel.setPosition(step.position.x, step.position.y + 20).setText(getDomainActorMotionLabel(plan, step.runtime));
+      const motionLabel = getDomainActorMotionLabel(plan, step.runtime).replace(/^Thrall · /, '');
+      entry.jobLabel.setPosition(step.position.x, step.position.y + 20).setText(motionLabel).setVisible(plan.active || step.runtime.phase === 'returning');
       if (Math.abs(step.position.x - previousX) > 0.05) entry.sprite.setFlipX(step.position.x < previousX);
       entry.sprite.setScale(step.runtime.phase === 'working' ? 1 + Math.sin(this.time.now / 140 + index) * 0.025 : 1);
     });
@@ -1480,7 +1481,8 @@ export class WorldScene extends Phaser.Scene {
       entry.sprite.setPosition(step.position.x, step.position.y);
       entry.shadow.setPosition(step.position.x, step.position.y + 11);
       entry.nameLabel.setPosition(step.position.x, step.position.y - 29);
-      entry.jobLabel.setPosition(step.position.x, step.position.y + 21).setText(getDomainActorMotionLabel(plan, step.runtime));
+      const motionLabel = getDomainActorMotionLabel(plan, step.runtime).replace(/^Vassal · /, '');
+      entry.jobLabel.setPosition(step.position.x, step.position.y + 21).setText(motionLabel).setVisible(plan.active || step.runtime.phase === 'returning');
       if (Math.abs(step.position.x - previousX) > 0.05) entry.sprite.setFlipX(step.position.x < previousX);
       entry.sprite.setScale(step.runtime.phase === 'working' ? 1 + Math.sin(this.time.now / 125 + index) * 0.03 : 1);
     });

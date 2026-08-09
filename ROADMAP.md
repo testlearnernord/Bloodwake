@@ -21,7 +21,8 @@
   - 0.6.3c Nightly World Variation & escaped-human lifecycle ✅
   - 0.6.3c1 Daylight shelter & guard-slot stabilization ✅
   - 0.6.3d Blood Stock & Blood Cellar Foundation ✅
-  - 0.6.3e Stabilization & Legacy Purge (current)
+  - 0.6.3e Stabilization & Legacy Purge ✅
+  - 0.6.3e1 In-game irreversible confirmation & Stronghold readability (current)
 - 0.6.4 Dominion, Torpor, Vampire Politics & Orders
 - 0.6.5 Continuous World Simulation
   - 0.6.5a World Clock & solar cycle

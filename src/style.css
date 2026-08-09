@@ -425,6 +425,111 @@ main {
   padding: clamp(8px, 2vh, 24px);
 }
 
+.confirmation-root {
+  position: absolute;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  padding: clamp(12px, 4vh, 48px);
+  background: rgba(2, 3, 4, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.confirmation-card {
+  width: min(560px, 100%);
+  background: linear-gradient(180deg, rgba(29, 20, 25, 0.99), var(--bg-panel-strong));
+  border: 1px solid #7a3046;
+  border-radius: 16px;
+  padding: calc(var(--space-4) * 1.15);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(181, 31, 74, 0.16);
+}
+
+.confirmation-card h2 {
+  margin: 0.25rem 0 var(--space-3);
+}
+
+.confirmation-kicker {
+  color: #ff9aaa;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.confirmation-warning {
+  border-left: 3px solid var(--accent-strong);
+  background: rgba(181, 31, 74, 0.09);
+  padding: var(--space-3);
+  line-height: 1.45;
+}
+
+.confirmation-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: var(--space-3) 0;
+}
+
+.confirmation-facts div {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-muted);
+  padding: var(--space-2);
+}
+
+.confirmation-facts dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.confirmation-facts dd {
+  margin: 0.2rem 0 0;
+  font-weight: 700;
+}
+
+.confirmation-consequence {
+  margin-bottom: var(--space-3);
+}
+
+.confirmation-actions {
+  display: grid;
+  grid-template-columns: 1fr 1.7fr;
+  gap: var(--space-2);
+}
+
+.danger-hold-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-color: #9b304f;
+  background: #3a1622;
+  min-height: 3.2rem;
+  display: grid;
+  place-items: center;
+  gap: 0.05rem;
+}
+
+.danger-hold-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(90deg, #7f1737, #b51f4a);
+  transform: scaleX(0);
+  transform-origin: left center;
+}
+
+.danger-hold-button.holding::before {
+  transform: scaleX(1);
+  transition: transform 900ms linear;
+}
+
+.danger-hold-button small {
+  color: #e6b8c6;
+  font-size: 0.68rem;
+}
+
 .overlay-panel {
   width: min(1300px, 100%);
   /* Preferred height: most of the viewport, never exceeds available space */
@@ -589,6 +694,13 @@ main {
   .toast.fade,
   .ability-cooldown {
     transition-duration: 40ms;
+  }
+}
+
+@media (max-width: 620px) {
+  .confirmation-facts,
+  .confirmation-actions {
+    grid-template-columns: 1fr;
   }
 }
 

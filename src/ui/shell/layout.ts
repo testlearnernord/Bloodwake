@@ -44,6 +44,7 @@ export const renderGameShell = (): string => `
     </section>
     <footer id="bottom-hud" class="bottom-hud"></footer>
     <div id="overlay-root" class="overlay-root hidden" role="dialog" aria-modal="true" aria-labelledby="overlay-title"></div>
+    <div id="confirmation-root" class="confirmation-root hidden" role="dialog" aria-modal="true"></div>
     <section id="toast-root" class="toast-root" aria-live="polite" aria-atomic="true"></section>
   </main>
 `;
