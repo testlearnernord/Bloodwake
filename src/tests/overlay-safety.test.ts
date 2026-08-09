@@ -116,6 +116,51 @@ describe('overlay rendering safety', () => {
     expect(html).toContain(human.name);
     expect(html).not.toContain('No human thralls.');
   });
+
+  it('shows wounded human thralls as unable to perform daytime labor', () => {
+    const state = createNewGameState({ seed: 'wounded-human-servant', playerName: 'Tester' });
+    const human = state.npcs[0]!;
+    state.humanServants = [
+      {
+        kind: 'human_servant',
+        id: `servant-${human.id}`,
+        name: human.name,
+        age: human.age,
+        professionId: human.professionId,
+        attributes: { ...human.attributes },
+        traitIds: [...human.traitIds],
+        familyName: human.familyName,
+        factionId: human.factionId,
+        bloodResonance: human.bloodResonance,
+        resolve: human.resolve,
+        disposition: human.disposition,
+        fear: human.fear,
+        relationships: { ...human.relationships },
+        resistance: human.resolve,
+        control: 70,
+        health: 3,
+        maxHealth: human.maxHealth,
+        stress: human.stress,
+        combat: human.combat,
+        professionSkills: {},
+        priorities: {
+          Building: 'Low',
+          Crafting: 'Disabled',
+          Gathering: 'Normal',
+          Guarding: 'Low',
+          Research: 'Disabled',
+          Hunting: 'Disabled',
+        },
+        currentJob: null,
+        currentTask: null,
+        taskReason: 'Recovering.',
+        equipped: {},
+      },
+    ];
+
+    const html = renderOverlay('servants', state, null, 'all', 'workshop');
+    expect(html).toContain('Next day: Idle — Too wounded for daytime labor.');
+  });
 });
 
 describe('overlay readiness text', () => {
