@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.6.3a Human Thralls — free humans can be enthralled, housed, fed, controlled, and lost again if the vampiric bond breaks.
+> Current status: Milestone 0.6.3b Human Work Foundation — captive mortals now perform deterministic daytime labor with real construction, crafting, gathering, and hunting outputs.
 
 ## Zero-cost architecture
 

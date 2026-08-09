@@ -10,6 +10,7 @@ import { calculatePlayerCombatStats } from '../../simulation/combat/stats';
 import { getVitaeCondition } from '../../simulation/blood/vitaeCondition';
 import { selectTaskForVassal } from '../../simulation/servants/tasks';
 import { getHumanHousingCapacity, getThrallControlState, validateReassertThrallControl } from '../../simulation/servants/humanThralls';
+import { HUMAN_WORK_JOB_TYPES, selectTaskForHumanThrall } from '../../simulation/servants/humanWork';
 import type { BuiltRoom, InventoryEntry, ItemCategory, ItemId, SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
 import type { MenuId } from '../uiState';
@@ -75,9 +76,18 @@ export const getRecipeReadiness = (state: SaveGame, recipeId: string): { ready: 
       .join(', ');
     return { ready: false, reason: `Missing ${missing}.` };
   }
-  const hasCrafter = state.vampireVassals.some((vassal) => vassal.priorities.Crafting !== 'Disabled');
+  const hasCrafter = [...state.humanServants, ...state.vampireVassals].some(
+    (worker) =>
+      worker.priorities.Crafting !== 'Disabled'
+      && (!recipe.requiredProfessionId || worker.professionId === recipe.requiredProfessionId),
+  );
   if (!hasCrafter) {
-    return { ready: false, reason: 'Need a vassal with Crafting enabled.' };
+    return {
+      ready: false,
+      reason: recipe.requiredProfessionId
+        ? `Need a ${PROFESSIONS_BY_ID[recipe.requiredProfessionId].name} with Crafting enabled.`
+        : 'Need a human thrall or vampire vassal with Crafting enabled.',
+    };
   }
   return { ready: true, reason: 'Ready to queue.' };
 };
@@ -202,7 +212,8 @@ export const renderOverlay = (
                   .map((servant) => {
                     const profession = PROFESSIONS_BY_ID[servant.professionId];
                     const reassert = validateReassertThrallControl(state, servant);
-                    return `<article class="servant-card"><h4>${htmlEscape(servant.name)} ${htmlEscape(servant.familyName)}</h4><p>${htmlEscape(profession.name)} · Blood Resonance ${servant.bloodResonance}</p><p>Control ${servant.control}/100 · ${htmlEscape(getThrallControlState(servant.control))}</p><p>Resistance ${servant.resistance}/5 · Stress ${servant.stress}/100 · Fear ${servant.fear}/100</p><p class="hint">${htmlEscape(servant.taskReason)}</p><button data-reassert-thrall="${htmlEscape(servant.id)}" ${reassert.ok ? '' : 'disabled'} title="${htmlEscape(reassert.ok ? 'Spend Vitae to reinforce the thrall bond.' : reassert.reason)}">Reassert Control</button></article>`;
+                    const predictedTask = selectTaskForHumanThrall(servant, state.rooms, state.craftingQueue, state.inventory);
+                    return `<article class="servant-card"><h4>${htmlEscape(servant.name)} ${htmlEscape(servant.familyName)}</h4><p>${htmlEscape(profession.name)} · Blood Resonance ${servant.bloodResonance}</p><p>Control ${servant.control}/100 · ${htmlEscape(getThrallControlState(servant.control))}</p><p>Resistance ${servant.resistance}/5 · Stress ${servant.stress}/100 · Fear ${servant.fear}/100</p><p>Last work: ${htmlEscape(servant.currentJob ?? 'Idle')} · ${htmlEscape(servant.currentTask ?? 'none')}</p><p>Next day: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTask?.reason ?? 'No enabled daytime work.')}</p><div class="priority-grid">${HUMAN_WORK_JOB_TYPES.map((jobType) => `<label>${htmlEscape(jobType)}<select data-human-servant-id="${htmlEscape(servant.id)}" data-job-type="${jobType}">${['Disabled', 'Low', 'Normal', 'High', 'Critical'].map((priority) => `<option value="${priority}" ${servant.priorities[jobType] === priority ? 'selected' : ''}>${priority}</option>`).join('')}</select></label>`).join('')}</div><p class="hint">Guarding and Research stay disabled until those systems have real work and real outputs.</p><p class="hint">${htmlEscape(servant.taskReason)}</p><button data-reassert-thrall="${htmlEscape(servant.id)}" ${reassert.ok ? '' : 'disabled'} title="${htmlEscape(reassert.ok ? 'Spend Vitae to reinforce the thrall bond.' : reassert.reason)}">Reassert Control</button></article>`;
                   })
                   .join('')
           }
@@ -285,7 +296,7 @@ export const renderOverlay = (
         </section>
         <section>
           <h3>Queue</h3>
-          <ul>${state.craftingQueue.map((order) => `<li>${htmlEscape(RECIPES_BY_ID[order.recipeId].name)} · ${htmlEscape(order.status)}</li>`).join('') || '<li>No crafting orders.</li>'}</ul>
+          <ul>${state.craftingQueue.map((order) => `<li>${htmlEscape(RECIPES_BY_ID[order.recipeId].name)} · ${htmlEscape(order.status)} · ${order.progress}/${RECIPES_BY_ID[order.recipeId].workAmount} work</li>`).join('') || '<li>No crafting orders.</li>'}</ul>
           <p>Crafting requires matching rooms, resources, and capable servants.</p>
         </section>
       </div>`,

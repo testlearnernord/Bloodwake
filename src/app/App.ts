@@ -524,6 +524,22 @@ export class BloodwakeApp {
       };
     }
 
+    for (const select of this.root.querySelectorAll<HTMLSelectElement>('select[data-human-servant-id]')) {
+      select.onchange = async () => {
+        if (!this.state) return;
+        const servantId = select.dataset.humanServantId;
+        const jobType = select.dataset.jobType as keyof SaveGame['humanServants'][number]['priorities'];
+        this.state.humanServants = this.state.humanServants.map((servant) =>
+          servant.id === servantId
+            ? { ...servant, priorities: { ...servant.priorities, [jobType]: select.value as JobPriority } }
+            : servant,
+        );
+        this.notify('Human Thrall work priorities updated.');
+        await this.autoSave('slot-1');
+        this.renderGame();
+      };
+    }
+
     for (const select of this.root.querySelectorAll<HTMLSelectElement>('select[data-servant-id]')) {
       select.onchange = () => {
         if (!this.state) return;

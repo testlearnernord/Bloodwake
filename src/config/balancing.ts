@@ -70,6 +70,20 @@ export const THRALL_FOOD_PER_DAY = 1;
 export const THRALL_STARVATION_CONTROL_PENALTY = 12;
 export const THRALL_STARVATION_STRESS_GAIN = 15;
 
+export const HUMAN_WORK_BALANCING = {
+  baseWork: 1,
+  professionBonusScale: 0.35,
+  skillBonusScale: 0.1,
+  traitBonusScale: 0.15,
+  controlFloor: 0.35,
+  maxStressPenalty: 0.65,
+  minimumEfficiency: 0.2,
+  maximumEfficiency: 3,
+  gatherYieldScale: 2,
+  huntingFoodYieldScale: 2,
+  leatherEfficiencyThreshold: 1.25,
+} as const;
+
 export const PLAYER_MOVE_SPEED = 168;
 export const LOCK_RANGE = 280;
 export const LOCK_BREAK_RANGE = 360;

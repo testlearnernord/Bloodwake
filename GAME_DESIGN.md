@@ -88,6 +88,20 @@ This is deliberately a finisher: a successful combat feed kills the vulnerable t
 - Large raids, fortifications, trap networks, and defensive path control remain future-milestone work.
 
 
+## Human Thrall Work
+
+Human Thralls are the daytime economic population. Their work is not a reskinned Vampire Vassal loop: mortal labor resolves after the day has elapsed, while Vampire Vassals operate at night.
+
+Implemented mortal jobs:
+- Building advances queued Stronghold room construction.
+- Crafting advances recipe work and completes real inventory outputs when enough work accumulates.
+- Gathering produces Wood or Herbs.
+- Hunting produces Food and, for sufficiently effective hunters, Leather.
+
+Efficiency is transparent and deterministic. Profession aptitude, existing job-skill values, relevant traits, Control, and Stress all contribute. Low Control and high Stress reduce output instead of creating a second loyalty system.
+
+Guarding and Research are deliberately not simulated yet. They remain disabled until defense/research systems provide real sources, sinks, and consequences.
+
 ## Human Thralls and Vampire Vassals
 
 Human Servants are prisoners under vampiric venom and domination. They are not free citizens of the domain. Their primary relationship to the player is **Control**, opposed by **Resistance**, not Loyalty. Control naturally weakens over time and can be reinforced by the vampire; deprivation accelerates loss of control and a completely broken bond allows escape.

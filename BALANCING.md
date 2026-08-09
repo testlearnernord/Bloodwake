@@ -102,6 +102,22 @@ Predatory Bite is a zero-Vitae combat finisher and emergency recovery tool.
 - Boss-specific feeding rules are intentionally deferred to future regional/boss progression.
 
 
+## Human Thrall Work (0.6.3b)
+
+Mortal work resolves once per completed daytime phase. Work efficiency is deterministic:
+
+`aptitude = 1 + professionBonus × 0.35 + skill × 0.10 + relevantTraitCount × 0.15`
+
+`controlMultiplier = 0.35 + 0.65 × Control/100`
+
+`stressMultiplier = 1 - 0.65 × Stress/100`
+
+Final efficiency is clamped to `0.20 .. 3.00`.
+
+Gathering and Hunting convert efficiency into actual item quantities at `floor(efficiency × 2)`, minimum 1. Hunting grants 1 Leather when efficiency is at least 1.25.
+
+Construction consumes efficiency as room work progress against the room's configured construction time. Human crafting accumulates efficiency as recipe work progress and produces items only when the recipe's configured work amount is reached.
+
 ## Human Thralls (0.6.3a)
 
 Human Servants are captive thralls, not citizens and not loyalty-based vassals.

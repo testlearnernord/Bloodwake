@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.3b - Human Work Foundation
+
+- Human Thralls now perform real daytime labor instead of existing only as Control/Food upkeep entries.
+- Building, Crafting, Gathering, and Hunting are real mortal jobs with real outputs.
+- Work efficiency derives from profession aptitude, existing job skill values, relevant traits, Control, and Stress.
+- Crafting now accumulates work progress across days for Human Thralls and respects profession requirements.
+- Human work priorities are editable from Domain Population and persist through autosave.
+- Guarding and Research remain intentionally unavailable to mortal workers until those systems have real gameplay outputs.
+- No save schema change; save format remains v7.
+
 ## 0.6.3a1 - Human Thrall Playtest Fixes
 
 - Enthralled humans now disappear from the roaming world immediately while their identity remains persisted for captivity and escape.

@@ -112,6 +112,17 @@ Once a supported transition has ended, obsolete compatibility models, aliases, c
 - Human Food requirements belong to Human Servants and must not be reintroduced through `PopulationBase`.
 
 
+## Human work boundary (0.6.3b)
+
+Human Thrall work lives in `src/simulation/servants/humanWork.ts` and is intentionally separate from the Vampire Vassal night-production pipeline.
+
+Rules:
+- Human Thralls resolve labor after a daytime phase.
+- Vampire Vassals continue using the existing night task system.
+- Shared data types such as priorities/current task may be reused, but mortal Control/Stress must not be translated into Vampire Loyalty/Morale.
+- Do not create placeholder Research or Guarding rewards merely to make a button appear active.
+- Future visible worker actors must present this simulation state rather than owning a second independent job simulation.
+
 ## Human Thrall boundary (0.6.3a)
 
 `HumanServant` and `VampireVassal` share only operational population fields. Human Thralls must not acquire loyalty/ambition/morale compatibility fields. Their authority model lives in `simulation/servants/humanThralls.ts` through Control/Resistance, housing, Food upkeep and reassertion. Vampire Vassal politics remain separate. Compatibility aliases for the removed human loyalty fields are forbidden; save v7 rejects them.

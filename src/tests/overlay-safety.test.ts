@@ -119,7 +119,7 @@ describe('overlay rendering safety', () => {
 });
 
 describe('overlay readiness text', () => {
-  it('uses vassal terminology for missing crafters', () => {
+  it('recognizes both human thralls and vampire vassals as potential crafters', () => {
     const state = createNewGameState({ seed: 'crafting-vassal-text', playerName: 'Tester' });
     state.rooms.push({
       id: 'room-workshop-1-0',
@@ -135,7 +135,7 @@ describe('overlay readiness text', () => {
 
     expect(getRecipeReadiness(state, 'wood_planks')).toEqual({
       ready: false,
-      reason: 'Need a vassal with Crafting enabled.',
+      reason: 'Need a human thrall or vampire vassal with Crafting enabled.',
     });
   });
 });
