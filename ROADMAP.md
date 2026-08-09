@@ -13,11 +13,11 @@
 - 0.6.3 Human Recruitment and Housing (current)
   - 0.6.3a Human Thralls: Enthrallment, Control, Housing & Food ✅
   - 0.6.3a1 Thrall playtest fixes ✅
-  - 0.6.3b Human Work Foundation (current)
-  - 0.6.3b1 Thrall Elevation
+  - 0.6.3b Human Work Foundation ✅
+  - 0.6.3b1 Thrall Elevation (current)
   - 0.6.3b2 Domain World Presence
   - 0.6.3b3 Visible Work
-  - 0.6.3c Nightly World Variation
+  - 0.6.3c Nightly World Variation & escaped-human lifecycle
   - 0.6.3d Blood Cellar & Donors
   - 0.6.3e Stabilization & Legacy Purge
 - 0.6.4 Dominion, Torpor, Vampire Politics & Orders

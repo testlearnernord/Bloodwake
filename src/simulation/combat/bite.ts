@@ -3,8 +3,9 @@ import { calculateBloodChoiceOutcome } from '../blood/bloodChoices';
 import { inheritVampire } from '../bloodlines/inheritance';
 import { completeQuestStep } from '../quests/quests';
 import type { HumanActionMode } from '../../game/combat/combatTypes';
-import type { HumanCharacter, SaveGame, VampireVassal } from '../../types/models';
+import type { HumanCharacter, SaveGame } from '../../types/models';
 import { createHumanThrall, validateEnthrallHuman } from '../servants/humanThralls';
+import { createVampireVassal } from '../servants/vampireVassals';
 
 export interface BiteSequenceRuntime {
   humanId: string;
@@ -137,38 +138,7 @@ export const applyHumanAction = (
   const result = inheritVampire(nextState.player, human, `${nextState.seed}-${nextState.characterRoll}`);
   nextState.player.vitae -= TURN_COST_VITAE;
   updateHumanStatus('turned');
-  const inheritedVampire = result.vampire;
-  const vassal: VampireVassal = {
-    kind: 'vampire_vassal',
-    id: inheritedVampire.id,
-    name: inheritedVampire.name,
-    age: inheritedVampire.age,
-    professionId: inheritedVampire.professionId,
-    attributes: { ...inheritedVampire.attributes },
-    traitIds: [...inheritedVampire.traitIds],
-    health: inheritedVampire.health,
-    maxHealth: inheritedVampire.maxHealth,
-    morale: inheritedVampire.morale,
-    loyalty: inheritedVampire.loyalty,
-    ambition: inheritedVampire.ambition,
-    stress: inheritedVampire.stress,
-    combat: inheritedVampire.combat,
-    professionSkills: { ...inheritedVampire.professionSkills },
-    vitae: inheritedVampire.vitae,
-    maxVitae: inheritedVampire.maxVitae,
-    priorities: {
-      Building: 'Normal',
-      Crafting: 'High',
-      Gathering: 'Low',
-      Guarding: 'Normal',
-      Research: 'Low',
-      Hunting: 'Low',
-    },
-    currentJob: null,
-    currentTask: null,
-    taskReason: 'Newly turned and awaiting direction.',
-    equipped: {},
-  };
+  const vassal = createVampireVassal(result.vampire);
   if (!nextState.vampireVassals.some((v) => v.id === vassal.id)) {
     nextState.vampireVassals = [...nextState.vampireVassals, vassal];
   }

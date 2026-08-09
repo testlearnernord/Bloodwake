@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.3b1 - Thrall Elevation
+
+- Existing Human Thralls can be deliberately Elevated into Vampire Vassals for the normal turning Vitae cost.
+- Elevation preserves learned profession skills, equipped items, identity, current stress, and relevant mortal metadata.
+- Human Control/Resistance end at elevation; the result uses Vampire Vassal Loyalty/Ambition/Morale instead.
+- Direct Turning and Thrall Elevation now share one Vampire Vassal factory.
+- Vampire inheritance no longer incorrectly copies the sire's learned profession skills.
+- Escape regression coverage now proves a returned wandering human is eligible for Feed, Drain, Enthrall, and Turn once requirements are met.
+- Save format remains v7.
+
 ## 0.6.3b - Human Work Foundation
 
 - Human Thralls now perform real daytime labor instead of existing only as Control/Food upkeep entries.

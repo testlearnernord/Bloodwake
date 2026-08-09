@@ -72,6 +72,13 @@ describe('vampire inheritance', () => {
     expect(result.report.finalTraits.length).toBeGreaterThan(0);
     expect(result.report.retainedTraits.length).toBeGreaterThanOrEqual(1);
     expect(result.vampire.equipment).toEqual({});
+    expect(result.vampire.professionSkills).toEqual({});
+  });
+
+  it('retains explicitly supplied learned skills instead of copying the sire skills', () => {
+    const result = inheritVampire(sire, human, 'trained-host', { Crafting: 6, Building: 2 });
+    expect(result.vampire.professionSkills).toEqual({ Crafting: 6, Building: 2 });
+    expect(result.vampire.professionSkills).not.toEqual(sire.professionSkills);
   });
 
   it('can generate deterministic mutations from the configured algorithm', () => {

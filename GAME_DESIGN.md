@@ -108,4 +108,4 @@ Human Servants are prisoners under vampiric venom and domination. They are not f
 
 Human Thralls retain their mortal identity: profession, skills/traits, family identity, Blood Resonance and human metadata. This is intentional groundwork for later genetics, family lines, donor selection and the strategic decision between keeping a valuable mortal or turning them into an autonomous Vampire Vassal.
 
-Vampire Vassals remain fundamentally different. They are powerful, immortal political subordinates with Loyalty and Ambition rather than controlled mortal captives. Turning is therefore not a simple upgrade from Human Thrall to better worker.
+Vampire Vassals remain fundamentally different. They are powerful, immortal political subordinates with Loyalty and Ambition rather than controlled mortal captives. Turning is therefore not a simple upgrade from Human Thrall to better worker. A trained Thrall may now be deliberately Elevated into a Vassal: learned profession skills and gear carry across, while Control/Resistance cease to apply and Vampire politics take over.

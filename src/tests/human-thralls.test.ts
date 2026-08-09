@@ -145,6 +145,11 @@ describe('0.6.3a human thralls', () => {
     expect(escapedHuman?.status).toBe('wandering');
     expect(escapedHuman?.fear).toBe(57);
     expect(escapedHuman?.disposition).toBe(-30);
+    night.player.vitae = 10;
+    expect(validateHumanAction(night, escapedHuman, 'feed').ok).toBe(true);
+    expect(validateHumanAction(night, escapedHuman, 'drain').ok).toBe(true);
+    expect(validateHumanAction(night, escapedHuman, 'enthrall').ok).toBe(true);
+    expect(validateHumanAction(night, escapedHuman, 'turn').ok).toBe(true);
   });
 
   it('uses save v7 and rejects legacy loyalty fields on human thralls', () => {
