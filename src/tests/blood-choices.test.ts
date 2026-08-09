@@ -8,7 +8,8 @@ import {
   getFeedBaseVitaeGain,
 } from '../simulation/blood/bloodChoices';
 import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite';
-import { replenishHumanPopulation } from '../simulation/world/humans';
+import { isHumanPresentInWorld } from '../simulation/world/humans';
+import { resolveNightlyHumanPopulation } from '../simulation/world/nightlyWorld';
 import type { BloodResonance } from '../types/models';
 
 const resonances: BloodResonance[] = [1, 2, 3, 4, 5];
@@ -86,22 +87,25 @@ describe('Milestone 0.6.2b Blood Choices', () => {
     }
   });
 
-  it('fed humans recover on the next-night replenishment path and can be used again', () => {
+  it('fed humans recover on the next-night lifecycle and can be used again when active', () => {
     const state = createNewGameState({ seed: 'feed-recovery' });
     const humanId = state.npcs[0]!.id;
     const fed = applyHumanAction(state, humanId, 'feed').state;
-    const replenished = replenishHumanPopulation(fed.npcs, fed.seed, fed.time.day + 1, fed.npcs.length);
-    const recovered = replenished.find((human) => human.id === humanId);
+    const population = resolveNightlyHumanPopulation(fed.npcs, fed.seed, fed.time.day + 1, 8);
+    const recovered = population.npcs.find((human) => human.id === humanId);
     expect(recovered?.status).toBe('wandering');
-    expect(validateHumanAction({ ...fed, npcs: replenished }, recovered, 'feed').ok).toBe(true);
+    expect(recovered && isHumanPresentInWorld(recovered)).toBe(true);
+    expect(validateHumanAction({ ...fed, npcs: population.npcs }, recovered, 'feed').ok).toBe(true);
   });
 
-  it('drained humans are removed by replenishment', () => {
+  it('drained humans remain unavailable and are not returned to the active roster', () => {
     const state = createNewGameState({ seed: 'drain-removal' });
     const humanId = state.npcs[0]!.id;
     const drained = applyHumanAction(state, humanId, 'drain').state;
-    const replenished = replenishHumanPopulation(drained.npcs, drained.seed, drained.time.day + 1, drained.npcs.length);
-    expect(replenished.some((human) => human.id === humanId)).toBe(false);
+    const population = resolveNightlyHumanPopulation(drained.npcs, drained.seed, drained.time.day + 1, 8);
+    const record = population.npcs.find((human) => human.id === humanId);
+    expect(record?.status).toBe('drained');
+    expect(record && isHumanPresentInWorld(record)).toBe(false);
   });
 
   it('Turn remains a 3-Vitae action and is otherwise unchanged for wandering humans', () => {

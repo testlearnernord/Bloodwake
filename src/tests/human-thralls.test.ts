@@ -131,7 +131,7 @@ describe('0.6.3a human thralls', () => {
     expect(starvedNight.humanServants[0]!.stress).toBeGreaterThan(fedNight.humanServants[0]!.stress);
   });
 
-  it('returns a thrall to the free-human world when Control breaks', () => {
+  it('moves an escaped thrall off-map instead of instantly respawning them as a normal villager', () => {
     let state = createNewGameState({ seed: 'escape' });
     state.player.vitae = 5;
     const humanId = state.npcs[0]!.id;
@@ -143,20 +143,20 @@ describe('0.6.3a human thralls', () => {
     expect(night.humanServants).toHaveLength(0);
     const escapedHuman = night.npcs.find((npc) => npc.id === humanId);
     expect(escapedHuman?.status).toBe('wandering');
+    expect(escapedHuman?.worldPresence).toBe('dormant');
+    expect(escapedHuman?.dormantReason).toBe('escaped');
     expect(escapedHuman?.fear).toBe(57);
     expect(escapedHuman?.disposition).toBe(-30);
     night.player.vitae = 10;
-    expect(validateHumanAction(night, escapedHuman, 'feed').ok).toBe(true);
-    expect(validateHumanAction(night, escapedHuman, 'drain').ok).toBe(true);
-    expect(validateHumanAction(night, escapedHuman, 'enthrall').ok).toBe(true);
-    expect(validateHumanAction(night, escapedHuman, 'turn').ok).toBe(true);
+    expect(validateHumanAction(night, escapedHuman, 'feed').ok).toBe(false);
+    expect(validateHumanAction(night, escapedHuman, 'drain').ok).toBe(false);
   });
 
-  it('uses save v7 and rejects legacy loyalty fields on human thralls', () => {
+  it('uses save v8 and rejects legacy loyalty fields on human thralls', () => {
     let state = createNewGameState({ seed: 'thrall-save' });
     state.player.vitae = 5;
     state = applyHumanAction(state, state.npcs[0]!.id, 'enthrall').state;
-    expect(SAVE_FORMAT_VERSION).toBe(7);
+    expect(SAVE_FORMAT_VERSION).toBe(8);
     expect(validateSaveGame(state)).toBe(true);
     const stale = { ...state.humanServants[0], loyalty: 100 };
     expect(validateSaveGame({ ...state, humanServants: [stale] })).toBe(false);

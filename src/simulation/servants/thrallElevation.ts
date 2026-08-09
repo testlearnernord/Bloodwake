@@ -77,6 +77,11 @@ export const elevateThrallToVassal = (state: SaveGame, thrallId: string): Thrall
             disposition: thrall.disposition,
             stress: thrall.stress,
             health: thrall.health,
+            worldPresence: 'dormant' as const,
+            dormantReason: null,
+            dormantSinceDay: candidate.dormantSinceDay,
+            scheduledReturnDay: null,
+            lastSeenDay: candidate.lastSeenDay,
           }
         : candidate,
     ),

@@ -18,6 +18,7 @@ import { ENEMIES_BY_ID } from '../../data/enemies';
 import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
 import { isHumanPresentInWorld } from '../../simulation/world/humans';
+import { getNightlyEnemySpawns, getNightlyHumanPosition, getNightlyResourceNodes } from '../../simulation/world/nightlyWorld';
 import { getDomainPopulationAnchor, getDomainPopulationIds } from '../../simulation/world/domainPresence';
 import {
   createDomainActorMotionRuntime,
@@ -34,7 +35,7 @@ import {
   type DomainActorMotionRuntime,
   type DomainActorTaskPlan,
 } from '../../simulation/world/domainActorTasks';
-import type { BuiltRoom, EnemyType, HumanCharacter, HumanServant, ItemId, VampireVassal } from '../../types/models';
+import type { BuiltRoom, HumanCharacter, HumanServant, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
 import { CombatPresentation, type CombatFeedPrompt, type TargetIndicator } from '../combat/CombatPresentation';
 import type { CombatActionId, CombatDamageEvent, CombatTargetSnapshot, CombatUiSnapshot, HumanActionMode, LockedTargetHudState } from '../combat/combatTypes';
@@ -116,37 +117,13 @@ interface SceneRoom {
   progressLabel: Phaser.GameObjects.Text;
 }
 
-// Spawn definition for enemy instances with stable IDs
-interface EnemySpawnDef {
-  id: string;
-  type: EnemyType;
-  x: number;
-  y: number;
-}
-
-const ENEMY_SPAWNS: EnemySpawnDef[] = [
-  { id: 'bandit-1', type: 'bandit', x: 520, y: 270 },
-  { id: 'clergy-1', type: 'clergy_hunter', x: 730, y: 470 },
-  { id: 'knight-1', type: 'elite_knight', x: 1160, y: 410 },
-];
-
-// Resource node definitions with stable IDs
-interface ResourceNodeDef {
-  id: string;
-  itemId: ItemId;
-  amount: number;
-  x: number;
-  y: number;
-  color: number;
-}
-
-const RESOURCE_NODE_DEFS: ResourceNodeDef[] = [
-  { id: 'wood-node', itemId: 'wood', amount: 3, x: 430, y: 340, color: 0x2d6a4f },
-  { id: 'herb-node', itemId: 'herbs', amount: 2, x: 740, y: 250, color: 0x74c69d },
-  { id: 'ore-node', itemId: 'iron_ore', amount: 2, x: 840, y: 520, color: 0x6c757d },
-  { id: 'stone-node', itemId: 'stone', amount: 2, x: 300, y: 280, color: 0x868e96 },
-  { id: 'food-node', itemId: 'food', amount: 2, x: 980, y: 180, color: 0xe9c46a },
-];
+const resourceColorFor = (itemId: ItemId): number => {
+  if (itemId === 'wood') return 0x2d6a4f;
+  if (itemId === 'herbs') return 0x74c69d;
+  if (itemId === 'iron_ore') return 0x6c757d;
+  if (itemId === 'stone') return 0x868e96;
+  return 0xe9c46a;
+};
 
 export class WorldScene extends Phaser.Scene {
   private readonly bridge: GameBridge;
@@ -286,17 +263,10 @@ export class WorldScene extends Phaser.Scene {
 
   private createHumans(): void {
     const state = this.bridge.getState();
-    const positions = [
-      { x: 930, y: 260 },
-      { x: 1010, y: 330 },
-      { x: 1120, y: 280 },
-      { x: 880, y: 430 },
-      { x: 980, y: 500 },
-    ];
     this.humans = state.npcs
       .filter(isHumanPresentInWorld)
       .map((human, index) => {
-        const position = positions[index % positions.length];
+        const position = getNightlyHumanPosition(state.seed, state.time.day, human.id, index);
         const shadow = CombatPresentation.createShadow(this, position.x, position.y, 22, 10);
         const sprite = this.physics.add.image(position.x, position.y, 'human-token').setDepth(5);
         sprite.setCircle(10, 4, 10);
@@ -307,7 +277,7 @@ export class WorldScene extends Phaser.Scene {
 
   private createEnemies(): void {
     const state = this.bridge.getState();
-    this.enemies = ENEMY_SPAWNS
+    this.enemies = getNightlyEnemySpawns(state.seed, state.time.day)
       .filter((spawn) => !state.worldCycle.defeatedEnemyIds.includes(spawn.id))
       .map((spawn) => {
         const shadow = CombatPresentation.createShadow(this, spawn.x, spawn.y, spawn.type === 'elite_knight' ? 28 : 24, 11);
@@ -333,13 +303,13 @@ export class WorldScene extends Phaser.Scene {
 
   private createResources(): void {
     const state = this.bridge.getState();
-    this.resources = RESOURCE_NODE_DEFS
+    this.resources = getNightlyResourceNodes(state.seed, state.time.day)
       .filter((def) => !state.worldCycle.collectedResourceNodeIds.includes(def.id))
       .map((def) => ({
         id: def.id,
         itemId: def.itemId,
         amount: def.amount,
-        sprite: this.add.rectangle(def.x, def.y, 20, 20, def.color).setDepth(4),
+        sprite: this.add.rectangle(def.x, def.y, 20, 20, resourceColorFor(def.itemId)).setDepth(4),
       }));
   }
 
@@ -1301,11 +1271,11 @@ export class WorldScene extends Phaser.Scene {
 
   private syncHumansWithState(): void {
     const state = this.bridge.getState();
-    const byId = new Map(state.npcs.map((human) => [human.id, human]));
-    // Remove humans that are drained/turned or no longer in state
+    const visibleHumans = state.npcs.filter(isHumanPresentInWorld);
+    const byId = new Map(visibleHumans.map((human) => [human.id, human]));
     this.humans = this.humans.filter((entry) => {
       const updated = byId.get(entry.human.id);
-      if (!updated || !isHumanPresentInWorld(updated)) {
+      if (!updated) {
         entry.shadow.destroy();
         entry.label.destroy();
         entry.sprite.destroy();
@@ -1314,34 +1284,26 @@ export class WorldScene extends Phaser.Scene {
       entry.human = updated;
       return true;
     });
-    // Add humans that are in state but not yet in scene
-    const existingIds = new Set(this.humans.map((entry) => entry.human.id));
-    const humanPositions = [
-      { x: 930, y: 260 }, { x: 1010, y: 330 }, { x: 1120, y: 280 },
-      { x: 880, y: 430 }, { x: 980, y: 500 },
-    ];
-    const extraBase = { x: 950, y: 350 };
-    let extraOffset = 0;
-    for (const human of state.npcs) {
-      if (!isHumanPresentInWorld(human)) continue;
-      if (existingIds.has(human.id)) continue;
-      const posIndex = this.humans.length;
-      let position: { x: number; y: number };
-      if (posIndex < humanPositions.length) {
-        position = humanPositions[posIndex];
-      } else {
-        // Deterministic offset for extra humans in Village Edge bounds
-        position = { x: extraBase.x + (extraOffset % 3) * 40, y: extraBase.y + Math.floor(extraOffset / 3) * 40 };
-        extraOffset++;
+
+    const existing = new Map(this.humans.map((entry) => [entry.human.id, entry]));
+    visibleHumans.forEach((human, index) => {
+      const position = getNightlyHumanPosition(state.seed, state.time.day, human.id, index);
+      const entry = existing.get(human.id);
+      if (entry) {
+        entry.sprite.setPosition(position.x, position.y);
+        entry.shadow.setPosition(position.x, position.y + 11);
+        entry.label.setPosition(position.x, position.y - 28).setText(`${human.name} ${human.familyName}`);
+        entry.human = human;
+        return;
       }
       const shadow = CombatPresentation.createShadow(this, position.x, position.y, 22, 10);
       const sprite = this.physics.add.image(position.x, position.y, 'human-token').setDepth(5);
       sprite.setCircle(10, 4, 10);
       const label = this.add.text(position.x, position.y - 28, `${human.name} ${human.familyName}`, { color: '#f8f9fa', fontSize: '11px' }).setOrigin(0.5).setDepth(6).setVisible(false);
       this.humans.push({ sprite, shadow, human, label });
-      existingIds.add(human.id);
-    }
-    if (this.nearbyHumanId && !state.npcs.some((human) => human.id === this.nearbyHumanId && isHumanPresentInWorld(human))) {
+    });
+
+    if (this.nearbyHumanId && !byId.has(this.nearbyHumanId)) {
       this.nearbyHumanId = null;
       this.bridge.onHumanFocused(null);
     }

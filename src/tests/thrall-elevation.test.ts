@@ -51,6 +51,21 @@ describe('0.6.3b1 thrall elevation', () => {
     expect(storedHuman.disposition).toBe(-44);
   });
 
+  it('preserves last-seen lifecycle metadata when elevating an off-map Thrall', () => {
+    let state = createNewGameState({ seed: 'elevate-lifecycle' });
+    state.player.vitae = 10;
+    const human = state.npcs[0]!;
+    state = applyHumanAction(state, human.id, 'enthrall').state;
+    state.time.day = 5;
+
+    const beforeElevation = state.npcs.find((npc) => npc.id === human.id)!;
+    const result = elevateThrallToVassal(state, human.id).state;
+    const storedHuman = result.npcs.find((npc) => npc.id === human.id)!;
+
+    expect(storedHuman.dormantSinceDay).toBe(beforeElevation.dormantSinceDay);
+    expect(storedHuman.lastSeenDay).toBe(beforeElevation.lastSeenDay);
+  });
+
   it('blocks elevation without enough Vitae or when the captive identity is invalid', () => {
     let state = createNewGameState({ seed: 'elevate-validation' });
     state.player.vitae = 10;

@@ -6,6 +6,7 @@ import type { HumanActionMode } from '../../game/combat/combatTypes';
 import type { HumanCharacter, SaveGame } from '../../types/models';
 import { createHumanThrall, validateEnthrallHuman } from '../servants/humanThralls';
 import { createVampireVassal } from '../servants/vampireVassals';
+import { isHumanPresentInWorld } from '../world/humans';
 
 export interface BiteSequenceRuntime {
   humanId: string;
@@ -61,6 +62,9 @@ export const validateHumanAction = (state: SaveGame, human: HumanCharacter | und
   if (!human) {
     return { ok: false, reason: 'No human target.' };
   }
+  if (!isHumanPresentInWorld(human)) {
+    return { ok: false, reason: 'Target is not currently present in the world.' };
+  }
   if (human.status === 'fed') {
     return { ok: false, reason: 'Target is recovering from feeding until the next night.' };
   }
@@ -98,7 +102,19 @@ export const applyHumanAction = (
     quests: [...state.quests],
   };
   const updateHumanStatus = (status: HumanCharacter['status']): void => {
-    nextState.npcs = nextState.npcs.map((npc) => (npc.id === humanId ? { ...npc, status } : npc));
+    nextState.npcs = nextState.npcs.map((npc) => {
+      if (npc.id !== humanId) return npc;
+      if (status === 'fed') return { ...npc, status, lastSeenDay: nextState.time.day };
+      return {
+        ...npc,
+        status,
+        worldPresence: 'dormant' as const,
+        dormantReason: status === 'enthralled' ? 'captured' as const : null,
+        dormantSinceDay: nextState.time.day,
+        scheduledReturnDay: null,
+        lastSeenDay: nextState.time.day,
+      };
+    });
   };
   if (mode === 'feed') {
     const outcome = calculateBloodChoiceOutcome(nextState, human, 'feed');

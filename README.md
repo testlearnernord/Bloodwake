@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.6.3b3 Visible Work — controlled actors now move toward tasks and visibly work/rest from the same authoritative task selectors used by simulation.
+> Current status: Milestone 0.6.3c Nightly World Variation — nights vary deterministically and escaped Humans enter a bounded off-map lifecycle before any possible return.
 
 ## Zero-cost architecture
 
@@ -29,7 +29,7 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 - Vampire Vassals remain autonomous subordinates with Loyalty and Ambition and can perform the existing stronghold work loop.
 - Human Thralls and Vampire Vassals are both represented by character silhouettes in the Stronghold; enthrallment, elevation and escape update those actors from simulation state.
 - Built rooms are visualized at their grid positions in Ruined Stronghold with progress indicators.
-- Save format is v7. Older v1-v6 saves are intentionally unsupported.
+- Save format is v8. Older v1-v7 saves are intentionally unsupported.
 
 ## Controls
 

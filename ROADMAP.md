@@ -17,8 +17,8 @@
   - 0.6.3b1 Thrall Elevation ✅
   - 0.6.3b2 Domain World Presence ✅
   - 0.6.3b3 Visible Work & Actor Task Foundation ✅
-  - 0.6.3b4 Simulation Architecture Audit & Transition Plan (current)
-  - 0.6.3c Nightly World Variation & escaped-human lifecycle
+  - 0.6.3b4 Simulation Architecture Audit & Transition Plan ✅
+  - 0.6.3c Nightly World Variation & escaped-human lifecycle (current)
   - 0.6.3d Blood Stock & Blood Cellar Foundation
   - 0.6.3e Stabilization & Legacy Purge
 - 0.6.4 Dominion, Torpor, Vampire Politics & Orders
