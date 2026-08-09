@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
+import { HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD } from '../simulation/servants/humanWork';
 import { getRecipeReadiness, renderOverlay } from '../ui/overlays/overlays';
 
 const ALL_MENUS = ['character', 'inventory', 'servants', 'stronghold', 'crafting', 'journal', 'pause'] as const;
@@ -116,10 +117,55 @@ describe('overlay rendering safety', () => {
     expect(html).toContain(human.name);
     expect(html).not.toContain('No human thralls.');
   });
+
+  it('shows wounded human thralls as unable to perform daytime labor', () => {
+    const state = createNewGameState({ seed: 'wounded-human-servant', playerName: 'Tester' });
+    const human = state.npcs[0]!;
+    state.humanServants = [
+      {
+        kind: 'human_servant',
+        id: `servant-${human.id}`,
+        name: human.name,
+        age: human.age,
+        professionId: human.professionId,
+        attributes: { ...human.attributes },
+        traitIds: [...human.traitIds],
+        familyName: human.familyName,
+        factionId: human.factionId,
+        bloodResonance: human.bloodResonance,
+        resolve: human.resolve,
+        disposition: human.disposition,
+        fear: human.fear,
+        relationships: { ...human.relationships },
+        resistance: human.resolve,
+        control: 70,
+        health: HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD,
+        maxHealth: human.maxHealth,
+        stress: human.stress,
+        combat: human.combat,
+        professionSkills: {},
+        priorities: {
+          Building: 'Low',
+          Crafting: 'Disabled',
+          Gathering: 'Normal',
+          Guarding: 'Low',
+          Research: 'Disabled',
+          Hunting: 'Disabled',
+        },
+        currentJob: null,
+        currentTask: null,
+        taskReason: 'Recovering.',
+        equipped: {},
+      },
+    ];
+
+    const html = renderOverlay('servants', state, null, 'all', 'workshop');
+    expect(html).toContain('Next day: Idle — Too wounded for daytime labor.');
+  });
 });
 
 describe('overlay readiness text', () => {
-  it('uses vassal terminology for missing crafters', () => {
+  it('recognizes both human thralls and vampire vassals as potential crafters', () => {
     const state = createNewGameState({ seed: 'crafting-vassal-text', playerName: 'Tester' });
     state.rooms.push({
       id: 'room-workshop-1-0',
@@ -135,7 +181,7 @@ describe('overlay readiness text', () => {
 
     expect(getRecipeReadiness(state, 'wood_planks')).toEqual({
       ready: false,
-      reason: 'Need a vassal with Crafting enabled.',
+      reason: 'Need a human thrall or vampire vassal with Crafting enabled.',
     });
   });
 });

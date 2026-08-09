@@ -5,6 +5,7 @@ import { getDayRestrictionPenalty } from '../traits/traitEffects';
 import { getTraitEffectIds } from '../traits/traitUtils';
 import { replenishHumanPopulation } from '../world/humans';
 import { resolveHumanThrallDay } from '../servants/humanThralls';
+import { runHumanWorkDay } from '../servants/humanWork';
 
 export interface PhaseAdvanceResult {
   state: SaveGame;
@@ -24,6 +25,9 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
   let worldCycle = { ...state.worldCycle };
   let humanServants = state.humanServants.map((servant) => ({ ...servant, relationships: { ...servant.relationships }, priorities: { ...servant.priorities }, equipped: { ...servant.equipped } }));
   let inventory = state.inventory.map((entry) => ({ ...entry }));
+  let rooms = state.rooms.map((room) => ({ ...room, assignedWorkerIds: [...room.assignedWorkerIds] }));
+  let craftingQueue = state.craftingQueue.map((order) => ({ ...order }));
+  let strategicResources = { ...state.strategicResources };
 
   // Night -> Day: vampires consume stored Vitae; daylight traits remain separate.
   if (nextPhase === 'day') {
@@ -51,8 +55,16 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
       defeatedEnemyIds: [],
     };
     worldCycleChanged = true;
+
+    const humanWork = runHumanWorkDay({ humanServants, rooms, craftingQueue, inventory }, state.seed, nextDay);
+    humanServants = humanWork.humanServants;
+    rooms = humanWork.rooms;
+    craftingQueue = humanWork.craftingQueue;
+    inventory = humanWork.inventory;
+    for (const event of humanWork.events) events.push(event);
+
     const thrallSnapshots = new Map(humanServants.map((servant) => [servant.id, servant] as const));
-    const thrallDay = resolveHumanThrallDay({ ...state, humanServants, inventory });
+    const thrallDay = resolveHumanThrallDay({ ...state, humanServants, rooms, craftingQueue, strategicResources, inventory });
     humanServants = thrallDay.humanServants;
     inventory = thrallDay.inventory;
     for (const event of thrallDay.events) events.push(event);
@@ -77,9 +89,9 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
 
   const shift = runWorkShift(
     state.vampireVassals,
-    state.rooms,
-    state.craftingQueue,
-    state.strategicResources,
+    rooms,
+    craftingQueue,
+    strategicResources,
     inventory,
     nextPhase,
     state.seed,

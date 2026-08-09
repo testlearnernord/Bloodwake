@@ -36,8 +36,13 @@ export const createTaskCandidates = (
       reason: priority === 0 ? 'Building is disabled.' : 'Construction is waiting for workers.',
     });
   }
-  const queuedOrder = craftingQueue.find((order) => order.status === 'queued');
-  if (queuedOrder && rooms.some((room) => room.roomId === RECIPES_BY_ID[queuedOrder.recipeId].requiredRoomId && room.status === 'built')) {
+  const queuedOrder = craftingQueue.find((order) => {
+    if (order.status !== 'queued') return false;
+    const recipe = RECIPES_BY_ID[order.recipeId];
+    return (!recipe.requiredProfessionId || recipe.requiredProfessionId === vassal.professionId)
+      && rooms.some((room) => room.roomId === recipe.requiredRoomId && room.status === 'built');
+  });
+  if (queuedOrder) {
     const jobType: JobType = 'Crafting';
     const priority = JOB_PRIORITY_WEIGHT[vassal.priorities[jobType]];
     tasks.push({

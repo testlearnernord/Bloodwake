@@ -12,15 +12,18 @@
   - 0.6.2e Circular Predatory Bite timing ✅
 - 0.6.3 Human Recruitment and Housing (current)
   - 0.6.3a Human Thralls: Enthrallment, Control, Housing & Food ✅
-  - 0.6.3a1 Thrall playtest fixes (current)
-  - 0.6.3b Human Work & Thrall Elevation
+  - 0.6.3a1 Thrall playtest fixes ✅
+  - 0.6.3b Human Work Foundation (current)
+  - 0.6.3b1 Thrall Elevation
+  - 0.6.3b2 Domain World Presence
+  - 0.6.3b3 Visible Work
   - 0.6.3c Nightly World Variation
   - 0.6.3d Blood Cellar & Donors
-- 0.6.4 Dominion and Torpor
+  - 0.6.3e Stabilization & Legacy Purge
+- 0.6.4 Dominion, Torpor, Vampire Politics & Orders
 - 0.6.5 Day Management
-- 0.6.6 Night Orders
-- 0.7 Economy and Facilities
-- 0.8 Character, Genetics and Bloodline
-- 0.9 Hunt Before Dawn
-- 1.0 Visible Operations
-- 1.1 Threat and Siege
+- 0.7 Economy, Facilities, Skills & Training
+- 0.8 Awakening Tutorial / Story and Region 1 progression
+- 0.9 First Regional Boss and region unlock loop
+- 1.0 Threat, Stronghold Raids and Defense
+- 1.1 Character Genetics and Bloodline Foundations
