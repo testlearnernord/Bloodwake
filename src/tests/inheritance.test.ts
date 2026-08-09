@@ -62,6 +62,11 @@ const human: HumanCharacter = {
   fear: 0,
   status: 'wandering',
   relationships: {},
+  worldPresence: 'active',
+  dormantReason: null,
+  dormantSinceDay: null,
+  scheduledReturnDay: null,
+  lastSeenDay: 1,
 };
 
 describe('vampire inheritance', () => {

@@ -102,7 +102,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!requiredArrays.every((field) => Array.isArray(value[field]))) {
     return false;
   }
-  // Validate v7 free-human metadata. Old decorative fields are no longer accepted.
+  // Validate v8 free-human metadata and explicit world lifecycle. Old decorative fields are no longer accepted.
   const npcs = value.npcs as unknown[];
   for (const record of npcs) {
     if (!isRecord(record) || typeof record.id !== 'string') {
@@ -123,6 +123,11 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     if (!isIntegerInRange(record.fear, 0, 100)) {
       return false;
     }
+    if (record.worldPresence !== 'active' && record.worldPresence !== 'dormant') return false;
+    if (record.dormantReason !== null && record.dormantReason !== 'regional' && record.dormantReason !== 'escaped' && record.dormantReason !== 'captured') return false;
+    if (record.dormantSinceDay !== null && !isIntegerInRange(record.dormantSinceDay, 1, Number.MAX_SAFE_INTEGER)) return false;
+    if (record.scheduledReturnDay !== null && !isIntegerInRange(record.scheduledReturnDay, 1, Number.MAX_SAFE_INTEGER)) return false;
+    if (!isIntegerInRange(record.lastSeenDay, 1, Number.MAX_SAFE_INTEGER)) return false;
   }
 
   // Validate population records are objects with string ids
@@ -182,7 +187,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const normalizeV7 = (value: SaveGame): SaveGame => {
+const normalizeV8 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -230,7 +235,7 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  return normalizeV7(value);
+  return normalizeV8(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

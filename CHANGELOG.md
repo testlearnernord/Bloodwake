@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.3c - Nightly World Variation & Escaped-Human Lifecycle
+
+- Enemy counts, types, positions and resource-node layouts now vary deterministically by world seed and night.
+- Active free Humans rotate through a bounded regional pool and receive deterministic nightly positions.
+- Escaped Human Thralls no longer respawn immediately as ordinary villagers; they enter a dormant off-map state with a deterministic possible return schedule.
+- Dormant escaped records expire after a retention window and are hard-capped to prevent long-save population bloat.
+- New Humans are generated only to maintain the bounded regional pool when captures, deaths, Turning or other removals create vacancies.
+- Human world lifecycle is now explicit persistent state; save format advances to v8 and v1-v7 remain intentionally unsupported.
+- Nightly lifecycle logic is a pure simulation function called by the current phase boundary, ready to move behind the future WorldClock without being tied to the UI button.
+
 ## 0.6.3b3 - Visible Work & Actor Task Foundation
 
 - Human Thralls now travel toward selected daytime work instead of remaining fixed Stronghold decorations.

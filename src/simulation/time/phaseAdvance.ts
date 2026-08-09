@@ -3,7 +3,7 @@ import type { DayPhase, SaveGame } from '../../types/models';
 import { runWorkShift } from '../servants/production';
 import { getDayRestrictionPenalty } from '../traits/traitEffects';
 import { getTraitEffectIds } from '../traits/traitUtils';
-import { replenishHumanPopulation } from '../world/humans';
+import { markHumanEscaped, resolveNightlyHumanPopulation } from '../world/nightlyWorld';
 import { resolveHumanThrallDay } from '../servants/humanThralls';
 import { runHumanWorkDay } from '../servants/humanWork';
 
@@ -75,16 +75,18 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
         const escapedThrall = thrallSnapshots.get(human.id);
         const baseFear = escapedThrall?.fear ?? human.fear;
         const baseDisposition = escapedThrall?.disposition ?? human.disposition;
-        return {
+        return markHumanEscaped({
           ...human,
           status: 'wandering' as const,
           fear: Math.min(100, baseFear + 15),
           disposition: Math.max(-100, baseDisposition - 20),
-        };
+        }, state.seed, nextDay);
       });
     }
+    const population = resolveNightlyHumanPopulation(npcs, state.seed, nextDay, TARGET_HUMAN_POPULATION);
+    npcs = population.npcs;
+    for (const event of population.events) events.push(event);
     events.push(`Night ${nextDay} begins. The world stirs anew.`);
-    npcs = replenishHumanPopulation(npcs, state.seed, nextDay, TARGET_HUMAN_POPULATION);
   }
 
   const shift = runWorkShift(

@@ -123,6 +123,15 @@ Rules:
 - Do not create placeholder Research or Guarding rewards merely to make a button appear active.
 - Future visible worker actors must present this simulation state rather than owning a second independent job simulation.
 
+
+## Nightly world lifecycle boundary (0.6.3c)
+
+Nightly variation is derived from `seed + day` through pure functions in `src/simulation/world/nightlyWorld.ts`. `WorldScene` renders those spawn definitions; it does not own encounter composition or Human persistence.
+
+Free Humans now carry explicit `worldPresence` lifecycle metadata. An escaped Thrall becomes a dormant off-map Human and may receive a deterministic return day. Regional Humans rotate through a bounded candidate pool, and new Humans are generated only to keep that pool viable. Dormant escaped Humans are pruned by age and a hard cap so a long-running save cannot accumulate an unbounded list of former captives.
+
+The current Day -> Night phase transition calls this lifecycle resolver only as a temporary scheduler. Milestone 0.6.5a will move the trigger to `WorldClock` without changing the lifecycle authority.
+
 ## Visible work / actor task boundary (0.6.3b3)
 
 World movement is a projection of authoritative task selection, not a second job system. Human Thralls use `selectTaskForHumanThrall` during day and Vampire Vassals use `selectTaskForVassal` during night to derive destinations. `domainActorTasks.ts` owns presentation-safe task plans and motion state (`idle -> moving_to_task -> working -> returning`); it never awards resources, completes recipes, advances construction, or mutates population state. The existing phase-batched production paths are temporary and must be inventoried in 0.6.3b4 before continuous world-time conversion.

@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_VITAE_UPKEEP_PER_DAWN, TARGET_HUMAN_POPULATION } from '../config/balancing';
 import { createNewGameState } from '../app/state';
 import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
-import { replenishHumanPopulation } from '../simulation/world/humans';
+import { isHumanPresentInWorld } from '../simulation/world/humans';
+import { resolveNightlyHumanPopulation } from '../simulation/world/nightlyWorld';
 import { applyHumanAction } from '../simulation/combat/bite';
 import { migrateSaveGame } from '../persistence/saveStore';
 import { SAVE_FORMAT_VERSION } from '../config/game';
@@ -122,83 +123,62 @@ describe('vitae upkeep and daylight', () => {
   });
 });
 
-// ─── Human Replenishment ─────────────────────────────────────────────────────
+// ─── Human Nightly Lifecycle ─────────────────────────────────────────────────
 
-describe('human replenishment', () => {
+describe('human nightly lifecycle', () => {
   const seed = '1042';
 
-  it('surviving humans remain', () => {
-    const npcs = replenishHumanPopulation(
-      [{ id: 'human-1', status: 'wandering', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
-      seed,
-      2,
-      TARGET_HUMAN_POPULATION,
-    );
-    expect(npcs.some((h) => h.id === 'human-1')).toBe(true);
+  it('keeps a bounded active roster while maintaining a regional candidate pool', () => {
+    const state = createNewGameState({ seed });
+    const population = resolveNightlyHumanPopulation(state.npcs, seed, 2, TARGET_HUMAN_POPULATION);
+    expect(population.npcs.filter(isHumanPresentInWorld)).toHaveLength(TARGET_HUMAN_POPULATION);
+    expect(population.npcs.filter((human) => human.status === 'wandering')).toHaveLength(8);
   });
 
-  it('fed humans recover to wandering', () => {
-    const npcs = replenishHumanPopulation(
-      [{ id: 'fed-1', status: 'fed', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
-      seed,
-      2,
-      TARGET_HUMAN_POPULATION,
-    );
-    const recovered = npcs.find((h) => h.id === 'fed-1');
+  it('fed humans recover to wandering before nightly roster selection', () => {
+    const state = createNewGameState({ seed: 'fed-world-sync' });
+    state.npcs[0]!.status = 'fed';
+    const population = resolveNightlyHumanPopulation(state.npcs, state.seed, 2, 8);
+    const recovered = population.npcs.find((human) => human.id === state.npcs[0]!.id);
     expect(recovered?.status).toBe('wandering');
+    expect(recovered && isHumanPresentInWorld(recovered)).toBe(true);
   });
 
-  it('drained humans are removed', () => {
-    const npcs = replenishHumanPopulation(
-      [{ id: 'drain-1', status: 'drained', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
-      seed,
-      2,
-      TARGET_HUMAN_POPULATION,
+  it('drained and turned identities never return as active humans', () => {
+    const state = createNewGameState({ seed: 'terminal-humans' });
+    state.npcs[0]!.status = 'drained';
+    state.npcs[0]!.worldPresence = 'dormant';
+    state.npcs[1]!.status = 'turned';
+    state.npcs[1]!.worldPresence = 'dormant';
+    const population = resolveNightlyHumanPopulation(state.npcs, state.seed, 2, 8);
+    expect(isHumanPresentInWorld(population.npcs.find((human) => human.id === state.npcs[0]!.id)!)).toBe(false);
+    expect(isHumanPresentInWorld(population.npcs.find((human) => human.id === state.npcs[1]!.id)!)).toBe(false);
+  });
+
+  it('generated IDs remain unique and deterministic for the same seed/day', () => {
+    const state = createNewGameState({ seed });
+    const a = resolveNightlyHumanPopulation(state.npcs, seed, 5, TARGET_HUMAN_POPULATION);
+    const b = resolveNightlyHumanPopulation(state.npcs, seed, 5, TARGET_HUMAN_POPULATION);
+    expect(new Set(a.npcs.map((human) => human.id)).size).toBe(a.npcs.length);
+    expect(a.npcs.map((human) => human.id)).toEqual(b.npcs.map((human) => human.id));
+    expect(a.npcs.filter(isHumanPresentInWorld).map((human) => human.id)).toEqual(
+      b.npcs.filter(isHumanPresentInWorld).map((human) => human.id),
     );
-    expect(npcs.some((h) => h.id === 'drain-1')).toBe(false);
-  });
-
-  it('turned humans do not reappear as humans', () => {
-    const npcs = replenishHumanPopulation(
-      [{ id: 'turned-1', status: 'turned', name: 'A', familyName: 'B', age: 25, professionId: 'peasant', attributes: { strength: 2, agility: 2, vitality: 2, willpower: 2, intelligence: 2, presence: 2, bloodControl: 2 }, traitIds: [], factionId: 'village', health: 12, maxHealth: 12, morale: 50, loyalty: 40, ambition: 50, stress: 10, combat: 0, bloodResonance: 3, resolve: 3, disposition: 0, fear: 0, relationships: {} }],
-      seed,
-      2,
-      TARGET_HUMAN_POPULATION,
-    );
-    expect(npcs.some((h) => h.id === 'turned-1')).toBe(false);
-  });
-
-  it('active human count returns to target', () => {
-    const npcs = replenishHumanPopulation([], seed, 2, TARGET_HUMAN_POPULATION);
-    expect(npcs.length).toBe(TARGET_HUMAN_POPULATION);
-  });
-
-  it('generated IDs are unique', () => {
-    const npcs = replenishHumanPopulation([], seed, 5, TARGET_HUMAN_POPULATION);
-    const ids = npcs.map((h) => h.id);
-    expect(new Set(ids).size).toBe(ids.length);
-  });
-
-  it('generation is deterministic for same seed/day', () => {
-    const a = replenishHumanPopulation([], seed, 3, TARGET_HUMAN_POPULATION);
-    const b = replenishHumanPopulation([], seed, 3, TARGET_HUMAN_POPULATION);
-    expect(a.map((h) => h.id)).toEqual(b.map((h) => h.id));
   });
 
   it('save/load does not create duplicate humans', () => {
     const state = createNewGameState({ seed: 'dup-test' });
     const { state: day } = advanceWorldPhase(state);
     const { state: night } = advanceWorldPhase(day);
-    const ids = night.npcs.map((h) => h.id);
+    const ids = night.npcs.map((human) => human.id);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
-  it('human population after full cycle stays at or below target', () => {
+  it('full phase cycle exposes exactly the target number of free world Humans', () => {
     const state = createNewGameState({ seed: '1042' });
     const { state: day } = advanceWorldPhase(state);
     const { state: night } = advanceWorldPhase(day);
-    const active = night.npcs.filter((h) => h.status !== 'drained' && h.status !== 'turned');
-    expect(active.length).toBeLessThanOrEqual(TARGET_HUMAN_POPULATION);
+    expect(night.npcs.filter(isHumanPresentInWorld)).toHaveLength(TARGET_HUMAN_POPULATION);
   });
 });
 

@@ -7,12 +7,15 @@ import { calculateTraitModifiers, resolveTraitSet } from '../traits/traitUtils';
 import { rollBloodResonance } from '../blood/bloodResonance';
 
 export const isHumanPresentInWorld = (human: HumanCharacter): boolean =>
-  human.status !== 'drained' && human.status !== 'turned' && human.status !== 'enthralled';
+  human.worldPresence === 'active'
+  && human.status !== 'drained'
+  && human.status !== 'turned'
+  && human.status !== 'enthralled';
 
 const FIRST_NAMES = ['Adela', 'Berta', 'Clara', 'Dieter', 'Egon', 'Frieda', 'Greta', 'Heinrich'];
 const FAMILY_NAMES = ['Klein', 'Waldmann', 'Roth', 'Vogel', 'Falk', 'Stein'];
 
-const generateSingleHuman = (rng: SeededRng, id: string): HumanCharacter => {
+const generateSingleHuman = (rng: SeededRng, id: string, day: number): HumanCharacter => {
   const profession = rng.pickOne(PROFESSIONS);
   const baseAttributes = createAttributeSet(2);
   const availableTraits = TRAITS.filter((trait) => !trait.vampireOnly && trait.rarity !== 'legendary');
@@ -50,35 +53,18 @@ const generateSingleHuman = (rng: SeededRng, id: string): HumanCharacter => {
     fear: 0,
     status: 'wandering',
     relationships: {},
+    worldPresence: 'active',
+    dormantReason: null,
+    dormantSinceDay: null,
+    scheduledReturnDay: null,
+    lastSeenDay: day,
   };
 };
 
+export const generateHumanFromSeed = (seed: string, id: string, day: number): HumanCharacter =>
+  generateSingleHuman(new SeededRng(seed), id, day);
+
 export const generateHumans = (seed: string, count: number): HumanCharacter[] => {
   const rng = new SeededRng(`${seed}-humans`);
-  return Array.from({ length: count }, (_, index) => generateSingleHuman(rng, `human-${index + 1}`));
-};
-
-export const replenishHumanPopulation = (
-  existingNpcs: HumanCharacter[],
-  seed: string,
-  day: number,
-  targetCount: number,
-): HumanCharacter[] => {
-  const survivors = existingNpcs.filter((human) => {
-    if (human.status === 'drained' || human.status === 'turned') return false;
-    return true;
-  });
-  const recoveredSurvivors = survivors.map((human) =>
-    human.status === 'fed' ? { ...human, status: 'wandering' as const } : human,
-  );
-  const freeHumans = recoveredSurvivors.filter((human) => human.status !== 'enthralled');
-  const needed = Math.max(0, targetCount - freeHumans.length);
-  if (needed === 0) return recoveredSurvivors;
-  const newHumans: HumanCharacter[] = [];
-  for (let i = 0; i < needed; i++) {
-    const rng = new SeededRng(`${seed}-day-${day}-spawn-${i}`);
-    const id = `human-d${day}-${i + 1}`;
-    newHumans.push(generateSingleHuman(rng, id));
-  }
-  return [...recoveredSurvivors, ...newHumans];
+  return Array.from({ length: count }, (_, index) => generateSingleHuman(rng, `human-${index + 1}`, 1));
 };

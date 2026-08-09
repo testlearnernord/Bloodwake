@@ -9,8 +9,7 @@
  *  - Turning a human creates *exactly one* new servant and no more
  *  - No duplicate servants/rooms/enemies/resource-nodes after a save-state round-trip
  *  - Two distinct rooms placed → exactly two unique room entries (by composite id)
- *  - Turned human absent from next-night NPC list
- *  - Drained human absent from next-night NPC list
+ *  - Turned/drained identities stay persisted but never return to the active world roster
  *  - World cycle collections are cleared exactly once on day→night transition
  */
 
@@ -21,6 +20,7 @@ import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
 import { applyHumanAction } from '../simulation/combat/bite';
 import { migrateSaveGame } from '../persistence/saveStore';
 import { queueRoomConstruction } from '../simulation/building/building';
+import { isHumanPresentInWorld } from '../simulation/world/humans';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -155,47 +155,44 @@ describe('room placement: no duplicate room entries', () => {
   });
 });
 
-// ─── Turned / drained humans absent from next night ──────────────────────────
+// ─── Terminal Human identities remain persisted but off-map ─────────────────
 
-describe('turned and drained humans absent from next-night replenishment', () => {
-  it('turned human does not reappear as NPC after a full cycle', () => {
+describe('turned and drained humans remain unavailable in the nightly lifecycle', () => {
+  it('keeps a turned identity for history without respawning it as a world Human', () => {
     const state = createNewGameState({ seed: 'turned-absent' });
     state.player.vitae = 5;
     const humanId = state.npcs[0]?.id ?? '';
     const { state: withServant } = applyHumanAction(state, humanId, 'turn');
     const { state: day } = advanceWorldPhase(withServant);
     const { state: night } = advanceWorldPhase(day);
-    // The original human should not exist in the NPC list with status 'turned'
-    // and must not have been regenerated as a new 'wandering' human under the same ID
-    const turningHuman = night.npcs.find((h) => h.id === humanId);
-    expect(turningHuman).toBeUndefined();
+    const turningHuman = night.npcs.find((human) => human.id === humanId);
+    expect(turningHuman?.status).toBe('turned');
+    expect(turningHuman?.worldPresence).toBe('dormant');
+    expect(turningHuman && isHumanPresentInWorld(turningHuman)).toBe(false);
   });
 
-  it('drained human does not reappear as NPC after a full cycle', () => {
+  it('keeps a drained identity for history without respawning it as a world Human', () => {
     const state = createNewGameState({ seed: 'drained-absent' });
     const humanId = state.npcs[0]?.id ?? '';
     const { state: afterDrain } = applyHumanAction(state, humanId, 'drain');
     const { state: day } = advanceWorldPhase(afterDrain);
     const { state: night } = advanceWorldPhase(day);
-    const drainedHuman = night.npcs.find((h) => h.id === humanId);
-    expect(drainedHuman).toBeUndefined();
+    const drainedHuman = night.npcs.find((human) => human.id === humanId);
+    expect(drainedHuman?.status).toBe('drained');
+    expect(drainedHuman?.worldPresence).toBe('dormant');
+    expect(drainedHuman && isHumanPresentInWorld(drainedHuman)).toBe(false);
   });
 
-  it('active human population is replenished to target after a full cycle', () => {
+  it('active world Human population returns to target after a full cycle', () => {
     const state = createNewGameState({ seed: 'replenish-target' });
-    // Drain all but one human to force replenishment
-    let s = state;
-    for (let i = 0; i < 4; i++) {
-      const id = s.npcs.find((h) => h.status === 'wandering')?.id ?? '';
-      if (id) {
-        const result = applyHumanAction(s, id, 'drain');
-        s = result.state;
-      }
+    let current = state;
+    for (let index = 0; index < 4; index += 1) {
+      const id = current.npcs.find(isHumanPresentInWorld)?.id ?? '';
+      if (id) current = applyHumanAction(current, id, 'drain').state;
     }
-    const { state: day } = advanceWorldPhase(s);
+    const { state: day } = advanceWorldPhase(current);
     const { state: night } = advanceWorldPhase(day);
-    const active = night.npcs.filter((h) => h.status !== 'drained' && h.status !== 'turned');
-    expect(active.length).toBe(TARGET_HUMAN_POPULATION);
+    expect(night.npcs.filter(isHumanPresentInWorld)).toHaveLength(TARGET_HUMAN_POPULATION);
   });
 });
 

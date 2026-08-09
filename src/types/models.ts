@@ -33,6 +33,8 @@ export type QuestStepStatus = 'locked' | 'active' | 'complete';
 export type EnemyType = 'bandit' | 'clergy_hunter' | 'elite_knight';
 export type TaskType = 'construct_room' | 'craft_recipe' | 'gather_resource' | 'guard_stronghold';
 export type HumanStatus = 'wandering' | 'fed' | 'drained' | 'turned' | 'enthralled';
+export type HumanWorldPresence = 'active' | 'dormant';
+export type HumanDormantReason = 'regional' | 'escaped' | 'captured';
 export type ItemCategory = 'material' | 'weapon' | 'armor' | 'accessory' | 'consumable' | 'quest' | 'relic';
 export type ItemRarity = 'common' | 'uncommon' | 'rare' | 'legendary';
 export type ItemId =
@@ -111,6 +113,11 @@ export interface HumanCharacter extends CharacterBase {
   fear: number;
   status: HumanStatus;
   relationships: Record<string, number>;
+  worldPresence: HumanWorldPresence;
+  dormantReason: HumanDormantReason | null;
+  dormantSinceDay: number | null;
+  scheduledReturnDay: number | null;
+  lastSeenDay: number;
 }
 
 export interface EquipmentLoadout {
