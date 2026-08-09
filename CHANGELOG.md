@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.3c1 - Daylight shelter & guard-slot stabilization
+
+- Player movement remains controllable inside the Ruined Stronghold during day instead of being reset to the coffin every frame.
+- Daytime exterior travel remains temporarily blocked; real sunlight exposure/damage belongs to the WorldClock conversion so it can be time-based and modified by vampire traits, bloodline traits, equipment and future research.
+- Multiple Vampire Vassals assigned to Guarding now occupy deterministic distinct guard posts instead of stacking on one coordinate.
+- Added pure regression coverage for daylight shelter bounds and simultaneous guard positioning.
+
+
 ## 0.6.3c - Nightly World Variation & Escaped-Human Lifecycle
 
 - Enemy counts, types, positions and resource-node layouts now vary deterministically by world seed and night.

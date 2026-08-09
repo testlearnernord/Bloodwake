@@ -17,6 +17,7 @@ import { ENEMY_ATTACKS_BY_ID } from '../../data/enemyAttacks';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
+import { constrainVampireToDaylightShelter } from '../../simulation/world/daylightShelter';
 import { isHumanPresentInWorld } from '../../simulation/world/humans';
 import { getNightlyEnemySpawns, getNightlyHumanPosition, getNightlyResourceNodes } from '../../simulation/world/nightlyWorld';
 import { getDomainPopulationAnchor, getDomainPopulationIds } from '../../simulation/world/domainPresence';
@@ -221,14 +222,19 @@ export class WorldScene extends Phaser.Scene {
     this.playerHealthPreview = Phaser.Math.Linear(this.playerHealthPreview, state.player.health, state.player.health < this.playerHealthPreview ? 0.08 : 0.28);
     if (!canPlayerExplore(state.time.phase)) {
       this.releaseTargetLock();
-      this.player.setPosition(COFFIN_RESPAWN.x, COFFIN_RESPAWN.y);
-      this.player.setVelocity(0, 0);
-      this.hintText.setText('Daylight drives you back to the keep.');
+      this.hintText.setText('Daylight confines vampires to the stronghold.');
     }
     this.updateNearbyHuman();
     this.updateZone();
     this.stepPlayerAction(time);
     this.updateMovement(time);
+    if (!canPlayerExplore(state.time.phase)) {
+      const currentPosition = { x: this.player.x, y: this.player.y };
+      const shelteredPosition = constrainVampireToDaylightShelter(state.time.phase, currentPosition);
+      if (shelteredPosition.x !== currentPosition.x) this.player.setVelocityX(0);
+      if (shelteredPosition.y !== currentPosition.y) this.player.setVelocityY(0);
+      this.player.setPosition(shelteredPosition.x, shelteredPosition.y);
+    }
     this.updateEnemyAi(time);
     this.updateProjectiles(time, delta);
     this.updateTargetLock(time);
