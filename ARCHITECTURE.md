@@ -123,6 +123,10 @@ Rules:
 - Do not create placeholder Research or Guarding rewards merely to make a button appear active.
 - Future visible worker actors must present this simulation state rather than owning a second independent job simulation.
 
+## Domain world presence boundary (0.6.3b2)
+
+Controlled population world actors are projections of simulation state. `humanServants` is the sole source for Human Thrall actors and `vampireVassals` is the sole source for Vampire Vassal actors. WorldScene may display names, current work and deterministic Stronghold anchors, but it must not own a second population/job state. Enthrallment, escape and elevation therefore add/remove world actors by changing simulation state, not by mutating a separate roster. Visible pathing and job animation belong to 0.6.3b3.
+
 ## Thrall elevation boundary (0.6.3b1)
 
 Elevation converts one existing `HumanServant` into one `VampireVassal`. The mortal Thrall is the source of current learned profession skills, equipment, stress and other captivity-era state; the persisted NPC identity supplies human-only background such as Ambition for inheritance. Elevation removes the Human Thrall entry, marks the mortal NPC identity `turned`, records inheritance, and creates a Vampire Vassal through the same shared vassal factory as direct Turning.

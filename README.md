@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.6.3b1 Thrall Elevation — trained mortal Thralls can now be deliberately turned into Vampire Vassals without losing their learned profession skills.
+> Current status: Milestone 0.6.3b2 Domain World Presence — Human Thralls and Vampire Vassals now have explicit synchronized character actors inside the Stronghold.
 
 ## Zero-cost architecture
 
@@ -27,6 +27,7 @@ Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScrip
 - At night the player can spend Vitae to Reassert Control. A Thrall whose Control reaches zero escapes back into the free-human world.
 - A captive Thrall can be deliberately Elevated into a Vampire Vassal for the normal turning Vitae cost; learned profession skills and equipped gear survive the transition.
 - Vampire Vassals remain autonomous subordinates with Loyalty and Ambition and can perform the existing stronghold work loop.
+- Human Thralls and Vampire Vassals are both represented by character silhouettes in the Stronghold; enthrallment, elevation and escape update those actors from simulation state.
 - Built rooms are visualized at their grid positions in Ruined Stronghold with progress indicators.
 - Save format is v7. Older v1-v6 saves are intentionally unsupported.
 

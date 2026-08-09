@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.3b2 - Domain World Presence
+
+- Human Thralls now appear as synchronized character silhouettes inside the Stronghold.
+- Vampire Vassals use a vampire character silhouette instead of the old red rectangle placeholder.
+- Enthrallment, elevation and escape add/remove domain actors from the authoritative population arrays.
+- World labels expose current Human/Vampire activity without creating a second job simulation.
+- Added deterministic Stronghold anchors and regression coverage for presence transitions.
+- Save format remains v7.
+
 ## 0.6.3b1 - Thrall Elevation
 
 - Existing Human Thralls can be deliberately Elevated into Vampire Vassals for the normal turning Vitae cost.

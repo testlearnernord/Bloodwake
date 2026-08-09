@@ -18,7 +18,8 @@ import { ENEMIES_BY_ID } from '../../data/enemies';
 import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
 import { isHumanPresentInWorld } from '../../simulation/world/humans';
-import type { BuiltRoom, EnemyType, HumanCharacter, ItemId, VampireVassal } from '../../types/models';
+import { getDomainPopulationAnchor, getDomainPopulationIds, getHumanThrallPresenceLabel, getVassalPresenceLabel } from '../../simulation/world/domainPresence';
+import type { BuiltRoom, EnemyType, HumanCharacter, HumanServant, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
 import { CombatPresentation, type CombatFeedPrompt, type TargetIndicator } from '../combat/CombatPresentation';
 import type { CombatActionId, CombatDamageEvent, CombatTargetSnapshot, CombatUiSnapshot, HumanActionMode, LockedTargetHudState } from '../combat/combatTypes';
@@ -71,9 +72,18 @@ interface SceneProjectile {
   lastTrailAt: number;
 }
 
+interface SceneThrall {
+  thrallId: string;
+  sprite: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
+  nameLabel: Phaser.GameObjects.Text;
+  jobLabel: Phaser.GameObjects.Text;
+}
+
 interface SceneVassal {
   vassalId: string;
-  sprite: Phaser.GameObjects.Rectangle;
+  sprite: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
   nameLabel: Phaser.GameObjects.Text;
   jobLabel: Phaser.GameObjects.Text;
 }
@@ -131,6 +141,7 @@ export class WorldScene extends Phaser.Scene {
   private enemies: SceneEnemy[] = [];
   private resources: SceneResourceNode[] = [];
   private projectiles: SceneProjectile[] = [];
+  private thralls: SceneThrall[] = [];
   private vassals: SceneVassal[] = [];
   private rooms: SceneRoom[] = [];
   private memoryFragment: Phaser.GameObjects.Rectangle | null = null;
@@ -180,6 +191,7 @@ export class WorldScene extends Phaser.Scene {
     this.createEnemies();
     this.createResources();
     this.createMemoryFragment();
+    this.createThralls();
     this.createVassals();
     this.createRooms();
     this.createUiHints();
@@ -206,6 +218,7 @@ export class WorldScene extends Phaser.Scene {
     }
     this.syncHumansWithState();
     this.syncMemoryWithState();
+    this.syncThrallsWithState();
     this.syncVassalsWithState();
     this.syncRoomsWithState();
     this.syncResourcesWithState();
@@ -319,6 +332,23 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  private createThralls(): void {
+    const state = this.bridge.getState();
+    this.thralls = [];
+    state.humanServants.forEach((thrall, index) => {
+      this.spawnThrallVisual(thrall, index);
+    });
+  }
+
+  private spawnThrallVisual(thrall: HumanServant, index: number): void {
+    const anchor = getDomainPopulationAnchor('human_thrall', index);
+    const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 22, 10);
+    const sprite = this.add.image(anchor.x, anchor.y, 'thrall-token').setDepth(5);
+    const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${thrall.name} ${thrall.familyName}`, { color: '#e7d8c9', fontSize: '9px' }).setOrigin(0.5).setDepth(6);
+    const jobLabel = this.add.text(anchor.x, anchor.y + 20, getHumanThrallPresenceLabel(thrall), { color: '#aeb8c4', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    this.thralls.push({ thrallId: thrall.id, sprite, shadow, nameLabel, jobLabel });
+  }
+
   private createVassals(): void {
     const state = this.bridge.getState();
     this.vassals = [];
@@ -328,15 +358,12 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private spawnVassalVisual(vassal: VampireVassal, index: number): void {
-    const col = index % 3;
-    const row = Math.floor(index / 3);
-    const x = 60 + col * 70;
-    const y = 540 + row * 60;
-    const sprite = this.add.rectangle(x, y, 22, 22, 0x8b0000).setDepth(4).setStrokeStyle(1, 0xff6b6b);
-    const nameLabel = this.add.text(x, y - 18, vassal.name, { color: '#ff6b6b', fontSize: '10px' }).setOrigin(0.5).setDepth(5);
-    const jobText = vassal.currentJob ? vassal.currentJob : 'Idle';
-    const jobLabel = this.add.text(x, y + 15, jobText, { color: '#aaaaaa', fontSize: '9px' }).setOrigin(0.5).setDepth(5);
-    this.vassals.push({ vassalId: vassal.id, sprite, nameLabel, jobLabel });
+    const anchor = getDomainPopulationAnchor('vampire_vassal', index);
+    const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 24, 11);
+    const sprite = this.add.image(anchor.x, anchor.y, 'vassal-token').setDepth(5);
+    const nameLabel = this.add.text(anchor.x, anchor.y - 29, vassal.name, { color: '#ff9aaa', fontSize: '10px' }).setOrigin(0.5).setDepth(6);
+    const jobLabel = this.add.text(anchor.x, anchor.y + 21, getVassalPresenceLabel(vassal), { color: '#c8a6d8', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel });
   }
 
   private createRooms(): void {
@@ -1307,30 +1334,61 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private syncVassalsWithState(): void {
+  private syncThrallsWithState(): void {
     const state = this.bridge.getState();
-    const existingIds = new Set(this.vassals.map((v) => v.vassalId));
-    // Remove vassals no longer in state
-    this.vassals = this.vassals.filter((entry) => {
-      if (!state.vampireVassals.some((v) => v.id === entry.vassalId)) {
+    const presentIds = new Set(getDomainPopulationIds(state, 'human_thrall'));
+    this.thralls = this.thralls.filter((entry) => {
+      if (!presentIds.has(entry.thrallId)) {
         entry.sprite.destroy();
+        entry.shadow.destroy();
         entry.nameLabel.destroy();
         entry.jobLabel.destroy();
         return false;
       }
       return true;
     });
-    // Add new vassals, update existing ones
+    const existingIds = new Set(this.thralls.map((entry) => entry.thrallId));
+    state.humanServants.forEach((thrall, index) => {
+      const anchor = getDomainPopulationAnchor('human_thrall', index);
+      const entry = this.thralls.find((candidate) => candidate.thrallId === thrall.id);
+      if (!entry) {
+        this.spawnThrallVisual(thrall, index);
+        existingIds.add(thrall.id);
+        return;
+      }
+      entry.sprite.setPosition(anchor.x, anchor.y);
+      entry.shadow.setPosition(anchor.x, anchor.y + 11);
+      entry.nameLabel.setPosition(anchor.x, anchor.y - 27).setText(`${thrall.name} ${thrall.familyName}`);
+      entry.jobLabel.setPosition(anchor.x, anchor.y + 20).setText(getHumanThrallPresenceLabel(thrall));
+    });
+  }
+
+  private syncVassalsWithState(): void {
+    const state = this.bridge.getState();
+    const presentIds = new Set(getDomainPopulationIds(state, 'vampire_vassal'));
+    this.vassals = this.vassals.filter((entry) => {
+      if (!presentIds.has(entry.vassalId)) {
+        entry.sprite.destroy();
+        entry.shadow.destroy();
+        entry.nameLabel.destroy();
+        entry.jobLabel.destroy();
+        return false;
+      }
+      return true;
+    });
+    const existingIds = new Set(this.vassals.map((entry) => entry.vassalId));
     state.vampireVassals.forEach((vassal, index) => {
-      if (!existingIds.has(vassal.id)) {
+      const anchor = getDomainPopulationAnchor('vampire_vassal', index);
+      const entry = this.vassals.find((candidate) => candidate.vassalId === vassal.id);
+      if (!entry) {
         this.spawnVassalVisual(vassal, index);
         existingIds.add(vassal.id);
-      } else {
-        const entry = this.vassals.find((v) => v.vassalId === vassal.id);
-        if (entry) {
-          entry.jobLabel.setText(vassal.currentJob ?? 'Idle');
-        }
+        return;
       }
+      entry.sprite.setPosition(anchor.x, anchor.y);
+      entry.shadow.setPosition(anchor.x, anchor.y + 11);
+      entry.nameLabel.setPosition(anchor.x, anchor.y - 29).setText(vassal.name);
+      entry.jobLabel.setPosition(anchor.x, anchor.y + 21).setText(getVassalPresenceLabel(vassal));
     });
   }
 
