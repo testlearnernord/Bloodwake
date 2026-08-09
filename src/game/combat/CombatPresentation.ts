@@ -61,6 +61,8 @@ export class CombatPresentation {
       graphics.generateTexture('pixel-token', 2, 2);
       drawSilhouette(graphics, 'player-token', 30, 34, { cloak: 0x1d2333, accent: 0xb91c3c, skin: 0xe8d7c8, trim: 0xced4da });
       drawSilhouette(graphics, 'human-token', 28, 32, { cloak: 0x7f5539, accent: 0xa7c957, skin: 0xcda27e, trim: 0xf2cc8f });
+      drawSilhouette(graphics, 'thrall-token', 28, 32, { cloak: 0x5f4b3f, accent: 0x8d99ae, skin: 0xcda27e, trim: 0xb8a58d });
+      drawSilhouette(graphics, 'vassal-token', 30, 34, { cloak: 0x2b1720, accent: 0xc1123f, skin: 0xd8c0b2, trim: 0x9d4edd });
       drawSilhouette(graphics, 'bandit-token', 28, 32, { cloak: 0x343a40, accent: 0x9d0208, skin: 0xc68642, trim: 0x6c757d });
       drawSilhouette(graphics, 'clergy_hunter-token', 28, 34, { cloak: 0xc9cba3, accent: 0xf8e16c, skin: 0xdcc5b2, trim: 0x6c757d });
       drawSilhouette(graphics, 'elite_knight-token', 34, 38, { cloak: 0x495057, accent: 0xa68a64, skin: 0xbcb8b1, trim: 0xe9ecef });
