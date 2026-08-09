@@ -18,7 +18,15 @@ import { ENEMIES_BY_ID } from '../../data/enemies';
 import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
 import { isHumanPresentInWorld } from '../../simulation/world/humans';
-import { getDomainPopulationAnchor, getDomainPopulationIds, getHumanThrallPresenceLabel, getVassalPresenceLabel } from '../../simulation/world/domainPresence';
+import { getDomainPopulationAnchor, getDomainPopulationIds } from '../../simulation/world/domainPresence';
+import {
+  createDomainActorMotionRuntime,
+  getDomainActorMotionLabel,
+  getHumanThrallActorTaskPlan,
+  getVassalActorTaskPlan,
+  stepDomainActorMotion,
+  type DomainActorMotionRuntime,
+} from '../../simulation/world/domainActorTasks';
 import type { BuiltRoom, EnemyType, HumanCharacter, HumanServant, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
 import { CombatPresentation, type CombatFeedPrompt, type TargetIndicator } from '../combat/CombatPresentation';
@@ -78,6 +86,7 @@ interface SceneThrall {
   shadow: Phaser.GameObjects.Ellipse;
   nameLabel: Phaser.GameObjects.Text;
   jobLabel: Phaser.GameObjects.Text;
+  motion: DomainActorMotionRuntime;
 }
 
 interface SceneVassal {
@@ -86,6 +95,7 @@ interface SceneVassal {
   shadow: Phaser.GameObjects.Ellipse;
   nameLabel: Phaser.GameObjects.Text;
   jobLabel: Phaser.GameObjects.Text;
+  motion: DomainActorMotionRuntime;
 }
 
 interface SceneRoom {
@@ -220,6 +230,7 @@ export class WorldScene extends Phaser.Scene {
     this.syncMemoryWithState();
     this.syncThrallsWithState();
     this.syncVassalsWithState();
+    this.updateDomainPopulationActors(delta);
     this.syncRoomsWithState();
     this.syncResourcesWithState();
     this.syncEnemiesWithState();
@@ -345,8 +356,8 @@ export class WorldScene extends Phaser.Scene {
     const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 22, 10);
     const sprite = this.add.image(anchor.x, anchor.y, 'thrall-token').setDepth(5);
     const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${thrall.name} ${thrall.familyName}`, { color: '#e7d8c9', fontSize: '9px' }).setOrigin(0.5).setDepth(6);
-    const jobLabel = this.add.text(anchor.x, anchor.y + 20, getHumanThrallPresenceLabel(thrall), { color: '#aeb8c4', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
-    this.thralls.push({ thrallId: thrall.id, sprite, shadow, nameLabel, jobLabel });
+    const jobLabel = this.add.text(anchor.x, anchor.y + 20, 'Thrall · Idle', { color: '#aeb8c4', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    this.thralls.push({ thrallId: thrall.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime() });
   }
 
   private createVassals(): void {
@@ -362,8 +373,8 @@ export class WorldScene extends Phaser.Scene {
     const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 24, 11);
     const sprite = this.add.image(anchor.x, anchor.y, 'vassal-token').setDepth(5);
     const nameLabel = this.add.text(anchor.x, anchor.y - 29, vassal.name, { color: '#ff9aaa', fontSize: '10px' }).setOrigin(0.5).setDepth(6);
-    const jobLabel = this.add.text(anchor.x, anchor.y + 21, getVassalPresenceLabel(vassal), { color: '#c8a6d8', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
-    this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel });
+    const jobLabel = this.add.text(anchor.x, anchor.y + 21, 'Vassal · Idle', { color: '#c8a6d8', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime() });
   }
 
   private createRooms(): void {
@@ -1349,16 +1360,12 @@ export class WorldScene extends Phaser.Scene {
     });
     const thrallMap = new Map(this.thralls.map((entry) => [entry.thrallId, entry]));
     state.humanServants.forEach((thrall, index) => {
-      const anchor = getDomainPopulationAnchor('human_thrall', index);
       const entry = thrallMap.get(thrall.id);
       if (!entry) {
         this.spawnThrallVisual(thrall, index);
         return;
       }
-      entry.sprite.setPosition(anchor.x, anchor.y);
-      entry.shadow.setPosition(anchor.x, anchor.y + 11);
-      entry.nameLabel.setPosition(anchor.x, anchor.y - 27).setText(`${thrall.name} ${thrall.familyName}`);
-      entry.jobLabel.setPosition(anchor.x, anchor.y + 20).setText(getHumanThrallPresenceLabel(thrall));
+      entry.nameLabel.setText(`${thrall.name} ${thrall.familyName}`);
     });
   }
 
@@ -1377,16 +1384,47 @@ export class WorldScene extends Phaser.Scene {
     });
     const vassalMap = new Map(this.vassals.map((entry) => [entry.vassalId, entry]));
     state.vampireVassals.forEach((vassal, index) => {
-      const anchor = getDomainPopulationAnchor('vampire_vassal', index);
       const entry = vassalMap.get(vassal.id);
       if (!entry) {
         this.spawnVassalVisual(vassal, index);
         return;
       }
-      entry.sprite.setPosition(anchor.x, anchor.y);
-      entry.shadow.setPosition(anchor.x, anchor.y + 11);
-      entry.nameLabel.setPosition(anchor.x, anchor.y - 29).setText(vassal.name);
-      entry.jobLabel.setPosition(anchor.x, anchor.y + 21).setText(getVassalPresenceLabel(vassal));
+      entry.nameLabel.setText(vassal.name);
+    });
+  }
+
+  private updateDomainPopulationActors(delta: number): void {
+    const state = this.bridge.getState();
+    const thrallMap = new Map(this.thralls.map((entry) => [entry.thrallId, entry]));
+    state.humanServants.forEach((thrall, index) => {
+      const entry = thrallMap.get(thrall.id);
+      if (!entry) return;
+      const plan = getHumanThrallActorTaskPlan(state, thrall, index);
+      const previousX = entry.sprite.x;
+      const step = stepDomainActorMotion(entry.motion, { x: entry.sprite.x, y: entry.sprite.y }, plan, delta);
+      entry.motion = step.runtime;
+      entry.sprite.setPosition(step.position.x, step.position.y);
+      entry.shadow.setPosition(step.position.x, step.position.y + 11);
+      entry.nameLabel.setPosition(step.position.x, step.position.y - 27);
+      entry.jobLabel.setPosition(step.position.x, step.position.y + 20).setText(getDomainActorMotionLabel(plan, step.runtime));
+      if (Math.abs(step.position.x - previousX) > 0.05) entry.sprite.setFlipX(step.position.x < previousX);
+      entry.sprite.setScale(step.runtime.phase === 'working' ? 1 + Math.sin(this.time.now / 140 + index) * 0.025 : 1);
+    });
+
+    const vassalMap = new Map(this.vassals.map((entry) => [entry.vassalId, entry]));
+    state.vampireVassals.forEach((vassal, index) => {
+      const entry = vassalMap.get(vassal.id);
+      if (!entry) return;
+      const plan = getVassalActorTaskPlan(state, vassal, index);
+      const previousX = entry.sprite.x;
+      const step = stepDomainActorMotion(entry.motion, { x: entry.sprite.x, y: entry.sprite.y }, plan, delta);
+      entry.motion = step.runtime;
+      entry.sprite.setPosition(step.position.x, step.position.y);
+      entry.shadow.setPosition(step.position.x, step.position.y + 11);
+      entry.nameLabel.setPosition(step.position.x, step.position.y - 29);
+      entry.jobLabel.setPosition(step.position.x, step.position.y + 21).setText(getDomainActorMotionLabel(plan, step.runtime));
+      if (Math.abs(step.position.x - previousX) > 0.05) entry.sprite.setFlipX(step.position.x < previousX);
+      entry.sprite.setScale(step.runtime.phase === 'working' ? 1 + Math.sin(this.time.now / 125 + index) * 0.03 : 1);
     });
   }
 

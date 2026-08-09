@@ -123,6 +123,10 @@ Rules:
 - Do not create placeholder Research or Guarding rewards merely to make a button appear active.
 - Future visible worker actors must present this simulation state rather than owning a second independent job simulation.
 
+## Visible work / actor task boundary (0.6.3b3)
+
+World movement is a projection of authoritative task selection, not a second job system. Human Thralls use `selectTaskForHumanThrall` during day and Vampire Vassals use `selectTaskForVassal` during night to derive destinations. `domainActorTasks.ts` owns presentation-safe task plans and motion state (`idle -> moving_to_task -> working -> returning`); it never awards resources, completes recipes, advances construction, or mutates population state. The existing phase-batched production paths are temporary and must be inventoried in 0.6.3b4 before continuous world-time conversion.
+
 ## Domain world presence boundary (0.6.3b2)
 
 Controlled population world actors are projections of simulation state. `humanServants` is the sole source for Human Thrall actors and `vampireVassals` is the sole source for Vampire Vassal actors. WorldScene may display names, current work and deterministic Stronghold anchors, but it must not own a second population/job state. Enthrallment, escape and elevation therefore add/remove world actors by changing simulation state, not by mutating a separate roster. Visible pathing and job animation belong to 0.6.3b3.
