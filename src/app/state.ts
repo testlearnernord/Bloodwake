@@ -41,7 +41,9 @@ export const createNewGameState = (options: NewGameOptions = {}): SaveGame => {
     player,
     npcs: humans,
     humanServants: [],
+    bloodDonors: [],
     vampireVassals: [],
+    bloodStock: { amount: 0 },
     strategicResources: {
       bloodEssence: 1,
       security: 0,

@@ -23,6 +23,7 @@ import { getBloodChoicePreview } from '../simulation/blood/bloodChoices';
 import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
 import { reassertThrallControl } from '../simulation/servants/humanThralls';
 import { elevateThrallToVassal } from '../simulation/servants/thrallElevation';
+import { bindThrallAsBloodDonor } from '../simulation/servants/bloodDonors';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
@@ -514,6 +515,30 @@ export class BloodwakeApp {
       button.onclick = async () => {
         if (!this.state) return;
         const result = reassertThrallControl(this.state, button.dataset.reassertThrall ?? '');
+        if (result.state === this.state) {
+          this.notify(result.message);
+          return;
+        }
+        this.state = result.state;
+        this.notify(result.message);
+        await this.autoSave('slot-1');
+        this.renderGame();
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-bind-blood-donor]')) {
+      button.onclick = async () => {
+        if (!this.state) return;
+        const servantId = button.dataset.bindBloodDonor ?? '';
+        const servant = this.state.humanServants.find((candidate) => candidate.id === servantId);
+        if (!servant) return;
+        const confirmed = window.confirm(
+          `Permanently bind ${servant.name} ${servant.familyName} as a Blood Donor?\n\n`
+          + `This cannot be reversed. ${servant.name} will be removed from all ordinary work and remain bound to the Blood Cellar until death.\n\n`
+          + `Profession: ${PROFESSIONS_BY_ID[servant.professionId].name}\nBlood Resonance: ${servant.bloodResonance}\nHealth: ${servant.health}/${servant.maxHealth}`,
+        );
+        if (!confirmed) return;
+        const result = bindThrallAsBloodDonor(this.state, servantId);
         if (result.state === this.state) {
           this.notify(result.message);
           return;

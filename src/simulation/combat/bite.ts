@@ -68,7 +68,7 @@ export const validateHumanAction = (state: SaveGame, human: HumanCharacter | und
   if (human.status === 'fed') {
     return { ok: false, reason: 'Target is recovering from feeding until the next night.' };
   }
-  if (human.status === 'drained' || human.status === 'turned' || human.status === 'enthralled') {
+  if (human.status === 'drained' || human.status === 'turned' || human.status === 'enthralled' || human.status === 'donor') {
     return { ok: false, reason: 'Target is no longer valid.' };
   }
   if (mode === 'enthrall') {

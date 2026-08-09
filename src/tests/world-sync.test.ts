@@ -128,11 +128,14 @@ describe('vitae upkeep and daylight', () => {
 describe('human nightly lifecycle', () => {
   const seed = '1042';
 
-  it('keeps a bounded active roster while maintaining a regional candidate pool', () => {
+  it('keeps a bounded active roster while regional population recovers gradually', () => {
     const state = createNewGameState({ seed });
     const population = resolveNightlyHumanPopulation(state.npcs, seed, 2, TARGET_HUMAN_POPULATION);
     expect(population.npcs.filter(isHumanPresentInWorld)).toHaveLength(TARGET_HUMAN_POPULATION);
-    expect(population.npcs.filter((human) => human.status === 'wandering')).toHaveLength(8);
+    const regional = population.npcs.filter((human) => human.status === 'wandering');
+    expect(regional.length).toBeGreaterThanOrEqual(TARGET_HUMAN_POPULATION);
+    expect(regional.length).toBeLessThanOrEqual(TARGET_HUMAN_POPULATION + 1);
+    expect(population.newHumanIds.length).toBeLessThanOrEqual(1);
   });
 
   it('fed humans recover to wandering before nightly roster selection', () => {

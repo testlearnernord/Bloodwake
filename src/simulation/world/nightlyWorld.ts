@@ -5,6 +5,8 @@ import {
   ESCAPED_HUMAN_RETURN_MAX_DAYS,
   ESCAPED_HUMAN_RETURN_MIN_DAYS,
   HUMAN_REGIONAL_POOL_TARGET,
+  HUMAN_REGIONAL_ARRIVAL_CHANCE,
+  HUMAN_REGIONAL_MAX_ARRIVALS_PER_NIGHT,
 } from '../../config/balancing';
 import type { EnemyType, HumanCharacter, ItemId } from '../../types/models';
 import { SeededRng } from '../../utilities/rng';
@@ -214,8 +216,18 @@ export const resolveNightlyHumanPopulation = (
 
   const ids = new Set(records.map((human) => human.id));
   let regionalCandidates = records.filter(isRegionalCandidate);
+  const missingRegionalHumans = Math.max(0, HUMAN_REGIONAL_POOL_TARGET - regionalCandidates.length);
+  const recentPermanentLoss = records.some((human) =>
+    (human.status === 'drained' || human.status === 'turned' || human.status === 'enthralled' || human.status === 'donor')
+    && human.dormantSinceDay !== null
+    && day - human.dormantSinceDay <= 1,
+  );
+  const arrivalRng = new SeededRng(`${seed}-night-${day}-regional-arrivals`);
+  const arrivalCount = !recentPermanentLoss && missingRegionalHumans > 0 && arrivalRng.chance(HUMAN_REGIONAL_ARRIVAL_CHANCE)
+    ? Math.min(HUMAN_REGIONAL_MAX_ARRIVALS_PER_NIGHT, missingRegionalHumans)
+    : 0;
   let serial = 1;
-  while (regionalCandidates.length < HUMAN_REGIONAL_POOL_TARGET) {
+  while (newHumanIds.length < arrivalCount) {
     const id = `human-d${day}-${serial}`;
     if (ids.has(id)) {
       serial += 1;

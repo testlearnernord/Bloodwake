@@ -161,6 +161,8 @@ Daylight design target: vampires remain freely controllable. Sheltered Stronghol
 
 ### 0.6.5f Upkeep, Blood Donors, rest & timed population consequences
 
+0.6.3d provides only the persistent Blood Stock boundary, physical Blood Cellar capacity and irreversible donor assignment. It has no passive producer. During this milestone the temporary aggregate `bloodStock.amount` must be replaced by actual Blood Cellar container contents, and bound donors must produce only through elapsed-time facility tasks with recovery/health consequences.
+
 - Food consumption uses accessible physical Food.
 - Donor tasks produce Blood Stock through real actor/facility time and consequences.
 - Control decay, recovery, Torpor and Vassal Blood upkeep use scheduled/continuous time.
