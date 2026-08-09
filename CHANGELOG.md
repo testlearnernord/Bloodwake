@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.3e1 - In-game irreversible confirmation & Stronghold readability
+
+- Replaced the browser-native Blood Donor `window.confirm()` with a Bloodwake-native modal layered above the Domain Population screen.
+- Donor commitment now requires a deliberate hold-to-confirm action and supports Escape/Cancel without changing the underlying Thrall.
+- The confirmation displays profession, Blood Resonance, health, and the permanent loss of ordinary labor before commitment.
+- Gameplay remains paused while the commitment modal is open; keyboard and pointer holds both use the same 900 ms safety threshold.
+- Stronghold actor names receive a dark outline and repetitive Idle/Resting/Sheltered status lines are hidden while active work/returning states remain visible.
+- Save format remains v10 and gameplay balance is unchanged.
+
 ## 0.6.3e - Stabilization & Legacy Purge
 
 - Save format advances to v10; v1-v9 prototype saves remain intentionally unsupported.
