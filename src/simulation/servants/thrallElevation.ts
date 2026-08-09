@@ -48,8 +48,9 @@ export const validateElevateThrall = (
 
 export const elevateThrallToVassal = (state: SaveGame, thrallId: string): ThrallElevationResult => {
   const thrall = state.humanServants.find((candidate) => candidate.id === thrallId);
+  if (!thrall) return { state, message: 'Human thrall not found.' };
   const validation = validateElevateThrall(state, thrall);
-  if (!validation.ok || !thrall) return { state, message: validation.ok ? 'Human thrall not found.' : validation.reason };
+  if (!validation.ok) return { state, message: validation.reason };
   const human = humanSnapshotFromThrall(state, thrall);
   if (!human) return { state, message: 'The captive identity is missing.' };
 
