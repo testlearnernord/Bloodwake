@@ -171,7 +171,9 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
       return false;
     }
   }
-  const rooms = value.rooms as BuiltRoom[];
+  const rawRooms = value.rooms as unknown[];
+  if (rawRooms.some((r) => !isRecord(r))) return false;
+  const rooms = rawRooms as BuiltRoom[];
   if ((value.bloodStock.amount as number) > getBloodStockCapacity(rooms)) return false;
   const builtCellarIds = new Set(rooms.filter((room) => room.roomId === 'blood_cellar' && room.status === 'built').map((room) => room.id));
   const donorOccupancy = new Map<string, number>();
