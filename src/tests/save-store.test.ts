@@ -10,7 +10,7 @@ describe('save serialization and validation', () => {
     indexedDB.deleteDatabase('bloodwake-db');
   });
 
-  it('serializes and reloads a save slot (v6)', async () => {
+  it('serializes and reloads a save slot (v7)', async () => {
     const state = createNewGameState({ seed: 'save-seed' });
     await saveToSlot('slot-test', state);
     const loaded = await loadFromSlot('slot-test');
@@ -18,7 +18,7 @@ describe('save serialization and validation', () => {
     expect(loaded?.version).toBe(SAVE_FORMAT_VERSION);
   });
 
-  it('exports and imports a valid v6 save payload', () => {
+  it('exports and imports a valid v7 save payload', () => {
     const state = createNewGameState({ seed: 'save-export', characterRoll: 2 });
     const exported = exportSaveGame(state);
     const imported = importSaveGame(exported);
@@ -32,7 +32,7 @@ describe('save serialization and validation', () => {
     expect(validateSaveGame({ nope: true })).toBe(false);
   });
 
-  it('rejects v6 saves with non-finite player vitae values', () => {
+  it('rejects v7 saves with non-finite player vitae values', () => {
     const state = createNewGameState({ seed: 'bad-vitae' });
     const badVitae = { ...state, player: { ...state.player, vitae: Number.NaN } };
     const badMaxVitae = { ...state, player: { ...state.player, maxVitae: Number.POSITIVE_INFINITY } };
@@ -74,13 +74,19 @@ describe('save serialization and validation', () => {
     expect(() => migrateSaveGame(v5Like)).toThrow(/incompatible older game version/);
   });
 
+  it('rejects v6 saves with a clear incompatibility error', () => {
+    const base = createNewGameState({ seed: 'old-v6' });
+    const v6Like = { ...base, version: 6 };
+    expect(() => migrateSaveGame(v6Like)).toThrow(/incompatible older game version/);
+  });
+
   it('rejects saves newer than the current version', () => {
     const base = createNewGameState({ seed: 'future' });
     const future = { ...base, version: SAVE_FORMAT_VERSION + 1 };
     expect(() => migrateSaveGame(future)).toThrow(/newer than this build/);
   });
 
-  it('rejects malformed inventory entries in v6 saves', () => {
+  it('rejects malformed inventory entries in v7 saves', () => {
     const state = createNewGameState({ seed: 'malformed' });
     const malformed = { ...state, inventory: [{ itemId: 'wood', quantity: -2 }] };
     expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
@@ -92,7 +98,7 @@ describe('save serialization and validation', () => {
     expect(() => migrateSaveGame(malformed)).toThrow(/Inventory contains malformed entries/);
   });
 
-  it('preserves turned vampire vassals across v6 save export and reload', () => {
+  it('preserves turned vampire vassals across v7 save export and reload', () => {
     const state = createNewGameState({ seed: 'turned-save' });
     state.player.vitae = 5;
     const turned = applyHumanAction(state, state.npcs[0]?.id ?? '', 'turn').state;
@@ -113,45 +119,45 @@ describe('save serialization and validation', () => {
     expect(state.vampireVassals).toEqual([]);
   });
 
-  it('rejects v6 saves that still contain a legacy servants field', () => {
+  it('rejects v7 saves that still contain a legacy servants field', () => {
     const state = createNewGameState({ seed: 'legacy-servants' });
     const withLegacy = { ...state, servants: [] };
     expect(validateSaveGame(withLegacy)).toBe(false);
     expect(() => migrateSaveGame(withLegacy)).toThrow();
   });
 
-  it('rejects v6 saves that still contain a legacy hunger field with a targeted error', () => {
+  it('rejects v7 saves that still contain a legacy hunger field with a targeted error', () => {
     const state = createNewGameState({ seed: 'legacy-hunger' });
     const withLegacyHunger = { ...state, player: { ...state.player, hunger: 0 } };
     expect(validateSaveGame(withLegacyHunger)).toBe(false);
     expect(() => migrateSaveGame(withLegacyHunger)).toThrow(/legacy hunger data/);
   });
 
-  it('rejects v6 saves with malformed humanServants records', () => {
+  it('rejects v7 saves with malformed humanServants records', () => {
     const state = createNewGameState({ seed: 'malformed-hs' });
     const bad = { ...state, humanServants: [{ id: 'x', kind: 'wrong_kind' }] };
     expect(validateSaveGame(bad)).toBe(false);
   });
 
-  it('rejects v6 saves with malformed vampireVassals records', () => {
+  it('rejects v7 saves with malformed vampireVassals records', () => {
     const state = createNewGameState({ seed: 'malformed-vv' });
     const bad = { ...state, vampireVassals: [{ id: 'x', kind: 'wrong_kind' }] };
     expect(validateSaveGame(bad)).toBe(false);
   });
 
-  it('rejects v6 saves with duplicate IDs within humanServants', () => {
+  it('rejects v7 saves with duplicate IDs within humanServants', () => {
     const state = createNewGameState({ seed: 'dup-hs' });
     const dup = { ...state, humanServants: [{ id: 'dup-1', kind: 'human_servant' }, { id: 'dup-1', kind: 'human_servant' }] };
     expect(validateSaveGame(dup)).toBe(false);
   });
 
-  it('rejects v6 saves with duplicate IDs within vampireVassals', () => {
+  it('rejects v7 saves with duplicate IDs within vampireVassals', () => {
     const state = createNewGameState({ seed: 'dup-vv' });
     const dup = { ...state, vampireVassals: [{ id: 'dup-1', kind: 'vampire_vassal' }, { id: 'dup-1', kind: 'vampire_vassal' }] };
     expect(validateSaveGame(dup)).toBe(false);
   });
 
-  it('rejects v6 saves with a shared ID across both population collections', () => {
+  it('rejects v7 saves with a shared ID across both population collections', () => {
     const state = createNewGameState({ seed: 'cross-dup' });
     const cross = {
       ...state,
@@ -161,13 +167,13 @@ describe('save serialization and validation', () => {
     expect(validateSaveGame(cross)).toBe(false);
   });
 
-  it('rejects malformed v6 Blood Resonance metadata', () => {
+  it('rejects malformed v7 Blood Resonance metadata', () => {
     const state = createNewGameState({ seed: 'bad-resonance' });
     const bad = { ...state, npcs: state.npcs.map((npc, index) => index === 0 ? { ...npc, bloodResonance: 6 } : npc) };
     expect(validateSaveGame(bad)).toBe(false);
   });
 
-  it('rejects malformed v6 Resolve metadata', () => {
+  it('rejects malformed v7 Resolve metadata', () => {
     const state = createNewGameState({ seed: 'bad-resolve' });
     const bad = { ...state, npcs: state.npcs.map((npc, index) => index === 0 ? { ...npc, resolve: 0 } : npc) };
     expect(validateSaveGame(bad)).toBe(false);
@@ -185,7 +191,7 @@ describe('save serialization and validation', () => {
     expect(validateSaveGame(bad)).toBe(false);
   });
 
-  it('rejects stale v6 free-human metadata fields', () => {
+  it('rejects stale v7 free-human metadata fields', () => {
     const state = createNewGameState({ seed: 'stale-human-fields' });
     const first = state.npcs[0];
     const stale = {

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.3a - Human Thralls: Enthrallment, Control & Housing
+
+- Added Enthrall as a fourth free-human choice alongside Feed, Drain and Turn.
+- Human Servants are now explicit captive Thralls with Control and Resistance instead of Loyalty, Ambition or Morale.
+- Added two base human housing spaces and +4 capacity per built Servant Quarters.
+- Added daily Food upkeep and Resistance-driven Control decay; shortages increase Stress and accelerate Control loss.
+- Added night-only Reassert Control management that spends Vitae to reinforce the vampiric bond.
+- Thralls whose Control reaches zero escape and return to the free-human world.
+- Human Thralls retain family identity, profession, traits, Blood Resonance and human metadata for later job/genetic/bloodline systems.
+- Save format advances to v7; v1-v6 remain intentionally unsupported.
+
 ## 0.6.2e - Predatory Bite Circular Timing Rework
 
 - Replaced the permissive two-button timing windows with two sequential circular skill checks.

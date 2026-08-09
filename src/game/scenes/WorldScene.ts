@@ -262,7 +262,7 @@ export class WorldScene extends Phaser.Scene {
       { x: 980, y: 500 },
     ];
     this.humans = state.npcs
-      .filter((human) => human.status !== 'drained' && human.status !== 'turned')
+      .filter((human) => human.status !== 'drained' && human.status !== 'turned' && human.status !== 'enthralled')
       .map((human, index) => {
         const position = positions[index % positions.length];
         const shadow = CombatPresentation.createShadow(this, position.x, position.y, 22, 10);

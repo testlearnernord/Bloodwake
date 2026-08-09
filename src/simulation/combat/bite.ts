@@ -1,9 +1,10 @@
-import { TURN_COST_VITAE } from '../../config/balancing';
+import { ENTHRALL_VITAE_COST, TURN_COST_VITAE } from '../../config/balancing';
 import { calculateBloodChoiceOutcome } from '../blood/bloodChoices';
 import { inheritVampire } from '../bloodlines/inheritance';
 import { completeQuestStep } from '../quests/quests';
 import type { HumanActionMode } from '../../game/combat/combatTypes';
 import type { HumanCharacter, SaveGame, VampireVassal } from '../../types/models';
+import { createHumanThrall, validateEnthrallHuman } from '../servants/humanThralls';
 
 export interface BiteSequenceRuntime {
   humanId: string;
@@ -21,7 +22,7 @@ export const createBiteSequence = (humanId: string, mode: HumanActionMode, now: 
   phase: 'bite_approach',
   startedAt: now,
   phaseEndsAt: now + 180,
-  commitAt: now + (mode === 'turn' ? 620 : mode === 'drain' ? 700 : 480),
+  commitAt: now + (mode === 'turn' || mode === 'enthrall' ? 620 : mode === 'drain' ? 700 : 480),
   committed: false,
 });
 
@@ -62,8 +63,11 @@ export const validateHumanAction = (state: SaveGame, human: HumanCharacter | und
   if (human.status === 'fed') {
     return { ok: false, reason: 'Target is recovering from feeding until the next night.' };
   }
-  if (human.status === 'drained' || human.status === 'turned') {
+  if (human.status === 'drained' || human.status === 'turned' || human.status === 'enthralled') {
     return { ok: false, reason: 'Target is no longer valid.' };
+  }
+  if (mode === 'enthrall') {
+    return validateEnthrallHuman(state, human);
   }
   if (mode === 'turn' && state.player.vitae < TURN_COST_VITAE) {
     return { ok: false, reason: 'Turning requires more Vitae.' };
@@ -117,6 +121,17 @@ export const applyHumanAction = (
     return {
       state: nextState,
       message: `Drained ${outcome.actualVitaeGain} Vitae and ${outcome.bloodEssenceGain} Blood Essence.`,
+    };
+  }
+  if (mode === 'enthrall') {
+    const thrall = createHumanThrall(nextState.player, human);
+    nextState.player.vitae -= ENTHRALL_VITAE_COST;
+    updateHumanStatus('enthralled');
+    nextState.humanServants = [...nextState.humanServants, thrall];
+    nextState.lastEventLog.unshift(`Enthralled ${human.name} ${human.familyName}. Initial Control: ${thrall.control}.`);
+    return {
+      state: nextState,
+      message: `${human.name} is now a human thrall (${thrall.control} Control, ${thrall.resistance} Resistance).`,
     };
   }
   const result = inheritVampire(nextState.player, human, `${nextState.seed}-${nextState.characterRoll}`);
