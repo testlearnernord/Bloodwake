@@ -11,8 +11,11 @@
   - 0.6.2d Combat Feeding presentation / Clergy death hotfix ✅
   - 0.6.2e Circular Predatory Bite timing ✅
 - 0.6.3 Human Recruitment and Housing (current)
-  - 0.6.3a Human Thralls: Enthrallment, Control, Housing & Food (current)
-  - 0.6.3b Human Work & Blood Cellar / Donors
+  - 0.6.3a Human Thralls: Enthrallment, Control, Housing & Food ✅
+  - 0.6.3a1 Thrall playtest fixes (current)
+  - 0.6.3b Human Work & Thrall Elevation
+  - 0.6.3c Nightly World Variation
+  - 0.6.3d Blood Cellar & Donors
 - 0.6.4 Dominion and Torpor
 - 0.6.5 Day Management
 - 0.6.6 Night Orders
