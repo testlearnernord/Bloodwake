@@ -93,8 +93,6 @@ export const generateStartingVampire = (options: NewGameOptions = {}): { seed: s
       combat: 4 + modifiedAttributes.strength,
       vitae: 6,
       maxVitae: 10,
-      bloodEssence: 1,
-      memoryFragments: [],
       professionSkills: profession.jobBonuses,
       equipment: {},
     },

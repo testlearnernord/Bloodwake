@@ -4,11 +4,11 @@ Save data is stored as versioned JSON in IndexedDB.
 
 ## Current version
 
-- `version: 9`
+- `version: 10`
 
-## Version 9 key fields
+## Version 10 key fields
 
-The main collections include `player`, `npcs`, `humanServants`, `bloodDonors`, `vampireVassals`, `bloodStock`, `strategicResources`, `inventory`, `rooms`, `constructionTasks`, `craftingQueue`, `time`, `worldCycle`, `quests`, `collectibles`, `inheritanceHistory`, `settings`, and `lastEventLog`.
+The main collections include `player`, `npcs`, `humanServants`, `bloodDonors`, `vampireVassals`, `bloodStock`, `strategicResources`, `inventory`, `rooms`, `craftingQueue`, `time`, `worldCycle`, `quests`, `collectibles`, `inheritanceHistory`, `settings`, and `lastEventLog`.
 
 ### Free-Human world lifecycle
 
@@ -36,7 +36,7 @@ A source NPC remains `enthralled` and dormant while captive. If Control reaches 
 
 `bloodDonors[]` contains permanently bound former Human Thralls. Each donor points to `boundRoomInstanceId`, records `boundAtDay`, and has `donorStatus: "bound"`. Donors have no work priorities or current-job fields because they can no longer return to ordinary labor. Each built Blood Cellar currently provides two donor slots.
 
-There is deliberately no passive Blood Stock production in v9. Production becomes an elapsed-time facility task in the continuous simulation milestone.
+There is deliberately no passive Blood Stock production in the current save model. Production becomes an elapsed-time facility task in the continuous simulation milestone.
 
 ## Population identity rules
 
@@ -44,7 +44,7 @@ There is deliberately no passive Blood Stock production in v9. Production become
 
 ## Vampire resource rules
 
-Ordinary vampire `hunger` was removed in save v6. Vitae is the personal blood/supernatural-energy resource for the player and Vampire Vassals. Saves containing stale `hunger` fields are rejected.
+Ordinary vampire `hunger` was removed in save v6. Vitae is the personal blood/supernatural-energy resource for the player and Vampire Vassals. Blood Essence exists only in `strategicResources.bloodEssence`; the obsolete duplicate `player.bloodEssence` field is invalid. Recovered memories are authoritative through `collectibles[].discovered`; the obsolete duplicate `player.memoryFragments` field is invalid. Saves containing these stale fields are rejected.
 
 ## World cycle IDs
 
@@ -52,7 +52,7 @@ Enemy and resource instance IDs are generated deterministically from the current
 
 ## Old save compatibility
 
-**Saves at versions 1 through 8 are intentionally incompatible with v9.** Loading or importing an older save returns a clear incompatibility error. There is no partial migration or silent repair; players must start a new game.
+**Saves at versions 1 through 9 are intentionally incompatible with v10.** Loading or importing an older save returns a clear incompatibility error. There is no partial migration or silent repair; players must start a new game.
 
 ## Historical breaking changes
 
@@ -63,3 +63,4 @@ Enemy and resource instance IDs are generated deterministically from the current
 - v8 adds persistent active/dormant Human world lifecycle metadata, deterministic escaped-Human return scheduling, and bounded off-map retention.
 
 - v9 adds persistent Blood Stock capacity, irreversible Blood Donors, and slow regional Human repopulation instead of immediate one-for-one replacement.
+- v10 removes the unused `constructionTasks` save field plus duplicate `player.bloodEssence` and `player.memoryFragments` authorities. Construction is authoritative in `rooms[].status/progress`, Blood Essence in `strategicResources`, and recovered memories in `collectibles`.

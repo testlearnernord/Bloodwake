@@ -76,7 +76,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isRecord(value)) {
     return false;
   }
-  const requiredArrays = ['rooms', 'inventory', 'humanServants', 'bloodDonors', 'vampireVassals', 'npcs', 'craftingQueue', 'constructionTasks', 'quests', 'collectibles'];
+  const requiredArrays = ['rooms', 'inventory', 'humanServants', 'bloodDonors', 'vampireVassals', 'npcs', 'craftingQueue', 'quests', 'collectibles'];
   if (typeof value.version !== 'number' || typeof value.seed !== 'string' || typeof value.title !== 'string') {
     return false;
   }
@@ -86,7 +86,10 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isIntegerInRange(value.bloodStock.amount, 0, Number.MAX_SAFE_INTEGER)) {
     return false;
   }
-  if ('hunger' in value.player) {
+  if ('hunger' in value.player || 'bloodEssence' in value.player || 'memoryFragments' in value.player) {
+    return false;
+  }
+  if ('constructionTasks' in value) {
     return false;
   }
   if (
@@ -107,7 +110,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!requiredArrays.every((field) => Array.isArray(value[field]))) {
     return false;
   }
-  // Validate v8 free-human metadata and explicit world lifecycle. Old decorative fields are no longer accepted.
+  // Validate free-human metadata and explicit world lifecycle. Old decorative fields are no longer accepted.
   const npcs = value.npcs as unknown[];
   for (const record of npcs) {
     if (!isRecord(record) || typeof record.id !== 'string') {
@@ -228,7 +231,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const normalizeV9 = (value: SaveGame): SaveGame => {
+const normalizeV10 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -277,7 +280,7 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  return normalizeV9(value);
+  return normalizeV10(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

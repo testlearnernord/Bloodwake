@@ -40,7 +40,7 @@ This does **not** mean every passive statistic needs a literal animation. Contro
 | Escaped Humans | Escape immediately restores NPC to `wandering`; population record stays in the active list | Does not support hiding/off-map return/pruning lifecycle | Active / dormant-off-map / pruned-or-genealogy lifecycle | 0.6.3c |
 | Crafting queue | `CraftingOrder.progress` is advanced by daily/shift resolvers; `completeCraftingOrder()` consumes global inputs and materializes global outputs | No workstation reservation, delivery, actual working time or output location | Work order + reserved workstation + delivered inputs + work ticks + workstation output + haul task | 0.6.5b, 0.6.5c, 0.6.5e |
 | Construction | `queueRoomConstruction()` consumes all global materials at placement; daily/shift work adds progress | Materials teleport to the site and are paid before delivery | Blueprint/site container; haul materials; reserve builder; work ticks complete structure | 0.6.5c, 0.6.5e |
-| `constructionTasks` save field | `SaveGame.constructionTasks` exists while active construction uses `BuiltRoom.status/progress` | Appears redundant under current authority | Delete if audit during conversion confirms no live consumer | Save-breaking purge in 0.6.5g |
+| Construction legacy save field | `SaveGame.constructionTasks` had no live consumer; active construction already used `BuiltRoom.status/progress` | Duplicate authority was unnecessary | `BuiltRoom.status/progress` only | ✅ Removed in 0.6.3e |
 | Thrall Food | `resolveHumanThrallDay()` removes Food from global inventory once per resolved day | Food teleports from a locationless pool into every Thrall | Accessible Food containers + meal/consumption schedule; shortage derived from actual access | 0.6.5c, 0.6.5f |
 | Thrall Control | Daily batch decay in `resolveHumanThrallDay()` | Correct concept, wrong scheduler | Continuous or scheduled clock-driven decay; no visual fake required | 0.6.5f |
 | Player dawn Vitae | Dawn event in `advanceWorldPhase()` subtracts Vitae | Concept is valid; scheduler is temporary | WorldClock dawn event performs upkeep | 0.6.5a |
@@ -181,11 +181,10 @@ Delete superseded code immediately after stabilization, including as applicable:
 - global crafting input/output teleport paths
 - immediate construction material consumption at queue time
 - obsolete `WorldCycleState` depletion/reset fields replaced by persistent world entities/processes
-- redundant `constructionTasks` save field if still unused
 - compatibility adapters for the old global inventory once all consumers use containers
 - tests/documentation that assert removed batch behavior
 
-A save version bump is expected. Old prototype saves do not justify carrying duplicate simulation architecture indefinitely.
+A future continuous-simulation save version bump is expected. 0.6.3e already removed confirmed dead duplicate save authorities instead of waiting for 0.6.5g. Old prototype saves do not justify carrying duplicate simulation architecture indefinitely.
 
 ## Escaped Human lifecycle and save-size rule
 

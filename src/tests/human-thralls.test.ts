@@ -152,11 +152,11 @@ describe('0.6.3a human thralls', () => {
     expect(validateHumanAction(night, escapedHuman, 'drain').ok).toBe(false);
   });
 
-  it('uses save v9 and rejects legacy loyalty fields on human thralls', () => {
+  it('uses save v10 and rejects legacy loyalty fields on human thralls', () => {
     let state = createNewGameState({ seed: 'thrall-save' });
     state.player.vitae = 5;
     state = applyHumanAction(state, state.npcs[0]!.id, 'enthrall').state;
-    expect(SAVE_FORMAT_VERSION).toBe(9);
+    expect(SAVE_FORMAT_VERSION).toBe(10);
     expect(validateSaveGame(state)).toBe(true);
     const stale = { ...state.humanServants[0], loyalty: 100 };
     expect(validateSaveGame({ ...state, humanServants: [stale] })).toBe(false);
