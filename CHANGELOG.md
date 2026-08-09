@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.3e - Stabilization & Legacy Purge
+
+- Save format advances to v10; v1-v9 prototype saves remain intentionally unsupported.
+- Removed the dead `ConstructionTask` model and `SaveGame.constructionTasks`; active room construction already uses `BuiltRoom.status/progress` as its sole authority.
+- Removed duplicate `VampireCharacter.bloodEssence`; strategic Blood Essence now has one authority in `SaveGame.strategicResources.bloodEssence`.
+- Removed duplicate `VampireCharacter.memoryFragments`; recovered-memory state now has one authority in `SaveGame.collectibles[].discovered`.
+- Save validation rejects stale payloads that attempt to reintroduce the removed duplicate authorities.
+- Refreshed active architecture documentation so historical milestone notes no longer masquerade as current save/runtime rules.
+- Gameplay balance and the temporary phase-batched work systems are otherwise unchanged; their continuous-simulation replacements remain scheduled for 0.6.5.
+
 ## 0.6.3d - Blood Stock & Blood Cellar Foundation
 
 - Added Blood Stock as a persistent resource with capacity derived only from built Blood Cellars.

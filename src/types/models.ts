@@ -129,8 +129,6 @@ export interface EquipmentLoadout {
 export interface VampireCharacter extends CharacterBase {
   vitae: number;
   maxVitae: number;
-  bloodEssence: number;
-  memoryFragments: string[];
   professionSkills: Partial<Record<JobType, number>>;
   equipment: EquipmentLoadout;
 }
@@ -277,11 +275,6 @@ export interface CraftingOrder {
   status: 'queued' | 'complete';
 }
 
-export interface ConstructionTask {
-  roomInstanceId: string;
-  progress: number;
-}
-
 export interface QuestStepDefinition {
   id: string;
   text: string;
@@ -382,7 +375,6 @@ export interface SaveGame {
   strategicResources: DomainResourcePool;
   inventory: InventoryEntry[];
   rooms: BuiltRoom[];
-  constructionTasks: ConstructionTask[];
   craftingQueue: CraftingOrder[];
   time: TimeState;
   worldCycle: WorldCycleState;

@@ -29,52 +29,19 @@ Any new compatibility layer must document:
 
 Once a supported transition has ended, obsolete compatibility models, aliases, conversion helpers, and tests must be removed instead of being retained for hypothetical future use.
 
-## Key decisions in Milestone 0.6.1c
+## Current save/state authority (0.6.3e)
 
-- Removed the obsolete `ServantType` and `Servant` compatibility model after Save v4 became authoritative.
-- Removed `legacyPopulation.ts` and its conversion-only tests because save versions 1–3 are intentionally unsupported.
-- Removed the deprecated `selectTaskForServant` and `servantCanWork` aliases. Current code uses `selectTaskForVassal`, `canVassalWorkInPhase`, and `vassalCanWork` directly.
-- Current gameplay behavior is unchanged: `HumanServant` and `VampireVassal` remain the authoritative population models.
+Historical milestone implementation notes belong in `CHANGELOG.md` and `docs/archive/`; this document describes current authority only.
 
-## Key decisions in Milestone 0.6.1b
-
-- **Save format v4 is active.** `SaveGame` uses two separate arrays: `humanServants: HumanServant[]` and `vampireVassals: VampireVassal[]`. The legacy `servants` field is absent from v4 saves; its presence causes rejection.
-- **Old saves (v1, v2, v3) are intentionally incompatible.** Loading or importing an old save returns a clear error; no partial load, no silent empty population, no resource grants. Players must start a new game.
-- **Population collections are separated.** Human recruitment remains deferred; new games start with an empty `humanServants` list until implemented.
-- **Turn creates a `VampireVassal`.** `applyHumanAction` appends to `vampireVassals`. Duplicate prevention is enforced at commit time.
-- **Work shift operates on `vampireVassals`.** `runWorkShift` and `selectTaskForVassal` in `src/simulation/servants/` operate on `VampireVassal[]` temporarily until day/night job separation is implemented.
-- **World scene sync uses `vampireVassals`.** `WorldScene.syncVassalsWithState()` is the authoritative vassal world-sync path.
-- **Population overlay shows separate sections.** The Domain Population overlay renders Human Servants and Vampire Vassals separately.
-- **Player-facing terminology updated.** "Turn to Servant" became "Turn into Vassal" and the population overlay is titled "Domain Population".
-- **Validation enforces ID uniqueness.** `validateSaveGame` rejects duplicate IDs within either population collection and any ID shared across both.
-
-## Key decisions in Milestone 0.6.1a
-
-- Introduced explicit `HumanServant` (discriminator `kind: "human_servant"`) and `VampireVassal` (discriminator `kind: "vampire_vassal"`) types in `src/types/models.ts`.
-- These explicit population models became authoritative in Milestone 0.6.1b; the temporary compatibility layer was removed in Milestone 0.6.1c.
-
-## Key decisions in Milestone 0.5
-
-- Introduced `WorldCycleState` in `SaveGame` to track persistent resource node and enemy depletion within a night cycle.
-- Created `advanceWorldPhase()` in `src/simulation/time/phaseAdvance.ts` as the single authoritative lifecycle function for phase transitions.
-- Resource nodes and enemy instances use stable string IDs defined in `WorldScene`; depletion is stored in save state, not Phaser objects.
-- `WorldScene.syncWorldCycleWithState()` rebuilds world entities when a new night begins, using the cycle number as the trigger.
-- Vampire vassal and room world representations are passive scene objects created in `createVassals()` / `createRooms()` and kept in sync by `syncVassalsWithState()` / `syncRoomsWithState()`.
-- Human population replenishment uses deterministic IDs (`human-d{day}-{index}`) derived from world seed and day number to prevent collisions across cycles.
-- Phase lifecycle logic remains centralized in `advanceWorldPhase()`; current vampire sustenance uses the unified Vitae rules documented below.
-- Save format v3 added `worldCycle` with sanitization and deduplication of identifier arrays.
-
-## Key decisions in Milestone 0.4
-
-- Keep save version 2 unchanged by storing runtime combat state outside persistent save data.
-- Keep Phaser combat orchestration in the scene, but move calculations and timings into focused pure combat modules.
-- Use shared data-driven action and enemy-attack definitions so damage timing and presentation timing stay aligned.
-- Keep all menu screens in the existing overlay host so management UI still blocks gameplay input.
-- Keep lock-on HUD and combat cooldowns in the plain-DOM UI layer through typed bridge snapshots.
-- Preserve the separation between `strategicResources` and `inventory`.
-- Keep browser-conflicting shortcuts blocked only while gameplay owns focus.
-- Keep UI scale as a local setting that changes shell variables without adding framework/runtime dependencies.
-- Prefer disabling misleading controls with real reasons over rendering fake-active actions.
+- **Save format v10 is authoritative.** Prototype saves v1-v9 are intentionally unsupported rather than carried through permanent compatibility layers.
+- **Population is explicit.** `humanServants`, `bloodDonors`, and `vampireVassals` are separate collections; the legacy generic `servants` field is invalid.
+- **Human identity is persistent.** `npcs` owns free/dormant Human lifecycle metadata, while Stronghold population arrays own their captive/vampire roles.
+- **Construction has one authority.** `BuiltRoom.status/progress` represents placed construction. The unused `constructionTasks` save/model path was removed in 0.6.3e.
+- **Blood Essence has one authority.** Strategic Blood Essence lives only in `SaveGame.strategicResources.bloodEssence`; VampireCharacter no longer duplicates it.
+- **Recovered memories have one authority.** `SaveGame.collectibles[].discovered` owns memory recovery; VampireCharacter no longer carries a duplicate `memoryFragments` list.
+- **Blood Stock is separate from Vitae and Blood Essence.** `bloodStock.amount` is bounded by built Blood Cellar capacity. No passive donor production exists yet.
+- **World presentation is a projection.** WorldScene renders population, rooms, tasks and encounters from simulation state rather than owning a second authoritative roster.
+- **Phase-batched work remains transitional.** Human/Vassal reward settlement and the global inventory are explicitly temporary until the 0.6.5 continuous-simulation migration documented in `docs/SIMULATION_TRANSITION_PLAN.md`.
 
 ## Combat module responsibilities
 

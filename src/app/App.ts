@@ -248,7 +248,6 @@ export class BloodwakeApp {
         for (const [attributeKey, amount] of Object.entries(collectible.reward)) {
           this.state.player.attributes[attributeKey as keyof typeof this.state.player.attributes] += amount ?? 0;
         }
-        this.state.player.memoryFragments.push(collectibleId);
         this.state.lastEventLog.unshift(`Recovered ${collectible.name}.`);
         this.completeStepForEvent('memory');
         void this.autoSave('slot-1');

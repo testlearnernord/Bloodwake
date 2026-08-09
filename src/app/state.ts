@@ -61,7 +61,6 @@ export const createNewGameState = (options: NewGameOptions = {}): SaveGame => {
       { itemId: 'memory_talisman', quantity: 1, quality: 'Common' },
     ],
     rooms: createStartingRooms(),
-    constructionTasks: [],
     craftingQueue: [] as CraftingOrder[],
     time: { day: 1, phase: 'night' },
     worldCycle: { cycle: 1, collectedResourceNodeIds: [], defeatedEnemyIds: [] },

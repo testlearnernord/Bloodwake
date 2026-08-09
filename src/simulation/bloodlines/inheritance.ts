@@ -88,8 +88,6 @@ export const inheritVampire = (
     combat: 3 + attributes.strength,
     vitae: 2,
     maxVitae: 8,
-    bloodEssence: 0,
-    memoryFragments: [],
     professionSkills,
     equipment: {},
   };
