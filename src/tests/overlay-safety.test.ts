@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
+import { HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD } from '../simulation/servants/humanWork';
 import { getRecipeReadiness, renderOverlay } from '../ui/overlays/overlays';
 
 const ALL_MENUS = ['character', 'inventory', 'servants', 'stronghold', 'crafting', 'journal', 'pause'] as const;
@@ -138,7 +139,7 @@ describe('overlay rendering safety', () => {
         relationships: { ...human.relationships },
         resistance: human.resolve,
         control: 70,
-        health: 3,
+        health: HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD,
         maxHealth: human.maxHealth,
         stress: human.stress,
         combat: human.combat,

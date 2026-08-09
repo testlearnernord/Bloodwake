@@ -10,6 +10,7 @@ import { getTraitById } from '../traits/traitUtils';
 export type HumanWorkJobType = 'Building' | 'Crafting' | 'Gathering' | 'Hunting';
 
 export const HUMAN_WORK_JOB_TYPES: readonly HumanWorkJobType[] = ['Building', 'Crafting', 'Gathering', 'Hunting'];
+export const HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD = 3;
 
 export interface HumanWorkTask {
   id: string;
@@ -76,7 +77,7 @@ export const selectTaskForHumanThrall = (
   craftingQueue: CraftingOrder[],
   inventory: InventoryEntry[],
 ): HumanWorkTask | null => {
-  if (servant.health <= 3) {
+  if (servant.health <= HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD) {
     return null;
   }
 
@@ -156,7 +157,7 @@ export const runHumanWorkDay = (
         ...servant,
         currentJob: null,
         currentTask: null,
-        taskReason: servant.health <= 3 ? 'Too wounded for daytime labor.' : 'No enabled daytime work is available.',
+        taskReason: servant.health <= HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD ? 'Too wounded for daytime labor.' : 'No enabled daytime work is available.',
       });
       continue;
     }
