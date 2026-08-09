@@ -1,4 +1,4 @@
-import type { DayPhase, HumanServant, JobType, SaveGame, VampireVassal } from '../../types/models';
+import type { BuiltRoom, DayPhase, HumanServant, JobType, SaveGame, VampireVassal } from '../../types/models';
 import { RECIPES_BY_ID } from '../../data/recipes';
 import { selectTaskForHumanThrall, type HumanWorkTask } from '../servants/humanWork';
 import { selectTaskForVassal } from '../servants/tasks';
@@ -30,11 +30,15 @@ export interface DomainActorMotionStep {
 
 const ACTOR_SPEED = 64;
 const ARRIVAL_DISTANCE = 4;
-const STRONGHOLD_GRID_ORIGIN = { x: 22, y: 90 };
-const STRONGHOLD_CELL_W = 66;
-const STRONGHOLD_CELL_H = 76;
+export const STRONGHOLD_GRID_ORIGIN = { x: 22, y: 90 } as const;
+export const STRONGHOLD_CELL_W = 66;
+export const STRONGHOLD_CELL_H = 76;
+const WOOD_GATHER_DESTINATION = { x: 430, y: 340 } as const;
+const HERB_GATHER_DESTINATION = { x: 740, y: 250 } as const;
+const HUNT_DESTINATION = { x: 700, y: 540 } as const;
+const GUARD_POST_DESTINATION = { x: 292, y: 350 } as const;
 
-const roomCenter = (room: SaveGame['rooms'][number]): DomainPopulationAnchor => ({
+export const getStrongholdRoomCenter = (room: Pick<BuiltRoom, 'x' | 'y' | 'width' | 'height'>): DomainPopulationAnchor => ({
   x: STRONGHOLD_GRID_ORIGIN.x + room.x * STRONGHOLD_CELL_W + (room.width * STRONGHOLD_CELL_W) / 2,
   y: STRONGHOLD_GRID_ORIGIN.y + room.y * STRONGHOLD_CELL_H + (room.height * STRONGHOLD_CELL_H) / 2,
 });
@@ -46,10 +50,48 @@ interface ActorTaskLike {
   itemId?: 'wood' | 'herbs';
 }
 
+export const getDomainActorTaskEnvironmentKey = (state: Pick<SaveGame, 'time' | 'rooms' | 'craftingQueue' | 'inventory'>): string => [
+  state.time.phase,
+  state.rooms.map((room) => `${room.id}:${room.roomId}:${room.x}:${room.y}:${room.width}:${room.height}:${room.status}`).join(','),
+  state.craftingQueue.map((order) => `${order.id}:${order.recipeId}:${order.status}`).join(','),
+  state.inventory.map((entry) => `${entry.itemId}:${entry.quantity}`).join(','),
+].join('|');
+
+const getPriorityKey = (priorities: HumanServant['priorities'] | VampireVassal['priorities']): string =>
+  [priorities.Building, priorities.Crafting, priorities.Gathering, priorities.Guarding, priorities.Research, priorities.Hunting].join(',');
+
+export const getHumanThrallActorTaskPlanCacheKey = (
+  environmentKey: string,
+  thrall: HumanServant,
+  index: number,
+): string => [
+  environmentKey,
+  thrall.id,
+  index,
+  thrall.health,
+  thrall.professionId,
+  getPriorityKey(thrall.priorities),
+  thrall.traitIds.join(','),
+].join('|');
+
+export const getVassalActorTaskPlanCacheKey = (
+  environmentKey: string,
+  vassal: VampireVassal,
+  index: number,
+): string => [
+  environmentKey,
+  vassal.id,
+  index,
+  vassal.health,
+  vassal.professionId,
+  getPriorityKey(vassal.priorities),
+  vassal.traitIds.join(','),
+].join('|');
+
 const resolveTaskDestination = (state: SaveGame, task: ActorTaskLike, home: DomainPopulationAnchor): DomainPopulationAnchor => {
   if (task.type === 'construct_room') {
     const room = state.rooms.find((candidate) => candidate.id === task.id);
-    return room ? roomCenter(room) : home;
+    return room ? getStrongholdRoomCenter(room) : home;
   }
   if (task.type === 'craft_recipe') {
     const order = state.craftingQueue.find((candidate) => candidate.id === task.id);
@@ -57,17 +99,17 @@ const resolveTaskDestination = (state: SaveGame, task: ActorTaskLike, home: Doma
     const room = recipe
       ? state.rooms.find((candidate) => candidate.roomId === recipe.requiredRoomId && candidate.status === 'built')
       : undefined;
-    return room ? roomCenter(room) : home;
+    return room ? getStrongholdRoomCenter(room) : home;
   }
   if (task.type === 'gather_resource') {
-    const itemId = task.itemId ?? (task.id.includes('herb') ? 'herbs' : 'wood');
-    return itemId === 'herbs' ? { x: 740, y: 250 } : { x: 430, y: 340 };
+    const itemId = task.itemId ?? 'wood';
+    return itemId === 'herbs' ? HERB_GATHER_DESTINATION : WOOD_GATHER_DESTINATION;
   }
   if (task.type === 'hunt_food') {
-    return { x: 700, y: 540 };
+    return HUNT_DESTINATION;
   }
   if (task.type === 'guard_stronghold') {
-    return { x: 292, y: 350 };
+    return GUARD_POST_DESTINATION;
   }
   return home;
 };
@@ -153,7 +195,7 @@ const moveTowards = (
 };
 
 export const stepDomainActorMotion = (
-  runtime: DomainActorMotionRuntime,
+  _runtime: DomainActorMotionRuntime,
   position: DomainPopulationAnchor,
   plan: DomainActorTaskPlan,
   deltaMs: number,
@@ -170,12 +212,11 @@ export const stepDomainActorMotion = (
     };
   }
 
-  const taskChanged = plan.active && runtime.taskKey !== plan.taskKey;
   const phase: DomainActorMotionPhase = plan.active ? 'moving_to_task' : 'returning';
   const nextPosition = moveTowards(position, target, ACTOR_SPEED * Math.max(0, deltaMs) / 1000);
   return {
     runtime: {
-      phase: taskChanged ? 'moving_to_task' : phase,
+      phase,
       taskKey: plan.active ? plan.taskKey : null,
     },
     position: nextPosition,

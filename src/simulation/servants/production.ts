@@ -58,7 +58,7 @@ export const runWorkShift = (
         log.push(`${vassal.name} crafts ${recipe.name}.`);
       }
     } else if (task.type === 'gather_resource') {
-      const itemId = task.id === 'gather-herbs' ? 'herbs' : 'wood';
+      const itemId = task.itemId ?? 'wood';
       updatedInventory = addItem(updatedInventory, itemId, 3);
       log.push(`${vassal.name} gathers ${itemId === 'wood' ? 'Wood' : 'Herbs'}.`);
     } else {

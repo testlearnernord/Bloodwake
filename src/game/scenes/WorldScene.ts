@@ -21,11 +21,18 @@ import { isHumanPresentInWorld } from '../../simulation/world/humans';
 import { getDomainPopulationAnchor, getDomainPopulationIds } from '../../simulation/world/domainPresence';
 import {
   createDomainActorMotionRuntime,
+  getDomainActorTaskEnvironmentKey,
   getDomainActorMotionLabel,
   getHumanThrallActorTaskPlan,
+  getHumanThrallActorTaskPlanCacheKey,
+  getStrongholdRoomCenter,
+  STRONGHOLD_CELL_H,
+  STRONGHOLD_CELL_W,
   getVassalActorTaskPlan,
+  getVassalActorTaskPlanCacheKey,
   stepDomainActorMotion,
   type DomainActorMotionRuntime,
+  type DomainActorTaskPlan,
 } from '../../simulation/world/domainActorTasks';
 import type { BuiltRoom, EnemyType, HumanCharacter, HumanServant, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
@@ -87,6 +94,8 @@ interface SceneThrall {
   nameLabel: Phaser.GameObjects.Text;
   jobLabel: Phaser.GameObjects.Text;
   motion: DomainActorMotionRuntime;
+  plan: DomainActorTaskPlan | null;
+  planCacheKey: string | null;
 }
 
 interface SceneVassal {
@@ -96,6 +105,8 @@ interface SceneVassal {
   nameLabel: Phaser.GameObjects.Text;
   jobLabel: Phaser.GameObjects.Text;
   motion: DomainActorMotionRuntime;
+  plan: DomainActorTaskPlan | null;
+  planCacheKey: string | null;
 }
 
 interface SceneRoom {
@@ -137,12 +148,6 @@ const RESOURCE_NODE_DEFS: ResourceNodeDef[] = [
   { id: 'food-node', itemId: 'food', amount: 2, x: 980, y: 180, color: 0xe9c46a },
 ];
 
-// Stronghold visual area: left panel is x=20..319, y=40..700
-// Map 4x4 grid into 280×640 area starting at x=20,y=80
-const STRONGHOLD_GRID_ORIGIN = { x: 22, y: 90 };
-const STRONGHOLD_CELL_W = 66;
-const STRONGHOLD_CELL_H = 76;
-
 export class WorldScene extends Phaser.Scene {
   private readonly bridge: GameBridge;
   private player!: Phaser.Physics.Arcade.Image;
@@ -153,6 +158,8 @@ export class WorldScene extends Phaser.Scene {
   private projectiles: SceneProjectile[] = [];
   private thralls: SceneThrall[] = [];
   private vassals: SceneVassal[] = [];
+  private thrallsById = new Map<string, SceneThrall>();
+  private vassalsById = new Map<string, SceneVassal>();
   private rooms: SceneRoom[] = [];
   private memoryFragment: Phaser.GameObjects.Rectangle | null = null;
   private nearbyHumanId: string | null = null;
@@ -349,6 +356,7 @@ export class WorldScene extends Phaser.Scene {
     state.humanServants.forEach((thrall, index) => {
       this.spawnThrallVisual(thrall, index);
     });
+    this.thrallsById = new Map(this.thralls.map((entry) => [entry.thrallId, entry]));
   }
 
   private spawnThrallVisual(thrall: HumanServant, index: number): void {
@@ -357,7 +365,7 @@ export class WorldScene extends Phaser.Scene {
     const sprite = this.add.image(anchor.x, anchor.y, 'thrall-token').setDepth(5);
     const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${thrall.name} ${thrall.familyName}`, { color: '#e7d8c9', fontSize: '9px' }).setOrigin(0.5).setDepth(6);
     const jobLabel = this.add.text(anchor.x, anchor.y + 20, 'Thrall · Idle', { color: '#aeb8c4', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
-    this.thralls.push({ thrallId: thrall.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime() });
+    this.thralls.push({ thrallId: thrall.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime(), plan: null, planCacheKey: null });
   }
 
   private createVassals(): void {
@@ -366,6 +374,7 @@ export class WorldScene extends Phaser.Scene {
     state.vampireVassals.forEach((vassal, index) => {
       this.spawnVassalVisual(vassal, index);
     });
+    this.vassalsById = new Map(this.vassals.map((entry) => [entry.vassalId, entry]));
   }
 
   private spawnVassalVisual(vassal: VampireVassal, index: number): void {
@@ -374,7 +383,7 @@ export class WorldScene extends Phaser.Scene {
     const sprite = this.add.image(anchor.x, anchor.y, 'vassal-token').setDepth(5);
     const nameLabel = this.add.text(anchor.x, anchor.y - 29, vassal.name, { color: '#ff9aaa', fontSize: '10px' }).setOrigin(0.5).setDepth(6);
     const jobLabel = this.add.text(anchor.x, anchor.y + 21, 'Vassal · Idle', { color: '#c8a6d8', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
-    this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime() });
+    this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime(), plan: null, planCacheKey: null });
   }
 
   private createRooms(): void {
@@ -386,8 +395,9 @@ export class WorldScene extends Phaser.Scene {
   }
 
   private spawnRoomVisual(room: BuiltRoom): void {
-    const x = STRONGHOLD_GRID_ORIGIN.x + room.x * STRONGHOLD_CELL_W + (room.width * STRONGHOLD_CELL_W) / 2;
-    const y = STRONGHOLD_GRID_ORIGIN.y + room.y * STRONGHOLD_CELL_H + (room.height * STRONGHOLD_CELL_H) / 2;
+    const center = getStrongholdRoomCenter(room);
+    const x = center.x;
+    const y = center.y;
     const w = room.width * STRONGHOLD_CELL_W - 4;
     const h = room.height * STRONGHOLD_CELL_H - 4;
     const isBuilt = room.status === 'built';
@@ -1348,58 +1358,73 @@ export class WorldScene extends Phaser.Scene {
   private syncThrallsWithState(): void {
     const state = this.bridge.getState();
     const presentIds = new Set(getDomainPopulationIds(state, 'human_thrall'));
+    let rosterChanged = false;
     this.thralls = this.thralls.filter((entry) => {
       if (!presentIds.has(entry.thrallId)) {
         entry.sprite.destroy();
         entry.shadow.destroy();
         entry.nameLabel.destroy();
         entry.jobLabel.destroy();
+        rosterChanged = true;
         return false;
       }
       return true;
     });
-    const thrallMap = new Map(this.thralls.map((entry) => [entry.thrallId, entry]));
     state.humanServants.forEach((thrall, index) => {
-      const entry = thrallMap.get(thrall.id);
+      const entry = this.thrallsById.get(thrall.id);
       if (!entry) {
         this.spawnThrallVisual(thrall, index);
+        rosterChanged = true;
         return;
       }
       entry.nameLabel.setText(`${thrall.name} ${thrall.familyName}`);
     });
+    if (rosterChanged) {
+      this.thrallsById = new Map(this.thralls.map((entry) => [entry.thrallId, entry]));
+    }
   }
 
   private syncVassalsWithState(): void {
     const state = this.bridge.getState();
     const presentIds = new Set(getDomainPopulationIds(state, 'vampire_vassal'));
+    let rosterChanged = false;
     this.vassals = this.vassals.filter((entry) => {
       if (!presentIds.has(entry.vassalId)) {
         entry.sprite.destroy();
         entry.shadow.destroy();
         entry.nameLabel.destroy();
         entry.jobLabel.destroy();
+        rosterChanged = true;
         return false;
       }
       return true;
     });
-    const vassalMap = new Map(this.vassals.map((entry) => [entry.vassalId, entry]));
     state.vampireVassals.forEach((vassal, index) => {
-      const entry = vassalMap.get(vassal.id);
+      const entry = this.vassalsById.get(vassal.id);
       if (!entry) {
         this.spawnVassalVisual(vassal, index);
+        rosterChanged = true;
         return;
       }
       entry.nameLabel.setText(vassal.name);
     });
+    if (rosterChanged) {
+      this.vassalsById = new Map(this.vassals.map((entry) => [entry.vassalId, entry]));
+    }
   }
 
   private updateDomainPopulationActors(delta: number): void {
     const state = this.bridge.getState();
-    const thrallMap = new Map(this.thralls.map((entry) => [entry.thrallId, entry]));
+    const environmentKey = getDomainActorTaskEnvironmentKey(state);
     state.humanServants.forEach((thrall, index) => {
-      const entry = thrallMap.get(thrall.id);
+      const entry = this.thrallsById.get(thrall.id);
       if (!entry) return;
-      const plan = getHumanThrallActorTaskPlan(state, thrall, index);
+      const planCacheKey = getHumanThrallActorTaskPlanCacheKey(environmentKey, thrall, index);
+      const plan = entry.planCacheKey === planCacheKey && entry.plan
+        ? entry.plan
+        : getHumanThrallActorTaskPlan(state, thrall, index);
+      entry.plan = plan;
+      entry.planCacheKey = planCacheKey;
       const previousX = entry.sprite.x;
       const step = stepDomainActorMotion(entry.motion, { x: entry.sprite.x, y: entry.sprite.y }, plan, delta);
       entry.motion = step.runtime;
@@ -1411,11 +1436,15 @@ export class WorldScene extends Phaser.Scene {
       entry.sprite.setScale(step.runtime.phase === 'working' ? 1 + Math.sin(this.time.now / 140 + index) * 0.025 : 1);
     });
 
-    const vassalMap = new Map(this.vassals.map((entry) => [entry.vassalId, entry]));
     state.vampireVassals.forEach((vassal, index) => {
-      const entry = vassalMap.get(vassal.id);
+      const entry = this.vassalsById.get(vassal.id);
       if (!entry) return;
-      const plan = getVassalActorTaskPlan(state, vassal, index);
+      const planCacheKey = getVassalActorTaskPlanCacheKey(environmentKey, vassal, index);
+      const plan = entry.planCacheKey === planCacheKey && entry.plan
+        ? entry.plan
+        : getVassalActorTaskPlan(state, vassal, index);
+      entry.plan = plan;
+      entry.planCacheKey = planCacheKey;
       const previousX = entry.sprite.x;
       const step = stepDomainActorMotion(entry.motion, { x: entry.sprite.x, y: entry.sprite.y }, plan, delta);
       entry.motion = step.runtime;
