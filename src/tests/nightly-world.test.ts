@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
 import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite';
 import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
-import { isHumanPresentInWorld } from '../simulation/world/humans';
+import { generateHumanFromSeed, isHumanPresentInWorld } from '../simulation/world/humans';
 import {
   getNightlyEnemySpawns,
   getNightlyHumanPosition,
@@ -37,6 +37,8 @@ describe('0.6.3c nightly world variation', () => {
     expect(result.npcs.filter((human) => human.status === 'wandering')).toHaveLength(8);
     expect(new Set(result.npcs.map((human) => human.id)).size).toBe(result.npcs.length);
     expect(result.newHumanIds).toHaveLength(3);
+    const firstReplacement = result.npcs.find((human) => human.id === 'human-d2-1');
+    expect(firstReplacement).toEqual(generateHumanFromSeed(`${state.seed}-day-2-spawn-1`, 'human-d2-1', 2));
   });
 
   it('keeps escaped thralls off-map for a deterministic delay and only allows interaction after resurfacing', () => {

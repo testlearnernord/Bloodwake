@@ -128,6 +128,16 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     if (record.dormantSinceDay !== null && !isIntegerInRange(record.dormantSinceDay, 1, Number.MAX_SAFE_INTEGER)) return false;
     if (record.scheduledReturnDay !== null && !isIntegerInRange(record.scheduledReturnDay, 1, Number.MAX_SAFE_INTEGER)) return false;
     if (!isIntegerInRange(record.lastSeenDay, 1, Number.MAX_SAFE_INTEGER)) return false;
+    if (record.worldPresence === 'active') {
+      if (record.dormantReason !== null || record.dormantSinceDay !== null || record.scheduledReturnDay !== null) {
+        return false;
+      }
+    } else if (record.dormantSinceDay === null) {
+      return false;
+    }
+    if (record.scheduledReturnDay !== null && record.dormantReason !== 'escaped') {
+      return false;
+    }
   }
 
   // Validate population records are objects with string ids

@@ -217,13 +217,16 @@ export const resolveNightlyHumanPopulation = (
   let serial = 1;
   while (regionalCandidates.length < HUMAN_REGIONAL_POOL_TARGET) {
     const id = `human-d${day}-${serial}`;
-    serial += 1;
-    if (ids.has(id)) continue;
+    if (ids.has(id)) {
+      serial += 1;
+      continue;
+    }
     const human = generateHumanFromSeed(`${seed}-day-${day}-spawn-${serial}`, id, day);
     records.push(human);
     regionalCandidates.push(human);
     ids.add(id);
     newHumanIds.push(id);
+    serial += 1;
   }
 
   const ranked = regionalCandidates

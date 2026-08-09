@@ -207,4 +207,26 @@ describe('save serialization and validation', () => {
     expect(validateSaveGame(stale)).toBe(false);
   });
 
+  it('rejects active humans with dormant lifecycle metadata attached', () => {
+    const state = createNewGameState({ seed: 'active-dormant-metadata' });
+    const invalid = {
+      ...state,
+      npcs: state.npcs.map((npc, index) => index === 0
+        ? { ...npc, worldPresence: 'active', dormantReason: 'regional', dormantSinceDay: 1, scheduledReturnDay: 3 }
+        : npc),
+    };
+    expect(validateSaveGame(invalid)).toBe(false);
+  });
+
+  it('rejects dormant humans without a dormantSinceDay', () => {
+    const state = createNewGameState({ seed: 'missing-dormant-since' });
+    const invalid = {
+      ...state,
+      npcs: state.npcs.map((npc, index) => index === 0
+        ? { ...npc, worldPresence: 'dormant', dormantReason: 'regional', dormantSinceDay: null }
+        : npc),
+    };
+    expect(validateSaveGame(invalid)).toBe(false);
+  });
+
 });
