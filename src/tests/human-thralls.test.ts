@@ -86,6 +86,16 @@ describe('0.6.3a human thralls', () => {
     expect(night.inventory.find((entry) => entry.itemId === 'food')?.quantity ?? 0).toBe(foodBefore - 1);
   });
 
+  it('keeps enthralled NPC identities in state while captivity continues', () => {
+    let state = createNewGameState({ seed: 'enthralled-identity' });
+    state.player.vitae = 5;
+    const humanId = state.npcs[0]!.id;
+    state = applyHumanAction(state, humanId, 'enthrall').state;
+    const night = advanceWorldPhase(advanceWorldPhase(state).state).state;
+    expect(night.humanServants).toHaveLength(1);
+    expect(night.npcs.find((npc) => npc.id === humanId)?.status).toBe('enthralled');
+  });
+
   it('makes food shortages accelerate Control loss and Stress', () => {
     let fed = createNewGameState({ seed: 'fed-thrall' });
     fed.player.vitae = 5;
@@ -106,9 +116,14 @@ describe('0.6.3a human thralls', () => {
     const humanId = state.npcs[0]!.id;
     state = applyHumanAction(state, humanId, 'enthrall').state;
     state.humanServants[0]!.control = 1;
+    state.humanServants[0]!.fear = 42;
+    state.humanServants[0]!.disposition = -10;
     const night = advanceWorldPhase(advanceWorldPhase(state).state).state;
     expect(night.humanServants).toHaveLength(0);
-    expect(night.npcs.find((npc) => npc.id === humanId)?.status).toBe('wandering');
+    const escapedHuman = night.npcs.find((npc) => npc.id === humanId);
+    expect(escapedHuman?.status).toBe('wandering');
+    expect(escapedHuman?.fear).toBe(57);
+    expect(escapedHuman?.disposition).toBe(-30);
   });
 
   it('uses save v7 and rejects legacy loyalty fields on human thralls', () => {

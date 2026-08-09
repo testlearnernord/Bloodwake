@@ -62,13 +62,14 @@ export const replenishHumanPopulation = (
   targetCount: number,
 ): HumanCharacter[] => {
   const survivors = existingNpcs.filter((human) => {
-    if (human.status === 'drained' || human.status === 'turned' || human.status === 'enthralled') return false;
+    if (human.status === 'drained' || human.status === 'turned') return false;
     return true;
   });
   const recoveredSurvivors = survivors.map((human) =>
     human.status === 'fed' ? { ...human, status: 'wandering' as const } : human,
   );
-  const needed = Math.max(0, targetCount - recoveredSurvivors.length);
+  const freeHumans = recoveredSurvivors.filter((human) => human.status !== 'enthralled');
+  const needed = Math.max(0, targetCount - freeHumans.length);
   if (needed === 0) return recoveredSurvivors;
   const newHumans: HumanCharacter[] = [];
   for (let i = 0; i < needed; i++) {

@@ -51,13 +51,25 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
       defeatedEnemyIds: [],
     };
     worldCycleChanged = true;
+    const thrallSnapshots = new Map(humanServants.map((servant) => [servant.id, servant] as const));
     const thrallDay = resolveHumanThrallDay({ ...state, humanServants, inventory });
     humanServants = thrallDay.humanServants;
     inventory = thrallDay.inventory;
     for (const event of thrallDay.events) events.push(event);
     if (thrallDay.escapedHumanIds.length > 0) {
       const escapedIds = new Set(thrallDay.escapedHumanIds);
-      npcs = npcs.map((human) => escapedIds.has(human.id) ? { ...human, status: 'wandering' as const, fear: Math.min(100, human.fear + 15), disposition: Math.max(-100, human.disposition - 20) } : human);
+      npcs = npcs.map((human) => {
+        if (!escapedIds.has(human.id)) return human;
+        const escapedThrall = thrallSnapshots.get(human.id);
+        const baseFear = escapedThrall?.fear ?? human.fear;
+        const baseDisposition = escapedThrall?.disposition ?? human.disposition;
+        return {
+          ...human,
+          status: 'wandering' as const,
+          fear: Math.min(100, baseFear + 15),
+          disposition: Math.max(-100, baseDisposition - 20),
+        };
+      });
     }
     events.push(`Night ${nextDay} begins. The world stirs anew.`);
     npcs = replenishHumanPopulation(npcs, state.seed, nextDay, TARGET_HUMAN_POPULATION);
