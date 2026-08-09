@@ -16,7 +16,7 @@ export const STRONGHOLD_DAYLIGHT_SHELTER = {
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 export const constrainVampireToDaylightShelter = (phase: DayPhase, position: WorldPoint): WorldPoint => {
-  if (phase === 'night') return { ...position };
+  if (phase === 'night') return position;
   return {
     x: clamp(position.x, STRONGHOLD_DAYLIGHT_SHELTER.minX, STRONGHOLD_DAYLIGHT_SHELTER.maxX),
     y: clamp(position.y, STRONGHOLD_DAYLIGHT_SHELTER.minY, STRONGHOLD_DAYLIGHT_SHELTER.maxY),

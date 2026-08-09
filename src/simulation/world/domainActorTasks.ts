@@ -42,10 +42,13 @@ const GUARD_POST_ROWS = 4;
 const GUARD_POST_ROW_SPACING = 36;
 const GUARD_POST_COLUMN_SPACING = 28;
 
-export const getGuardPostDestination = (actorIndex: number): DomainPopulationAnchor => ({
-  x: GUARD_POST_X - Math.floor(Math.max(0, actorIndex) / GUARD_POST_ROWS) * GUARD_POST_COLUMN_SPACING,
-  y: GUARD_POST_Y + (Math.max(0, actorIndex) % GUARD_POST_ROWS) * GUARD_POST_ROW_SPACING,
-});
+export const getGuardPostDestination = (actorIndex: number): DomainPopulationAnchor => {
+  const index = Math.max(0, actorIndex);
+  return {
+    x: GUARD_POST_X - Math.floor(index / GUARD_POST_ROWS) * GUARD_POST_COLUMN_SPACING,
+    y: GUARD_POST_Y + (index % GUARD_POST_ROWS) * GUARD_POST_ROW_SPACING,
+  };
+};
 
 export const getStrongholdRoomCenter = (room: Pick<BuiltRoom, 'x' | 'y' | 'width' | 'height'>): DomainPopulationAnchor => ({
   x: STRONGHOLD_GRID_ORIGIN.x + room.x * STRONGHOLD_CELL_W + (room.width * STRONGHOLD_CELL_W) / 2,
