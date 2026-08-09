@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
-import { ENTHRALL_VITAE_COST, THRALL_REASSERT_VITAE_COST } from '../config/balancing';
+import { ENTHRALL_VITAE_COST, THRALL_REASSERT_VITAE_COST, TURN_COST_VITAE } from '../config/balancing';
 import { SAVE_FORMAT_VERSION } from '../config/game';
 import { ROOMS_BY_ID } from '../data/rooms';
 import { validateSaveGame } from '../persistence/saveStore';
@@ -11,6 +11,7 @@ import {
   reassertThrallControl,
 } from '../simulation/servants/humanThralls';
 import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
+import { isHumanPresentInWorld } from '../simulation/world/humans';
 
 describe('0.6.3a human thralls', () => {
   it('provides two base housing spaces and four per built Servant Quarters', () => {
@@ -23,6 +24,26 @@ describe('0.6.3a human thralls', () => {
     });
     expect(ROOMS_BY_ID.servant_quarters.housingCapacity).toBe(4);
     expect(getHumanHousingCapacity(state.rooms)).toBe(6);
+  });
+
+  it('treats enthralled humans as persistent identities but not visible world actors', () => {
+    let state = createNewGameState({ seed: 'thrall-world-visibility' });
+    state.player.vitae = 5;
+    const human = state.npcs[0]!;
+    expect(isHumanPresentInWorld(human)).toBe(true);
+    state = applyHumanAction(state, human.id, 'enthrall').state;
+    const storedHuman = state.npcs.find((npc) => npc.id === human.id)!;
+    expect(storedHuman.status).toBe('enthralled');
+    expect(isHumanPresentInWorld(storedHuman)).toBe(false);
+  });
+
+  it('reports the exact Vitae requirement when Turn is disabled', () => {
+    const state = createNewGameState({ seed: 'turn-cost-feedback' });
+    state.player.vitae = TURN_COST_VITAE - 1;
+    expect(validateHumanAction(state, state.npcs[0], 'turn')).toEqual({
+      ok: false,
+      reason: `Turning requires ${TURN_COST_VITAE} Vitae.`,
+    });
   });
 
   it('enthralls a free human into a controlled prisoner and spends Vitae', () => {

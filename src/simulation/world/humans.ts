@@ -6,6 +6,9 @@ import { SeededRng } from '../../utilities/rng';
 import { calculateTraitModifiers, resolveTraitSet } from '../traits/traitUtils';
 import { rollBloodResonance } from '../blood/bloodResonance';
 
+export const isHumanPresentInWorld = (human: HumanCharacter): boolean =>
+  human.status !== 'drained' && human.status !== 'turned' && human.status !== 'enthralled';
+
 const FIRST_NAMES = ['Adela', 'Berta', 'Clara', 'Dieter', 'Egon', 'Frieda', 'Greta', 'Heinrich'];
 const FAMILY_NAMES = ['Klein', 'Waldmann', 'Roth', 'Vogel', 'Falk', 'Stein'];
 

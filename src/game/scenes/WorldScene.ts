@@ -17,6 +17,7 @@ import { ENEMY_ATTACKS_BY_ID } from '../../data/enemyAttacks';
 import { ENEMIES_BY_ID } from '../../data/enemies';
 import { ROOMS_BY_ID } from '../../data/rooms';
 import { canPlayerExplore } from '../../simulation/time/dayNight';
+import { isHumanPresentInWorld } from '../../simulation/world/humans';
 import type { BuiltRoom, EnemyType, HumanCharacter, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
 import { CombatPresentation, type CombatFeedPrompt, type TargetIndicator } from '../combat/CombatPresentation';
@@ -262,7 +263,7 @@ export class WorldScene extends Phaser.Scene {
       { x: 980, y: 500 },
     ];
     this.humans = state.npcs
-      .filter((human) => human.status !== 'drained' && human.status !== 'turned' && human.status !== 'enthralled')
+      .filter(isHumanPresentInWorld)
       .map((human, index) => {
         const position = positions[index % positions.length];
         const shadow = CombatPresentation.createShadow(this, position.x, position.y, 22, 10);
@@ -1246,7 +1247,7 @@ export class WorldScene extends Phaser.Scene {
       }
     }
     if (this.nearbyHumanId) {
-      this.hintText.setText('Human is within reach. F bites, or use context buttons to feed, drain, or turn.');
+      this.hintText.setText('Human is within reach. F bites, or use context buttons to feed, drain, enthrall, or turn.');
     }
   }
 
@@ -1256,7 +1257,7 @@ export class WorldScene extends Phaser.Scene {
     // Remove humans that are drained/turned or no longer in state
     this.humans = this.humans.filter((entry) => {
       const updated = byId.get(entry.human.id);
-      if (!updated || updated.status === 'drained' || updated.status === 'turned') {
+      if (!updated || !isHumanPresentInWorld(updated)) {
         entry.shadow.destroy();
         entry.label.destroy();
         entry.sprite.destroy();
@@ -1274,7 +1275,7 @@ export class WorldScene extends Phaser.Scene {
     const extraBase = { x: 950, y: 350 };
     let extraOffset = 0;
     for (const human of state.npcs) {
-      if (human.status === 'drained' || human.status === 'turned') continue;
+      if (!isHumanPresentInWorld(human)) continue;
       if (existingIds.has(human.id)) continue;
       const posIndex = this.humans.length;
       let position: { x: number; y: number };
@@ -1292,7 +1293,7 @@ export class WorldScene extends Phaser.Scene {
       this.humans.push({ sprite, shadow, human, label });
       existingIds.add(human.id);
     }
-    if (this.nearbyHumanId && !state.npcs.some((human) => human.id === this.nearbyHumanId && human.status !== 'drained' && human.status !== 'turned')) {
+    if (this.nearbyHumanId && !state.npcs.some((human) => human.id === this.nearbyHumanId && isHumanPresentInWorld(human))) {
       this.nearbyHumanId = null;
       this.bridge.onHumanFocused(null);
     }

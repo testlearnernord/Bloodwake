@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.3a1 - Human Thrall Playtest Fixes
+
+- Enthralled humans now disappear from the roaming world immediately while their identity remains persisted for captivity and escape.
+- Thrall escapes now produce an on-screen notification instead of only a buried phase-log entry.
+- Turn and Enthrall buttons show their exact Vitae costs; blocked Turning reports the exact requirement.
+
 ## 0.6.3a - Human Thralls: Enthrallment, Control & Housing
 
 - Added Enthrall as a fourth free-human choice alongside Feed, Drain and Turn.

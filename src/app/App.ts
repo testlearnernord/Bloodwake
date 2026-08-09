@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { ENTHRALL_VITAE_COST, TURN_COST_VITAE } from '../config/balancing';
 import { COLLECTIBLES_BY_ID } from '../data/collectibles';
 import { PROFESSIONS_BY_ID } from '../data/professions';
 import { ITEMS_BY_ID } from '../data/items';
@@ -460,7 +461,7 @@ export class BloodwakeApp {
       <div class="button-row compact">
         ${humanActions
           .map(
-            ({ mode, validation }) => `<button data-human-action="${mode}" ${validation.ok ? '' : 'disabled'}>${mode === 'turn' ? 'Turn into Vassal' : mode === 'enthrall' ? 'Enthrall as Thrall' : mode[0].toUpperCase() + mode.slice(1)}</button>`,
+            ({ mode, validation }) => `<button data-human-action="${mode}" ${validation.ok ? '' : 'disabled'}>${mode === 'turn' ? `Turn into Vassal (${TURN_COST_VITAE} Vitae)` : mode === 'enthrall' ? `Enthrall as Thrall (${ENTHRALL_VITAE_COST} Vitae)` : mode[0].toUpperCase() + mode.slice(1)}</button>`,
           )
           .join('')}
       </div>
@@ -773,7 +774,7 @@ export class BloodwakeApp {
     this.state = result.state;
 
     for (const event of result.events) {
-      if (event.includes('Dawn deepens your thirst') || event.includes('Daylight weakens you')) {
+      if (event.includes('Dawn deepens your thirst') || event.includes('Daylight weakens you') || event.includes('breaks the thrall bond and escapes the stronghold')) {
         this.notify(event.replace('[Phase] ', ''));
       }
     }

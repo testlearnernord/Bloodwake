@@ -70,7 +70,7 @@ export const validateHumanAction = (state: SaveGame, human: HumanCharacter | und
     return validateEnthrallHuman(state, human);
   }
   if (mode === 'turn' && state.player.vitae < TURN_COST_VITAE) {
-    return { ok: false, reason: 'Turning requires more Vitae.' };
+    return { ok: false, reason: `Turning requires ${TURN_COST_VITAE} Vitae.` };
   }
   return { ok: true };
 };
