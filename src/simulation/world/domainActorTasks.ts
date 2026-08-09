@@ -36,7 +36,19 @@ export const STRONGHOLD_CELL_H = 76;
 const WOOD_GATHER_DESTINATION = { x: 430, y: 340 } as const;
 const HERB_GATHER_DESTINATION = { x: 740, y: 250 } as const;
 const HUNT_DESTINATION = { x: 700, y: 540 } as const;
-const GUARD_POST_DESTINATION = { x: 292, y: 350 } as const;
+const GUARD_POST_X = 292;
+const GUARD_POST_Y = 296;
+const GUARD_POST_ROWS = 4;
+const GUARD_POST_ROW_SPACING = 36;
+const GUARD_POST_COLUMN_SPACING = 28;
+
+export const getGuardPostDestination = (actorIndex: number): DomainPopulationAnchor => {
+  const index = Math.max(0, actorIndex);
+  return {
+    x: GUARD_POST_X - Math.floor(index / GUARD_POST_ROWS) * GUARD_POST_COLUMN_SPACING,
+    y: GUARD_POST_Y + (index % GUARD_POST_ROWS) * GUARD_POST_ROW_SPACING,
+  };
+};
 
 export const getStrongholdRoomCenter = (room: Pick<BuiltRoom, 'x' | 'y' | 'width' | 'height'>): DomainPopulationAnchor => ({
   x: STRONGHOLD_GRID_ORIGIN.x + room.x * STRONGHOLD_CELL_W + (room.width * STRONGHOLD_CELL_W) / 2,
@@ -88,7 +100,7 @@ export const getVassalActorTaskPlanCacheKey = (
   vassal.traitIds.join(','),
 ].join('|');
 
-const resolveTaskDestination = (state: SaveGame, task: ActorTaskLike, home: DomainPopulationAnchor): DomainPopulationAnchor => {
+const resolveTaskDestination = (state: SaveGame, task: ActorTaskLike, home: DomainPopulationAnchor, actorIndex: number): DomainPopulationAnchor => {
   if (task.type === 'construct_room') {
     const room = state.rooms.find((candidate) => candidate.id === task.id);
     return room ? getStrongholdRoomCenter(room) : home;
@@ -109,7 +121,7 @@ const resolveTaskDestination = (state: SaveGame, task: ActorTaskLike, home: Doma
     return HUNT_DESTINATION;
   }
   if (task.type === 'guard_stronghold') {
-    return GUARD_POST_DESTINATION;
+    return getGuardPostDestination(actorIndex);
   }
   return home;
 };
@@ -149,7 +161,7 @@ export const getHumanThrallActorTaskPlan = (
     taskKey: `${task.type}:${task.id}`,
     activityLabel: task.jobType,
     home,
-    destination: resolveTaskDestination(state, task, home),
+    destination: resolveTaskDestination(state, task, home, index),
   };
 };
 
@@ -171,7 +183,7 @@ export const getVassalActorTaskPlan = (
     taskKey: `${task.type}:${task.id}`,
     activityLabel: task.jobType,
     home,
-    destination: resolveTaskDestination(state, task, home),
+    destination: resolveTaskDestination(state, task, home, index),
   };
 };
 

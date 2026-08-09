@@ -123,6 +123,8 @@ Until the 0.6.5 conversion begins, existing phase-batched systems may remain fun
 
 ### 0.6.5a World Clock & solar cycle
 
+Daylight design target: vampires remain freely controllable. Sheltered Stronghold interiors are safe; exterior daylight applies continuous exposure rather than freezing actors. Exposure severity can later be modified by bloodline/genetic traits, learned powers, equipment and facilities, but ordinary vampires should never treat direct sun as harmless.
+
 - Persist simulation time.
 - Add Pause / speed controls.
 - Derive day/night/dawn/dusk from time.

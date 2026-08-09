@@ -81,6 +81,29 @@ describe('0.6.3b3 visible work actor tasks', () => {
     expect(after).not.toBe(before);
   });
 
+
+  it('assigns simultaneous guarding vassals to distinct stronghold posts', () => {
+    let state = createNewGameState({ seed: 'visible-work-guard-slots' });
+    state.player.vitae = 10;
+    state = applyHumanAction(state, state.npcs[0]!.id, 'turn').state;
+    state = applyHumanAction(state, state.npcs[1]!.id, 'turn').state;
+    for (const vassal of state.vampireVassals) {
+      vassal.priorities = {
+        Building: 'Disabled',
+        Crafting: 'Disabled',
+        Gathering: 'Disabled',
+        Guarding: 'Critical',
+        Research: 'Disabled',
+        Hunting: 'Disabled',
+      };
+    }
+    const first = getVassalActorTaskPlan(state, state.vampireVassals[0]!, 0);
+    const second = getVassalActorTaskPlan(state, state.vampireVassals[1]!, 1);
+    expect(first.jobType).toBe('Guarding');
+    expect(second.jobType).toBe('Guarding');
+    expect(first.destination).not.toEqual(second.destination);
+  });
+
   it('computes stronghold room centers from the shared grid layout', () => {
     expect(getStrongholdRoomCenter({ x: 1, y: 2, width: 2, height: 1 })).toEqual({ x: 154, y: 280 });
   });
