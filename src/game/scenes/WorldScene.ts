@@ -224,8 +224,6 @@ export class WorldScene extends Phaser.Scene {
       this.releaseTargetLock();
       this.hintText.setText('Daylight confines vampires to the stronghold.');
     }
-    this.updateNearbyHuman();
-    this.updateZone();
     this.stepPlayerAction(time);
     this.updateMovement(time);
     if (!canPlayerExplore(state.time.phase)) {
@@ -235,6 +233,8 @@ export class WorldScene extends Phaser.Scene {
       if (shelteredPosition.y !== currentPosition.y) this.player.setVelocityY(0);
       this.player.setPosition(shelteredPosition.x, shelteredPosition.y);
     }
+    this.updateNearbyHuman();
+    this.updateZone();
     this.updateEnemyAi(time);
     this.updateProjectiles(time, delta);
     this.updateTargetLock(time);
