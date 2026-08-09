@@ -1347,13 +1347,12 @@ export class WorldScene extends Phaser.Scene {
       }
       return true;
     });
-    const existingIds = new Set(this.thralls.map((entry) => entry.thrallId));
+    const thrallMap = new Map(this.thralls.map((entry) => [entry.thrallId, entry]));
     state.humanServants.forEach((thrall, index) => {
       const anchor = getDomainPopulationAnchor('human_thrall', index);
-      const entry = this.thralls.find((candidate) => candidate.thrallId === thrall.id);
+      const entry = thrallMap.get(thrall.id);
       if (!entry) {
         this.spawnThrallVisual(thrall, index);
-        existingIds.add(thrall.id);
         return;
       }
       entry.sprite.setPosition(anchor.x, anchor.y);
@@ -1376,13 +1375,12 @@ export class WorldScene extends Phaser.Scene {
       }
       return true;
     });
-    const existingIds = new Set(this.vassals.map((entry) => entry.vassalId));
+    const vassalMap = new Map(this.vassals.map((entry) => [entry.vassalId, entry]));
     state.vampireVassals.forEach((vassal, index) => {
       const anchor = getDomainPopulationAnchor('vampire_vassal', index);
-      const entry = this.vassals.find((candidate) => candidate.vassalId === vassal.id);
+      const entry = vassalMap.get(vassal.id);
       if (!entry) {
         this.spawnVassalVisual(vassal, index);
-        existingIds.add(vassal.id);
         return;
       }
       entry.sprite.setPosition(anchor.x, anchor.y);
