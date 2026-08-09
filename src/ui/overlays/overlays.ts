@@ -12,6 +12,8 @@ import { selectTaskForVassal } from '../../simulation/servants/tasks';
 import { getHumanHousingCapacity, getThrallControlState, validateReassertThrallControl } from '../../simulation/servants/humanThralls';
 import { HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD, HUMAN_WORK_JOB_TYPES, selectTaskForHumanThrall } from '../../simulation/servants/humanWork';
 import { validateElevateThrall } from '../../simulation/servants/thrallElevation';
+import { validateBindThrallAsBloodDonor } from '../../simulation/servants/bloodDonors';
+import { getBloodDonorCapacity, getBloodStockCapacity } from '../../simulation/blood/bloodStock';
 import type { BuiltRoom, InventoryEntry, ItemCategory, ItemId, SaveGame } from '../../types/models';
 import { renderIcon } from '../icons/registry';
 import type { MenuId } from '../uiState';
@@ -200,6 +202,8 @@ export const renderOverlay = (
     const humanServants = state.humanServants;
     const vassals = state.vampireVassals;
     const housingCapacity = getHumanHousingCapacity(state.rooms);
+    const bloodStockCapacity = getBloodStockCapacity(state.rooms);
+    const bloodDonorCapacity = getBloodDonorCapacity(state.rooms);
     return renderOverlayPanel(
       'Domain Population',
       `<div class="columns three">
@@ -214,14 +218,27 @@ export const renderOverlay = (
                     const profession = PROFESSIONS_BY_ID[servant.professionId];
                     const reassert = validateReassertThrallControl(state, servant);
                     const elevation = validateElevateThrall(state, servant);
+                    const donorBinding = validateBindThrallAsBloodDonor(state, servant);
                     const predictedTask = selectTaskForHumanThrall(servant, state.rooms, state.craftingQueue, state.inventory);
                     const predictedTaskReason =
                       predictedTask?.reason
                       ?? (servant.health <= HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD ? 'Too wounded for daytime labor.' : 'No enabled daytime work is available.');
-                    return `<article class="servant-card"><h4>${htmlEscape(servant.name)} ${htmlEscape(servant.familyName)}</h4><p>${htmlEscape(profession.name)} · Blood Resonance ${servant.bloodResonance}</p><p>Control ${servant.control}/100 · ${htmlEscape(getThrallControlState(servant.control))}</p><p>Resistance ${servant.resistance}/5 · Stress ${servant.stress}/100 · Fear ${servant.fear}/100</p><p>Last work: ${htmlEscape(servant.currentJob ?? 'Idle')} · ${htmlEscape(servant.currentTask ?? 'none')}</p><p>Next day: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTaskReason)}</p><h5>Mortal Work Priorities</h5><div class="priority-grid">${HUMAN_WORK_JOB_TYPES.map((jobType) => `<label>${htmlEscape(jobType)}<select data-human-servant-id="${htmlEscape(servant.id)}" data-job-type="${jobType}">${['Disabled', 'Low', 'Normal', 'High', 'Critical'].map((priority) => `<option value="${priority}" ${servant.priorities[jobType] === priority ? 'selected' : ''}>${priority}</option>`).join('')}</select></label>`).join('')}</div><p class="hint">These are mortal daytime jobs. Vampire Vassal orders remain a separate control model.</p><p class="hint">${htmlEscape(servant.taskReason)}</p><div class="button-row compact"><button data-reassert-thrall="${htmlEscape(servant.id)}" ${reassert.ok ? '' : 'disabled'} title="${htmlEscape(reassert.ok ? 'Spend Vitae to reinforce the thrall bond.' : reassert.reason)}">Reassert Control</button><button data-elevate-thrall="${htmlEscape(servant.id)}" ${elevation.ok ? '' : 'disabled'} title="${htmlEscape(elevation.ok ? 'Turn this mortal thrall into a Vampire Vassal.' : elevation.reason)}">Elevate to Vassal</button></div><p class="hint">${htmlEscape(elevation.ok ? 'Elevation preserves learned profession skills but replaces Control/Resistance with Vampire Vassal politics.' : elevation.reason)}</p></article>`;
+                    return `<article class="servant-card"><h4>${htmlEscape(servant.name)} ${htmlEscape(servant.familyName)}</h4><p>${htmlEscape(profession.name)} · Blood Resonance ${servant.bloodResonance}</p><p>Control ${servant.control}/100 · ${htmlEscape(getThrallControlState(servant.control))}</p><p>Resistance ${servant.resistance}/5 · Stress ${servant.stress}/100 · Fear ${servant.fear}/100</p><p>Last work: ${htmlEscape(servant.currentJob ?? 'Idle')} · ${htmlEscape(servant.currentTask ?? 'none')}</p><p>Next day: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTaskReason)}</p><h5>Mortal Work Priorities</h5><div class="priority-grid">${HUMAN_WORK_JOB_TYPES.map((jobType) => `<label>${htmlEscape(jobType)}<select data-human-servant-id="${htmlEscape(servant.id)}" data-job-type="${jobType}">${['Disabled', 'Low', 'Normal', 'High', 'Critical'].map((priority) => `<option value="${priority}" ${servant.priorities[jobType] === priority ? 'selected' : ''}>${priority}</option>`).join('')}</select></label>`).join('')}</div><p class="hint">These are mortal daytime jobs. Vampire Vassal orders remain a separate control model.</p><p class="hint">${htmlEscape(servant.taskReason)}</p><div class="button-row compact"><button data-reassert-thrall="${htmlEscape(servant.id)}" ${reassert.ok ? '' : 'disabled'} title="${htmlEscape(reassert.ok ? 'Spend Vitae to reinforce the thrall bond.' : reassert.reason)}">Reassert Control</button><button data-elevate-thrall="${htmlEscape(servant.id)}" ${elevation.ok ? '' : 'disabled'} title="${htmlEscape(elevation.ok ? 'Turn this mortal thrall into a Vampire Vassal.' : elevation.reason)}">Elevate to Vassal</button><button data-bind-blood-donor="${htmlEscape(servant.id)}" ${donorBinding.ok ? '' : 'disabled'} title="${htmlEscape(donorBinding.ok ? 'Permanently remove this Thrall from ordinary work and bind them to a Blood Cellar until death.' : donorBinding.reason)}">Bind as Blood Donor</button></div><p class="hint">${htmlEscape(elevation.ok ? 'Elevation preserves learned profession skills but replaces Control/Resistance with Vampire Vassal politics.' : elevation.reason)}</p></article>`;
                   })
                   .join('')
           }
+        </section>
+        <section>
+          <h3>Blood Cellar</h3>
+          <p>Blood Stock: ${state.bloodStock.amount}/${bloodStockCapacity}</p>
+          <p>Permanent Donors: ${state.bloodDonors.length}/${bloodDonorCapacity}</p>
+          <p class="hint">Blood Stock has no automatic producer yet. Donor extraction becomes a real timed facility task in the continuous simulation.</p>
+          ${state.bloodDonors.length === 0
+            ? '<p>No bound donors.</p>'
+            : state.bloodDonors.map((donor) => {
+                const cellar = state.rooms.find((room) => room.id === donor.boundRoomInstanceId);
+                return `<article class="servant-card"><h4>${htmlEscape(donor.name)} ${htmlEscape(donor.familyName)}</h4><p>${htmlEscape(PROFESSIONS_BY_ID[donor.professionId].name)} · Blood Resonance ${donor.bloodResonance}</p><p>Health ${donor.health}/${donor.maxHealth} · Stress ${donor.stress}/100</p><p>Bound Day ${donor.boundAtDay} · ${htmlEscape(cellar ? ROOMS_BY_ID[cellar.roomId].name : donor.boundRoomInstanceId)}</p><p class="hint">Permanently removed from normal labor. There is no release action.</p></article>`;
+              }).join('')}
         </section>
         <section>
           <h3>Vampire Vassals</h3>

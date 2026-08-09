@@ -1,6 +1,8 @@
 import { SAVE_FORMAT_VERSION } from '../config/game';
 import { ITEMS_BY_ID } from '../data/items';
-import type { HumanServant, InventoryEntry, ItemId, QualityLevel, SaveGame, SaveSlot, VampireVassal, WorldCycleState } from '../types/models';
+import { ROOMS_BY_ID } from '../data/rooms';
+import { getBloodStockCapacity } from '../simulation/blood/bloodStock';
+import type { BloodDonor, BuiltRoom, HumanServant, InventoryEntry, ItemId, QualityLevel, SaveGame, SaveSlot, VampireVassal, WorldCycleState } from '../types/models';
 
 const DATABASE_NAME = 'bloodwake-db';
 const STORE_NAME = 'save-slots';
@@ -74,11 +76,14 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
   if (!isRecord(value)) {
     return false;
   }
-  const requiredArrays = ['rooms', 'inventory', 'humanServants', 'vampireVassals', 'npcs', 'craftingQueue', 'constructionTasks', 'quests', 'collectibles'];
+  const requiredArrays = ['rooms', 'inventory', 'humanServants', 'bloodDonors', 'vampireVassals', 'npcs', 'craftingQueue', 'constructionTasks', 'quests', 'collectibles'];
   if (typeof value.version !== 'number' || typeof value.seed !== 'string' || typeof value.title !== 'string') {
     return false;
   }
-  if (!isRecord(value.player) || !isRecord(value.time) || !Array.isArray(value.lastEventLog)) {
+  if (!isRecord(value.player) || !isRecord(value.time) || !isRecord(value.bloodStock) || !Array.isArray(value.lastEventLog)) {
+    return false;
+  }
+  if (!isIntegerInRange(value.bloodStock.amount, 0, Number.MAX_SAFE_INTEGER)) {
     return false;
   }
   if ('hunger' in value.player) {
@@ -142,6 +147,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
 
   // Validate population records are objects with string ids
   const humanServants = value.humanServants as unknown[];
+  const bloodDonors = value.bloodDonors as unknown[];
   const vampireVassals = value.vampireVassals as unknown[];
   for (const record of humanServants) {
     if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'human_servant' || 'hunger' in record) {
@@ -153,22 +159,47 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     if (!isIntegerInRange(record.disposition, -100, 100) || !isIntegerInRange(record.fear, 0, 100)) return false;
     if (typeof record.familyName !== 'string' || typeof record.factionId !== 'string' || !isRecord(record.relationships)) return false;
   }
+  for (const record of bloodDonors) {
+    if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'blood_donor') return false;
+    if ('priorities' in record || 'currentJob' in record || 'currentTask' in record || 'taskReason' in record) return false;
+    if (typeof record.boundRoomInstanceId !== 'string' || record.donorStatus !== 'bound') return false;
+    if (!isIntegerInRange(record.boundAtDay, 1, Number.MAX_SAFE_INTEGER)) return false;
+    if (!isIntegerInRange(record.bloodResonance, 1, 5) || !isIntegerInRange(record.resolve, 1, 5)) return false;
+  }
   for (const record of vampireVassals) {
     if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'vampire_vassal' || 'hunger' in record) {
       return false;
     }
+  }
+  const rawRooms = value.rooms as unknown[];
+  if (rawRooms.some((r) => !isRecord(r))) return false;
+  const rooms = rawRooms as BuiltRoom[];
+  if ((value.bloodStock.amount as number) > getBloodStockCapacity(rooms)) return false;
+  const builtCellarIds = new Set(rooms.filter((room) => room.roomId === 'blood_cellar' && room.status === 'built').map((room) => room.id));
+  const donorOccupancy = new Map<string, number>();
+  for (const donor of bloodDonors as BloodDonor[]) {
+    if (!builtCellarIds.has(donor.boundRoomInstanceId)) return false;
+    donorOccupancy.set(donor.boundRoomInstanceId, (donorOccupancy.get(donor.boundRoomInstanceId) ?? 0) + 1);
+  }
+  for (const count of donorOccupancy.values()) {
+    if (count > (ROOMS_BY_ID.blood_cellar.donorSlots ?? 0)) return false;
   }
   // Reject duplicate IDs within and across collections
   const humanIds = new Set((humanServants as HumanServant[]).map((r) => r.id));
   if (humanIds.size !== humanServants.length) {
     return false;
   }
+  const donorIds = new Set((bloodDonors as BloodDonor[]).map((r) => r.id));
+  if (donorIds.size !== bloodDonors.length) return false;
   const vassalIds = new Set((vampireVassals as VampireVassal[]).map((r) => r.id));
   if (vassalIds.size !== vampireVassals.length) {
     return false;
   }
+  for (const id of donorIds) {
+    if (humanIds.has(id)) return false;
+  }
   for (const id of vassalIds) {
-    if (humanIds.has(id)) {
+    if (humanIds.has(id) || donorIds.has(id)) {
       return false;
     }
   }
@@ -197,7 +228,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const normalizeV8 = (value: SaveGame): SaveGame => {
+const normalizeV9 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -211,6 +242,7 @@ const normalizeV8 = (value: SaveGame): SaveGame => {
       ...value.player,
       equipment: value.player.equipment ?? {},
     },
+    bloodStock: { amount: Math.max(0, Math.floor(value.bloodStock.amount)) },
     strategicResources: {
       bloodEssence: Math.max(0, Math.floor(value.strategicResources?.bloodEssence ?? 0)),
       security: Math.max(0, Math.floor(value.strategicResources?.security ?? 0)),
@@ -245,7 +277,7 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  return normalizeV8(value);
+  return normalizeV9(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

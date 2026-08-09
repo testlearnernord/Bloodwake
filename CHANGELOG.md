@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.3d - Blood Stock & Blood Cellar Foundation
+
+- Added Blood Stock as a persistent resource with capacity derived only from built Blood Cellars.
+- Blood Cellars provide 20 Blood Stock capacity and 2 permanent donor slots each.
+- Human Thralls can be irreversibly bound as Blood Donors after an explicit safety confirmation; bound donors are removed from ordinary work and cannot be released.
+- Donor identity, profession skills, traits, health and Blood Resonance remain persistent for later continuous extraction and genetics systems.
+- No passive or phase-based Blood Stock production exists. Continuous donor extraction remains scheduled for 0.6.5f.
+- Regional Humans are no longer immediately replaced one-for-one after capture, turning, draining or donor commitment. The regional target is now a soft cap with delayed deterministic immigration of at most one newcomer on an eligible night.
+- Save format advances to v9; older saves remain intentionally unsupported.
+
+
 ## 0.6.3c1 - Daylight shelter & guard-slot stabilization
 
 - Player movement remains controllable inside the Ruined Stronghold during day instead of being reset to the coffin every frame.

@@ -36,7 +36,7 @@ import {
   type DomainActorMotionRuntime,
   type DomainActorTaskPlan,
 } from '../../simulation/world/domainActorTasks';
-import type { BuiltRoom, HumanCharacter, HumanServant, ItemId, VampireVassal } from '../../types/models';
+import type { BloodDonor, BuiltRoom, HumanCharacter, HumanServant, ItemId, VampireVassal } from '../../types/models';
 import type { GameBridge } from '../bridge';
 import { CombatPresentation, type CombatFeedPrompt, type TargetIndicator } from '../combat/CombatPresentation';
 import type { CombatActionId, CombatDamageEvent, CombatTargetSnapshot, CombatUiSnapshot, HumanActionMode, LockedTargetHudState } from '../combat/combatTypes';
@@ -100,6 +100,14 @@ interface SceneThrall {
   planCacheKey: string | null;
 }
 
+interface SceneDonor {
+  donorId: string;
+  sprite: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Ellipse;
+  nameLabel: Phaser.GameObjects.Text;
+  statusLabel: Phaser.GameObjects.Text;
+}
+
 interface SceneVassal {
   vassalId: string;
   sprite: Phaser.GameObjects.Image;
@@ -135,6 +143,7 @@ export class WorldScene extends Phaser.Scene {
   private resources: SceneResourceNode[] = [];
   private projectiles: SceneProjectile[] = [];
   private thralls: SceneThrall[] = [];
+  private donors: SceneDonor[] = [];
   private vassals: SceneVassal[] = [];
   private thrallsById = new Map<string, SceneThrall>();
   private vassalsById = new Map<string, SceneVassal>();
@@ -187,6 +196,7 @@ export class WorldScene extends Phaser.Scene {
     this.createResources();
     this.createMemoryFragment();
     this.createThralls();
+    this.createDonors();
     this.createVassals();
     this.createRooms();
     this.createUiHints();
@@ -214,6 +224,7 @@ export class WorldScene extends Phaser.Scene {
     this.syncHumansWithState();
     this.syncMemoryWithState();
     this.syncThrallsWithState();
+    this.syncDonorsWithState();
     this.syncVassalsWithState();
     this.updateDomainPopulationActors(delta);
     this.syncRoomsWithState();
@@ -342,6 +353,56 @@ export class WorldScene extends Phaser.Scene {
     const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${thrall.name} ${thrall.familyName}`, { color: '#e7d8c9', fontSize: '9px' }).setOrigin(0.5).setDepth(6);
     const jobLabel = this.add.text(anchor.x, anchor.y + 20, 'Thrall · Idle', { color: '#aeb8c4', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
     this.thralls.push({ thrallId: thrall.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime(), plan: null, planCacheKey: null });
+  }
+
+  private getBloodDonorAnchor(donor: BloodDonor): { x: number; y: number } {
+    const state = this.bridge.getState();
+    const room = state.rooms.find((candidate) => candidate.id === donor.boundRoomInstanceId);
+    if (!room) return { x: 170, y: 360 };
+    const center = getStrongholdRoomCenter(room);
+    const roomDonors = state.bloodDonors.filter((candidate) => candidate.boundRoomInstanceId === donor.boundRoomInstanceId);
+    const slot = Math.max(0, roomDonors.findIndex((candidate) => candidate.id === donor.id));
+    return { x: center.x + (slot % 2 === 0 ? -18 : 18), y: center.y + 17 };
+  }
+
+  private createDonors(): void {
+    this.donors = [];
+    for (const donor of this.bridge.getState().bloodDonors) this.spawnDonorVisual(donor);
+  }
+
+  private spawnDonorVisual(donor: BloodDonor): void {
+    const anchor = this.getBloodDonorAnchor(donor);
+    const shadow = CombatPresentation.createShadow(this, anchor.x, anchor.y, 22, 10);
+    const sprite = this.add.image(anchor.x, anchor.y, 'thrall-token').setTint(0x8f2638).setDepth(5);
+    const nameLabel = this.add.text(anchor.x, anchor.y - 27, `${donor.name} ${donor.familyName}`, { color: '#f0b8bd', fontSize: '9px' }).setOrigin(0.5).setDepth(6);
+    const statusLabel = this.add.text(anchor.x, anchor.y + 20, 'Blood Donor · Bound', { color: '#cf6679', fontSize: '8px' }).setOrigin(0.5).setDepth(6);
+    this.donors.push({ donorId: donor.id, sprite, shadow, nameLabel, statusLabel });
+  }
+
+  private syncDonorsWithState(): void {
+    const state = this.bridge.getState();
+    const donorById = new Map(state.bloodDonors.map((donor) => [donor.id, donor]));
+    this.donors = this.donors.filter((entry) => {
+      if (donorById.has(entry.donorId)) return true;
+      entry.sprite.destroy();
+      entry.shadow.destroy();
+      entry.nameLabel.destroy();
+      entry.statusLabel.destroy();
+      return false;
+    });
+    const existingIds = new Set(this.donors.map((entry) => entry.donorId));
+    for (const donor of state.bloodDonors) {
+      if (!existingIds.has(donor.id)) this.spawnDonorVisual(donor);
+    }
+    for (const entry of this.donors) {
+      const donor = donorById.get(entry.donorId);
+      if (!donor) continue;
+      const anchor = this.getBloodDonorAnchor(donor);
+      entry.sprite.setPosition(anchor.x, anchor.y);
+      entry.shadow.setPosition(anchor.x, anchor.y + 9);
+      entry.nameLabel.setPosition(anchor.x, anchor.y - 27);
+      entry.statusLabel.setPosition(anchor.x, anchor.y + 20);
+    }
   }
 
   private createVassals(): void {

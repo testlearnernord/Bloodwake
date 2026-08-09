@@ -15,6 +15,7 @@ const getItemCount = (inventory: InventoryEntry[], itemId: ItemId): number =>
 
 export const TOPBAR_RESOURCES: TopBarResourceDefinition[] = [
   { id: 'bloodEssence', iconId: 'bloodEssence', label: 'Blood Essence', readAmount: (state) => state.strategicResources.bloodEssence },
+  { id: 'bloodStock', iconId: 'bloodStock', label: 'Blood Stock', readAmount: (state) => state.bloodStock.amount },
   { id: 'wood', iconId: 'wood', label: 'Wood', readAmount: (state) => getItemCount(state.inventory, 'wood') },
   { id: 'stone', iconId: 'stone', label: 'Stone', readAmount: (state) => getItemCount(state.inventory, 'stone') },
   { id: 'iron_ore', iconId: 'iron_ore', label: 'Iron Ore', readAmount: (state) => getItemCount(state.inventory, 'iron_ore') },

@@ -183,7 +183,7 @@ describe('turned and drained humans remain unavailable in the nightly lifecycle'
     expect(drainedHuman && isHumanPresentInWorld(drainedHuman)).toBe(false);
   });
 
-  it('active world Human population returns to target after a full cycle', () => {
+  it('does not instantly refill active Human population after heavy losses', () => {
     const state = createNewGameState({ seed: 'replenish-target' });
     let current = state;
     for (let index = 0; index < 4; index += 1) {
@@ -192,7 +192,8 @@ describe('turned and drained humans remain unavailable in the nightly lifecycle'
     }
     const { state: day } = advanceWorldPhase(current);
     const { state: night } = advanceWorldPhase(day);
-    expect(night.npcs.filter(isHumanPresentInWorld)).toHaveLength(TARGET_HUMAN_POPULATION);
+    expect(night.npcs.filter(isHumanPresentInWorld)).toHaveLength(1);
+    expect(night.npcs.filter(isHumanPresentInWorld).length).toBeLessThan(TARGET_HUMAN_POPULATION);
   });
 });
 

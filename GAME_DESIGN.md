@@ -102,6 +102,14 @@ Efficiency is transparent and deterministic. Profession aptitude, existing job-s
 
 Guarding and Research are deliberately not simulated yet. They remain disabled until defense/research systems provide real sources, sinks, and consequences.
 
+## Blood Donors
+
+Blood Donor is an irreversible captive lifecycle role, not a normal job priority. A Human Thrall may be permanently bound to a built Blood Cellar after an explicit confirmation. They leave ordinary labor forever and remain bound until death. Their identity, learned skills, traits, health and Blood Resonance remain meaningful because committing a valuable worker, future vampire candidate or genetically interesting human to blood production must be a strategic sacrifice.
+
+0.6.3d establishes donor slots and Blood Stock storage only. It deliberately does not grant passive blood per day. Extraction, recovery, health decline and death become real facility tasks under continuous simulation.
+
+Regional population is also persistent enough for player actions to matter: removing a Human creates a real vacancy. New people may migrate into the region later, but there is no immediate one-for-one replacement.
+
 ## Human Thralls and Vampire Vassals
 
 Human Servants are prisoners under vampiric venom and domination. They are not free citizens of the domain. Their primary relationship to the player is **Control**, opposed by **Resistance**, not Loyalty. Control naturally weakens over time and can be reinforced by the vampire; deprivation accelerates loss of control and a completely broken bond allows escape.

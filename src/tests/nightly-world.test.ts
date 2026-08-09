@@ -30,15 +30,19 @@ describe('0.6.3c nightly world variation', () => {
     expect(getNightlyHumanPosition('variation', 4, 'human-1', 0)).not.toEqual(point);
   });
 
-  it('rotates a bounded regional human roster and generates replacements without duplicating IDs', () => {
+  it('rotates a bounded regional human roster and admits newcomers gradually without duplicate IDs', () => {
     const state = createNewGameState({ seed: 'regional-pool' });
     const result = resolveNightlyHumanPopulation(state.npcs, state.seed, 2, 5);
     expect(result.npcs.filter(isHumanPresentInWorld)).toHaveLength(5);
-    expect(result.npcs.filter((human) => human.status === 'wandering')).toHaveLength(8);
+    const regional = result.npcs.filter((human) => human.status === 'wandering');
+    expect(regional.length).toBeGreaterThanOrEqual(5);
+    expect(regional.length).toBeLessThanOrEqual(6);
     expect(new Set(result.npcs.map((human) => human.id)).size).toBe(result.npcs.length);
-    expect(result.newHumanIds).toHaveLength(3);
-    const firstReplacement = result.npcs.find((human) => human.id === 'human-d2-1');
-    expect(firstReplacement).toEqual(generateHumanFromSeed(`${state.seed}-day-2-spawn-1`, 'human-d2-1', 2));
+    expect(result.newHumanIds.length).toBeLessThanOrEqual(1);
+    if (result.newHumanIds[0]) {
+      const firstReplacement = result.npcs.find((human) => human.id === result.newHumanIds[0]);
+      expect(firstReplacement).toEqual(generateHumanFromSeed(`${state.seed}-day-2-spawn-1`, 'human-d2-1', 2));
+    }
   });
 
   it('keeps escaped thralls off-map for a deterministic delay and only allows interaction after resurfacing', () => {

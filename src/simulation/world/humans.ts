@@ -10,7 +10,8 @@ export const isHumanPresentInWorld = (human: HumanCharacter): boolean =>
   human.worldPresence === 'active'
   && human.status !== 'drained'
   && human.status !== 'turned'
-  && human.status !== 'enthralled';
+  && human.status !== 'enthralled'
+  && human.status !== 'donor';
 
 const FIRST_NAMES = ['Adela', 'Berta', 'Clara', 'Dieter', 'Egon', 'Frieda', 'Greta', 'Heinrich'];
 const FAMILY_NAMES = ['Klein', 'Waldmann', 'Roth', 'Vogel', 'Falk', 'Stein'];

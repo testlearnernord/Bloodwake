@@ -32,7 +32,7 @@ export type ItemSlot = 'Weapon' | 'Armor' | 'Accessory';
 export type QuestStepStatus = 'locked' | 'active' | 'complete';
 export type EnemyType = 'bandit' | 'clergy_hunter' | 'elite_knight';
 export type TaskType = 'construct_room' | 'craft_recipe' | 'gather_resource' | 'guard_stronghold';
-export type HumanStatus = 'wandering' | 'fed' | 'drained' | 'turned' | 'enthralled';
+export type HumanStatus = 'wandering' | 'fed' | 'drained' | 'turned' | 'enthralled' | 'donor';
 export type HumanWorldPresence = 'active' | 'dormant';
 export type HumanDormantReason = 'regional' | 'escaped' | 'captured';
 export type ItemCategory = 'material' | 'weapon' | 'armor' | 'accessory' | 'consumable' | 'quest' | 'relic';
@@ -179,6 +179,18 @@ export interface HumanServant extends PopulationBase {
   control: number;
 }
 
+/** A mortal permanently removed from ordinary labor and bound to a Blood Cellar. */
+export type BloodDonor = Omit<HumanServant, 'kind' | 'priorities' | 'currentJob' | 'currentTask' | 'taskReason'> & {
+  kind: 'blood_donor';
+  boundRoomInstanceId: string;
+  boundAtDay: number;
+  donorStatus: 'bound';
+};
+
+export interface BloodStockState {
+  amount: number;
+}
+
 /** An autonomous vampire political subordinate, not a mortal thrall. */
 export interface VampireVassal extends PopulationBase {
   kind: 'vampire_vassal';
@@ -202,6 +214,8 @@ export interface RoomDefinition {
   workerSlots: number;
   storageCapacity: number;
   housingCapacity: number;
+  bloodStorageCapacity?: number;
+  donorSlots?: number;
   productionCapabilities: string[];
   modifiers: ItemModifier;
   allowedJobTypes: JobType[];
@@ -362,7 +376,9 @@ export interface SaveGame {
   player: VampireCharacter;
   npcs: HumanCharacter[];
   humanServants: HumanServant[];
+  bloodDonors: BloodDonor[];
   vampireVassals: VampireVassal[];
+  bloodStock: BloodStockState;
   strategicResources: DomainResourcePool;
   inventory: InventoryEntry[];
   rooms: BuiltRoom[];

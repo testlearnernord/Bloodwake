@@ -3,6 +3,7 @@ const icon = (path: string, cls = ''): string =>
 
 const ICON_PATHS: Record<string, string> = {
   bloodEssence: 'M12 2C9 6 6 9 6 13a6 6 0 1012 0c0-4-3-7-6-11z',
+  bloodStock: 'M8 2h8v3l-1 2v2c3 2 5 5 5 8 0 3-3 5-8 5s-8-2-8-5c0-3 2-6 5-8V7L8 5V2z',
   wood: 'M5 19l7-14 7 14H5z',
   stone: 'M12 3l8 6-8 12L4 9l8-6z',
   iron_ore: 'M12 2l9 5v10l-9 5-9-5V7l9-5z',
