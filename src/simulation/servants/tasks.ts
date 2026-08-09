@@ -61,6 +61,7 @@ export const createTaskCandidates = (
       id: lowWood ? 'gather-wood' : 'gather-herbs',
       type: 'gather_resource',
       jobType,
+      itemId: lowWood ? 'wood' : 'herbs',
       score: priority + (professionBonuses[jobType] ?? 0) + traitBonusFor(jobType),
       reason: lowWood ? 'Wood stores are low.' : 'Herbs are needed for remedies.',
     });

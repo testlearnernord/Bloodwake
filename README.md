@@ -2,7 +2,7 @@
 
 Bloodwake is a free browser-only gothic strategy-action RPG built with TypeScript, Phaser 3, Vite, plain HTML/CSS, IndexedDB, and deterministic simulation systems.
 
-> Current status: Milestone 0.6.3b2 Domain World Presence — Human Thralls and Vampire Vassals now have explicit synchronized character actors inside the Stronghold.
+> Current status: Milestone 0.6.3b3 Visible Work — controlled actors now move toward tasks and visibly work/rest from the same authoritative task selectors used by simulation.
 
 ## Zero-cost architecture
 

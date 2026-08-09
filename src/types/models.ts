@@ -323,6 +323,7 @@ export interface TaskCandidate {
   jobType: JobType;
   score: number;
   reason: string;
+  itemId?: 'wood' | 'herbs';
 }
 
 export interface InheritanceReport {

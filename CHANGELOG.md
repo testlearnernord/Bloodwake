@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.3b3 - Visible Work & Actor Task Foundation
+
+- Human Thralls now travel toward selected daytime work instead of remaining fixed Stronghold decorations.
+- Vampire Vassals now travel toward selected night tasks and shelter during day.
+- Added a pure actor motion state machine: Idle → Moving → Working → Returning.
+- Visible destinations are derived from the same Human/Vassal task selectors used by simulation, avoiding a duplicate job system.
+- Construction and crafting route actors to real room positions; gathering/hunting/guarding receive explicit world destinations as transitional anchors.
+- No new resource rewards or production shortcuts were added; phase-batched production remains temporary pending the 0.6.3b4 simulation architecture audit.
+- Save format remains v7.
+
 ## 0.6.3b2 - Domain World Presence
 
 - Human Thralls now appear as synchronized character silhouettes inside the Stronghold.
