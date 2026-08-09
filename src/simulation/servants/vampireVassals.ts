@@ -1,0 +1,33 @@
+import type { VampireCharacter, VampireVassal } from '../../types/models';
+
+export const createVampireVassal = (vampire: VampireCharacter): VampireVassal => ({
+  kind: 'vampire_vassal',
+  id: vampire.id,
+  name: vampire.name,
+  age: vampire.age,
+  professionId: vampire.professionId,
+  attributes: { ...vampire.attributes },
+  traitIds: [...vampire.traitIds],
+  health: vampire.health,
+  maxHealth: vampire.maxHealth,
+  morale: vampire.morale,
+  loyalty: vampire.loyalty,
+  ambition: vampire.ambition,
+  stress: vampire.stress,
+  combat: vampire.combat,
+  professionSkills: { ...vampire.professionSkills },
+  vitae: vampire.vitae,
+  maxVitae: vampire.maxVitae,
+  priorities: {
+    Building: 'Normal',
+    Crafting: 'High',
+    Gathering: 'Low',
+    Guarding: 'Normal',
+    Research: 'Low',
+    Hunting: 'Low',
+  },
+  currentJob: null,
+  currentTask: null,
+  taskReason: 'Newly turned and awaiting direction.',
+  equipped: {},
+});

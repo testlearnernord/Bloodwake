@@ -20,6 +20,7 @@ export const inheritVampire = (
   sire: VampireCharacter,
   human: HumanCharacter,
   seed: string,
+  learnedProfessionSkills: VampireCharacter['professionSkills'] = {},
 ): { vampire: VampireCharacter; report: InheritanceReport } => {
   const rng = new SeededRng(`${seed}-${human.id}-${sire.id}`);
   const sireEffectIds = getTraitEffectIds(sire.traitIds);
@@ -70,7 +71,7 @@ export const inheritVampire = (
     Object.entries(baseAttributes).map(([key, value]) => [key, Math.max(1, Math.round(value / 2))]),
   ) as VampireCharacter['attributes'];
   const attributes = applyAttributeDelta(finalAttributes, traitModifiers);
-  const professionSkills = { ...sire.professionSkills };
+  const professionSkills = { ...learnedProfessionSkills };
   const vampire: VampireCharacter = {
     id: `vampire-${human.id}`,
     name: `${human.name} ${human.familyName}`,

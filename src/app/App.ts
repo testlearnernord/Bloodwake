@@ -22,6 +22,7 @@ import { applyHumanAction, validateHumanAction } from '../simulation/combat/bite
 import { getBloodChoicePreview } from '../simulation/blood/bloodChoices';
 import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
 import { reassertThrallControl } from '../simulation/servants/humanThralls';
+import { elevateThrallToVassal } from '../simulation/servants/thrallElevation';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
 import { ToastManager } from '../ui/notifications/toasts';
@@ -519,6 +520,22 @@ export class BloodwakeApp {
         }
         this.state = result.state;
         this.notify(result.message);
+        await this.autoSave('slot-1');
+        this.renderGame();
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-elevate-thrall]')) {
+      button.onclick = async () => {
+        if (!this.state) return;
+        const result = elevateThrallToVassal(this.state, button.dataset.elevateThrall ?? '');
+        if (result.state === this.state) {
+          this.notify(result.message);
+          return;
+        }
+        this.state = result.state;
+        this.notify(result.message);
+        if (result.inheritanceSummary) this.notify(result.inheritanceSummary);
         await this.autoSave('slot-1');
         this.renderGame();
       };

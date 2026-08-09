@@ -123,6 +123,12 @@ Rules:
 - Do not create placeholder Research or Guarding rewards merely to make a button appear active.
 - Future visible worker actors must present this simulation state rather than owning a second independent job simulation.
 
+## Thrall elevation boundary (0.6.3b1)
+
+Elevation converts one existing `HumanServant` into one `VampireVassal`. The mortal Thrall is the source of current learned profession skills, equipment, stress and other captivity-era state; the persisted NPC identity supplies human-only background such as Ambition for inheritance. Elevation removes the Human Thrall entry, marks the mortal NPC identity `turned`, records inheritance, and creates a Vampire Vassal through the same shared vassal factory as direct Turning.
+
+Learned profession skills are not bloodline inheritance. `inheritVampire()` therefore accepts explicit learned host skills and never copies the sire's profession skill map by default.
+
 ## Human Thrall boundary (0.6.3a)
 
 `HumanServant` and `VampireVassal` share only operational population fields. Human Thralls must not acquire loyalty/ambition/morale compatibility fields. Their authority model lives in `simulation/servants/humanThralls.ts` through Control/Resistance, housing, Food upkeep and reassertion. Vampire Vassal politics remain separate. Compatibility aliases for the removed human loyalty fields are forbidden; save v7 rejects them.
