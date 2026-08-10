@@ -5,8 +5,8 @@ import type { BuiltRoom, CraftingOrder, DayPhase, InventoryEntry, JobType, TaskC
 import { getItemQuantity } from '../inventory/inventory';
 import { getTraitById } from '../traits/traitUtils';
 
-export const canVassalWorkInPhase = (_vassal: VampireVassal, phase: DayPhase): boolean =>
-  WORK_PHASES['vampire'].includes(phase);
+export const canVassalWorkInPhase = (vassal: VampireVassal, phase: DayPhase): boolean =>
+  vassal.state === 'active' && WORK_PHASES['vampire'].includes(phase);
 
 export const createTaskCandidates = (
   vassal: VampireVassal,
@@ -83,6 +83,9 @@ export const selectTaskForVassal = (
   inventory: InventoryEntry[],
   phase: DayPhase,
 ): TaskCandidate | null => {
+  if (vassal.state === 'torpor') {
+    return { id: 'torpor', type: 'guard_stronghold', jobType: 'Guarding', score: -1, reason: 'In Torpor. No orders can be performed.' };
+  }
   if (!canVassalWorkInPhase(vassal, phase)) {
     return {
       id: 'rest',

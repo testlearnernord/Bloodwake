@@ -9,6 +9,7 @@ import { getItemQuantity, hasItems } from '../../simulation/inventory/inventory'
 import { calculatePlayerCombatStats } from '../../simulation/combat/stats';
 import { getVitaeCondition } from '../../simulation/blood/vitaeCondition';
 import { selectTaskForVassal } from '../../simulation/servants/tasks';
+import { getDominionSummary } from '../../simulation/servants/dominion';
 import { getHumanHousingCapacity, getThrallControlState, validateReassertThrallControl } from '../../simulation/servants/humanThralls';
 import { HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD, HUMAN_WORK_JOB_TYPES, selectTaskForHumanThrall } from '../../simulation/servants/humanWork';
 import { validateElevateThrall } from '../../simulation/servants/thrallElevation';
@@ -204,6 +205,7 @@ export const renderOverlay = (
     const housingCapacity = getHumanHousingCapacity(state.rooms);
     const bloodStockCapacity = getBloodStockCapacity(state.rooms);
     const bloodDonorCapacity = getBloodDonorCapacity(state.rooms);
+    const dominion = getDominionSummary(state);
     return renderOverlayPanel(
       'Domain Population',
       `<div class="columns three">
@@ -242,6 +244,8 @@ export const renderOverlay = (
         </section>
         <section>
           <h3>Vampire Vassals</h3>
+          <p>Dominion: ${dominion.activeCost}/${dominion.capacity}${dominion.strain > 0 ? ` · Strain ${dominion.strain}` : ''} · Active ${dominion.activeVassals} · Torpor ${dominion.torpidVassals}</p>
+          <p class="hint">Active Vassals cost 1 Dominion each. Torpid Vassals cost 0 and cannot work or receive orders.</p>
           ${
             vassals.length === 0
               ? '<p>No vampire vassals yet. Turning creates a powerful but autonomous subordinate, not a thrall.</p>'
@@ -249,7 +253,7 @@ export const renderOverlay = (
                   .map((vassal) => {
                     const profession = PROFESSIONS_BY_ID[vassal.professionId];
                     const predictedTask = selectTaskForVassal(vassal, state.rooms, state.craftingQueue, state.inventory, state.time.phase);
-                    return `<article><h4>${htmlEscape(vassal.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>Health ${vassal.health}/${vassal.maxHealth} · Morale ${vassal.morale} · Loyalty ${vassal.loyalty}</p><p>Ambition ${vassal.ambition} · Stress ${vassal.stress}</p><p>Current task: ${htmlEscape(vassal.currentTask ?? 'none')} — ${htmlEscape(vassal.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTask?.reason ?? 'No enabled work is available.')}</p></article>`;
+                    return `<article><h4>${htmlEscape(vassal.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>State: <strong>${htmlEscape(vassal.state === 'torpor' ? 'Torpor' : 'Active')}</strong> · Dominion ${vassal.state === 'active' ? 1 : 0}</p><p>Health ${vassal.health}/${vassal.maxHealth} · Morale ${vassal.morale} · Loyalty ${vassal.loyalty}</p><p>Ambition ${vassal.ambition} · Stress ${vassal.stress}</p><p>Current task: ${htmlEscape(vassal.currentTask ?? 'none')} — ${htmlEscape(vassal.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTask?.reason ?? 'No enabled work is available.')}</p><div class="button-row compact"><button data-vassal-torpor="${htmlEscape(vassal.id)}" data-vassal-torpor-action="${vassal.state === 'torpor' ? 'wake' : 'sleep'}">${vassal.state === 'torpor' ? 'Awaken' : 'Enter Torpor'}</button></div></article>`;
                   })
                   .join('')
           }
@@ -263,7 +267,7 @@ export const renderOverlay = (
                   .map(
                     (vassal) => `<article><h4>${htmlEscape(vassal.name)}</h4>${(['Building', 'Crafting', 'Gathering', 'Guarding', 'Research', 'Hunting'] as const)
                       .map(
-                        (jobType) => `<label>${htmlEscape(jobType)}<select data-servant-id="${htmlEscape(vassal.id)}" data-job-type="${jobType}">${['Disabled', 'Low', 'Normal', 'High', 'Critical']
+                        (jobType) => `<label>${htmlEscape(jobType)}<select data-servant-id="${htmlEscape(vassal.id)}" data-job-type="${jobType}" ${vassal.state === 'torpor' ? 'disabled' : ''}>${['Disabled', 'Low', 'Normal', 'High', 'Critical']
                           .map((priority) => `<option value="${priority}" ${vassal.priorities[jobType] === priority ? 'selected' : ''}>${priority}</option>`)
                           .join('')}</select></label>`,
                       )

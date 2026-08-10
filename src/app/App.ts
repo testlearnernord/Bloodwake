@@ -24,6 +24,7 @@ import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
 import { reassertThrallControl } from '../simulation/servants/humanThralls';
 import { elevateThrallToVassal } from '../simulation/servants/thrallElevation';
 import { bindThrallAsBloodDonor, validateBindThrallAsBloodDonor } from '../simulation/servants/bloodDonors';
+import { setVassalTorpor } from '../simulation/servants/dominion';
 import { BLOOD_DONOR_HOLD_MS, renderBloodDonorConfirmation } from '../ui/confirmations/bloodDonorConfirmation';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
@@ -577,6 +578,23 @@ export class BloodwakeApp {
             : servant,
         );
         this.notify('Human Thrall work priorities updated.');
+        await this.autoSave('slot-1');
+        this.renderGame();
+      };
+    }
+
+    for (const button of this.root.querySelectorAll<HTMLButtonElement>('[data-vassal-torpor]')) {
+      button.onclick = async () => {
+        if (!this.state) return;
+        const vassalId = button.dataset.vassalTorpor ?? '';
+        const torpor = button.dataset.vassalTorporAction === 'sleep';
+        const result = setVassalTorpor(this.state, vassalId, torpor);
+        if (result.state === this.state) {
+          this.notify(result.message);
+          return;
+        }
+        this.state = result.state;
+        this.notify(result.message);
         await this.autoSave('slot-1');
         this.renderGame();
       };

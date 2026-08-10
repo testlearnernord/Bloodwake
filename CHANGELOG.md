@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.4a - Dominion & Torpor Foundation
+
+- Save format advances to v11 and Vampire Vassals now persist an explicit `active` / `torpor` lifecycle state.
+- Introduced Dominion capacity from the player's Blood Control + Presence; each active Vassal costs 1 Dominion while Torpor costs 0.
+- Domain Population now shows Dominion usage, capacity, strain, and active/Torpor counts.
+- Vassals can enter Torpor or awaken from management UI. Torpor clears current work, disables priorities, and prevents task assignment.
+- Visible actor-task projection treats Torpor as an inactive state rather than inventing separate simulation authority.
+- Dominion Strain is exposed but does not yet apply political penalties; those arrive in the next 0.6.4 slices.
+
 ## 0.6.3e1 - In-game irreversible confirmation & Stronghold readability
 
 - Replaced the browser-native Blood Donor `window.confirm()` with a Bloodwake-native modal layered above the Domain Population screen.

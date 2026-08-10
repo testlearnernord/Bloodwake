@@ -4,9 +4,9 @@ Save data is stored as versioned JSON in IndexedDB.
 
 ## Current version
 
-- `version: 10`
+- `version: 11`
 
-## Version 10 key fields
+## Version 11 key fields
 
 The main collections include `player`, `npcs`, `humanServants`, `bloodDonors`, `vampireVassals`, `bloodStock`, `strategicResources`, `inventory`, `rooms`, `craftingQueue`, `time`, `worldCycle`, `quests`, `collectibles`, `inheritanceHistory`, `settings`, and `lastEventLog`.
 
@@ -52,7 +52,7 @@ Enemy and resource instance IDs are generated deterministically from the current
 
 ## Old save compatibility
 
-**Saves at versions 1 through 9 are intentionally incompatible with v10.** Loading or importing an older save returns a clear incompatibility error. There is no partial migration or silent repair; players must start a new game.
+**Saves at versions 1 through 10 are intentionally incompatible with v11.** Loading or importing an older save returns a clear incompatibility error. There is no partial migration or silent repair; players must start a new game.
 
 ## Historical breaking changes
 
@@ -64,3 +64,4 @@ Enemy and resource instance IDs are generated deterministically from the current
 
 - v9 adds persistent Blood Stock capacity, irreversible Blood Donors, and slow regional Human repopulation instead of immediate one-for-one replacement.
 - v10 removes the unused `constructionTasks` save field plus duplicate `player.bloodEssence` and `player.memoryFragments` authorities. Construction is authoritative in `rooms[].status/progress`, Blood Essence in `strategicResources`, and recovered memories in `collectibles`.
+- v11 adds explicit Vampire Vassal `state` (`active` or `torpor`) and `torporSinceDay`; Dominion is derived from the active Vassal roster rather than stored as a duplicate counter.

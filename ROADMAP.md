@@ -22,8 +22,13 @@
   - 0.6.3c1 Daylight shelter & guard-slot stabilization ✅
   - 0.6.3d Blood Stock & Blood Cellar Foundation ✅
   - 0.6.3e Stabilization & Legacy Purge ✅
-  - 0.6.3e1 In-game irreversible confirmation & Stronghold readability (current)
+  - 0.6.3e1 In-game irreversible confirmation & Stronghold readability ✅
 - 0.6.4 Dominion, Torpor, Vampire Politics & Orders
+  - 0.6.4a Dominion & Torpor Foundation (current)
+  - 0.6.4b Vassal Crypt & Dominion Strain
+  - 0.6.4c Loyalty, Ambition & political events
+  - 0.6.4d Vassal operational orders
+  - 0.6.4e Stabilization & Legacy Purge
 - 0.6.5 Continuous World Simulation
   - 0.6.5a World Clock & solar cycle
   - 0.6.5b Authoritative actor tasks & reservations

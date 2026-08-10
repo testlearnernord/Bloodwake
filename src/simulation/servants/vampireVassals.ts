@@ -18,6 +18,8 @@ export const createVampireVassal = (vampire: VampireCharacter): VampireVassal =>
   professionSkills: { ...vampire.professionSkills },
   vitae: vampire.vitae,
   maxVitae: vampire.maxVitae,
+  state: 'active',
+  torporSinceDay: null,
   priorities: {
     Building: 'Normal',
     Crafting: 'High',
