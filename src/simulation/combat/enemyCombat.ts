@@ -23,6 +23,7 @@ export interface EnemyRuntimeState {
   staggerUntil: number;
   poise: number;
   pendingProjectile: boolean;
+  targetId: string | null;
 }
 
 export interface EnemyStepResult {
@@ -52,6 +53,7 @@ export const createEnemyRuntime = (id: string, type: EnemyType, position: Vector
     staggerUntil: 0,
     poise: enemy.poise,
     pendingProjectile: false,
+    targetId: null,
   };
 };
 
@@ -60,6 +62,7 @@ export const stepEnemyCombat = (
   playerPosition: VectorLike,
   now: number,
   playerArmor = 0,
+  targetId = 'player',
 ): EnemyStepResult => {
   if (enemy.health <= 0) {
     return { enemy: { ...enemy, state: 'dead', telegraphVisible: false }, damageEvents: [], shouldFireProjectile: false, shouldCleanupTelegraph: true };
@@ -80,7 +83,7 @@ export const stepEnemyCombat = (
         ? [
             {
               sourceId: enemy.id,
-              targetId: 'player',
+              targetId: enemy.targetId ?? targetId,
               actionId: attack.id,
               rawDamage: attack.damage,
               mitigatedDamage: applyIncomingDamage(attack.damage, playerArmor),
@@ -155,6 +158,7 @@ export const stepEnemyCombat = (
         phaseEndsAt: now + attack.windupMs,
         telegraphVisible: true,
         directionLock,
+        targetId,
       },
       damageEvents: [],
       shouldFireProjectile: false,
@@ -163,7 +167,7 @@ export const stepEnemyCombat = (
   }
   const nextState: EnemyCombatState = rangeToPlayer <= definition.detectionRange ? (rangeToPlayer < definition.preferredDistance && enemy.type === 'clergy_hunter' ? 'reposition' : 'approach') : 'return_home';
   return {
-    enemy: { ...enemy, state: nextState, facing: nextFacing, telegraphVisible: false, directionLock: null },
+    enemy: { ...enemy, state: nextState, facing: nextFacing, telegraphVisible: false, directionLock: null, targetId: nextState === 'return_home' ? null : targetId },
     damageEvents: [],
     shouldFireProjectile: false,
     shouldCleanupTelegraph: enemy.telegraphVisible,

@@ -18,6 +18,8 @@ export interface GameBridge {
   onEnemyDefeated(instanceId: string, enemyType: EnemyType): void;
   onZoneChanged(zone: string): void;
   onPlayerVitalsChanged(nextHealth: number, nextVitae: number): void;
+  onVassalVitalsChanged(vassalId: string, nextHealth: number, nextVitae: number): void;
+  onVassalIncapacitated(vassalId: string): void;
   onRespawn(): void;
   onPauseRequested(): void;
   notifyWorldCycleChanged(): void;

@@ -27,8 +27,8 @@
   - 0.6.4a Dominion & Torpor Foundation ✅
   - 0.6.4b Vassal Crypt & Dominion Strain ✅
   - 0.6.4c Loyalty, Ambition & political events ✅
-  - 0.6.4d Vassal operational orders (current)
-  - 0.6.4d1 Shared Vassal Combat AI: shared player action runtime, target lock/orbit, Light/Heavy/Dodge/Blood Lance/Predatory Bite, utility decisions and retreat
+  - 0.6.4d Vassal operational orders ✅
+  - 0.6.4d1 Shared Vassal Combat AI: shared player action runtime, target lock/orbit, Light/Heavy/Dodge/Blood Lance/Predatory Bite, utility decisions and retreat (current)
   - 0.6.4e Stabilization & Legacy Purge
 - 0.6.5 Continuous World Simulation
   - 0.6.5a World Clock & solar cycle

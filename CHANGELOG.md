@@ -410,3 +410,13 @@
 - Added save format version 2 and v1→v2 migration.
 - Added startup fatal-error fallback panel to prevent blank startup pages.
 - Added `npm run smoke:pages` and CI/deploy smoke checks for GitHub Pages output.
+
+## 0.6.4d1 — Shared Vassal Combat AI
+
+- Vampire Vassals on operational orders now acquire and retain real hostile target locks in the world.
+- Vassals reuse the player action-state runtime for Light/Heavy attacks, Dodge, Blood Lance and Predatory Bite, including cooldowns and personal Vitae costs.
+- Companion/Guard/Scout/Hunt/Raid orders now produce different engagement radii and retreat thresholds instead of being movement-only labels.
+- Enemy AI can target operational Vassals; melee and Holy Bolt damage now resolve against the locked vampire target rather than always hard-coding the player.
+- Vassal Health/Vitae changes persist through the App bridge. Combat incapacitation drives a Vassal into Torpor and clears the field order.
+- Predatory Bite can replenish a Vassal's own Vitae from a physically weakened enemy and can fail deterministically, causing real injury.
+- No new save format version: action runtime, target lock, dodge direction and other frame-level combat state remain transient.
