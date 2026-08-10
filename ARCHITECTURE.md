@@ -29,36 +29,40 @@ Any new compatibility layer must document:
 
 Once a supported transition has ended, obsolete compatibility models, aliases, conversion helpers, and tests must be removed instead of being retained for hypothetical future use.
 
-## Current save/state authority (0.6.3e)
+## Current save/state authority (0.6.4e)
 
 Historical milestone implementation notes belong in `CHANGELOG.md` and `docs/archive/`; this document describes current authority only.
 
-- **Save format v10 is authoritative.** Prototype saves v1-v9 are intentionally unsupported rather than carried through permanent compatibility layers.
+- **Save format v12 is authoritative.** Prototype saves v1-v11 are intentionally unsupported rather than carried through permanent compatibility layers.
 - **Population is explicit.** `humanServants`, `bloodDonors`, and `vampireVassals` are separate collections; the legacy generic `servants` field is invalid.
 - **Human identity is persistent.** `npcs` owns free/dormant Human lifecycle metadata, while Stronghold population arrays own their captive/vampire roles.
 - **Construction has one authority.** `BuiltRoom.status/progress` represents placed construction. The unused `constructionTasks` save/model path was removed in 0.6.3e.
 - **Blood Essence has one authority.** Strategic Blood Essence lives only in `SaveGame.strategicResources.bloodEssence`; VampireCharacter no longer duplicates it.
 - **Recovered memories have one authority.** `SaveGame.collectibles[].discovered` owns memory recovery; VampireCharacter no longer carries a duplicate `memoryFragments` list.
 - **Blood Stock is separate from Vitae and Blood Essence.** `bloodStock.amount` is bounded by built Blood Cellar capacity. No passive donor production exists yet.
+- **Vassal lifecycle has one simulation authority.** `src/simulation/servants/dominion.ts` owns entering Torpor, awakening, and combat incapacitation invariants. `App.ts` only invokes that authority and performs UI/autosave follow-up; it does not reconstruct Torpor state.
+- **Vassal politics and operational intent are explicit.** Loyalty/Morale/Ambition/Stress are persistent inputs, Obedience/stance are derived, and `operationalOrder` is the single persistent field-operation intent. Torpor cannot retain an active operation or executable work state.
+- **Shared Vassal combat is real world state.** Operational Vassals use the same action runtime and combat primitives as the player; combat Health/Vitae changes persist back to the character record while frame-level action/target/dodge state remains transient.
 - **World presentation is a projection.** WorldScene renders population, rooms, tasks and encounters from simulation state rather than owning a second authoritative roster.
-- **Phase-batched work remains transitional.** Human/Vassal reward settlement and the global inventory are explicitly temporary until the 0.6.5 continuous-simulation migration documented in `docs/SIMULATION_TRANSITION_PLAN.md`.
+- **Phase-batched work remains transitional.** Human/Vassal reward settlement, the global inventory, presentation-owned task motion and world-cycle resets are explicitly temporary until their assigned 0.6.5 continuous-simulation replacements documented in `docs/SIMULATION_TRANSITION_PLAN.md`.
 
 ## Combat module responsibilities
 
-- `src/data/combatActions.ts`: player action timings, costs, windows, and presentation IDs
+- `src/data/combatActions.ts`: shared action timings, costs, windows, and presentation IDs used by player and Vampire Vassals
 - `src/data/abilities.ts`: projectile definitions and HUD-facing ranged metadata
 - `src/data/enemyAttacks.ts`: telegraphed enemy attack definitions by enemy type
-- `src/simulation/combat/actionState.ts`: player action state machine and cooldown/cost rules
+- `src/simulation/combat/actionState.ts`: shared Vampire action state machine and cooldown/cost rules
 - `src/simulation/combat/targeting.ts`: lock validation, selection, cycling, and unlock rules
 - `src/simulation/combat/movement.ts`: free and target-relative orbital movement math
 - `src/simulation/combat/projectiles.ts`: deterministic projectile direction, lifetime, range, and one-hit rules
 - `src/simulation/combat/enemyCombat.ts`: enemy windup/active/recovery state stepping
+- `src/simulation/combat/vassalCombatAi.ts`: operational Vassal target selection, utility decisions, movement intent and deterministic Predatory Bite resolution
 - `src/simulation/combat/bite.ts`: shared feed/drain/turn validation and commit pipeline
 - `src/game/combat/CombatPresentation.ts`: generated silhouettes, telegraphs, target rings, floating numbers, flashes, and afterimages
 
 ## Playability integration points
 
-- `src/app/App.ts`: binds truthful overlay state, browser-safe shortcut guards, local UI scale, and human context actions to persistent save data.
+- `src/app/App.ts`: binds truthful overlay state, browser-safe shortcut guards, local UI scale, human context actions and simulation-owned Vassal lifecycle results to persistent save data.
 - `src/ui/overlays/overlays.ts`: renders population usefulness, room/crafting readiness, inheritance summaries, and pause/settings controls.
 - `src/ui/uiState.ts`: centralizes typing-target checks and browser-safe gameplay shortcut capture rules.
 - `src/persistence/settings.ts`: stores local-only presentation settings such as UI scale.
@@ -101,7 +105,7 @@ The current Day -> Night phase transition calls this lifecycle resolver only as 
 
 ## Visible work / actor task boundary (0.6.3b3)
 
-World movement is a projection of authoritative task selection, not a second job system. Human Thralls use `selectTaskForHumanThrall` during day and Vampire Vassals use `selectTaskForVassal` during night to derive destinations. `domainActorTasks.ts` owns presentation-safe task plans and motion state (`idle -> moving_to_task -> working -> returning`); it never awards resources, completes recipes, advances construction, or mutates population state. The existing phase-batched production paths are temporary and must be inventoried in 0.6.3b4 before continuous world-time conversion.
+World movement is a projection of authoritative task selection, not a second job system. Human Thralls use `selectTaskForHumanThrall` during day and Vampire Vassals use `selectTaskForVassal` during night to derive destinations. `domainActorTasks.ts` owns presentation-safe task plans and motion state (`idle -> moving_to_task -> working -> returning`); it never awards resources, completes recipes, advances construction, or mutates population state. The existing phase-batched production paths are temporary and must be replaced during the 0.6.5 continuous world-time conversion.
 
 ## Domain world presence boundary (0.6.3b2)
 

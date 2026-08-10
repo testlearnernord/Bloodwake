@@ -34,6 +34,9 @@ const QUALITY_LEVELS: QualityLevel[] = ['Poor', 'Common', 'Fine', 'Masterwork'];
 const isIntegerInRange = (value: unknown, min: number, max: number): boolean =>
   typeof value === 'number' && Number.isFinite(value) && Number.isInteger(value) && value >= min && value <= max;
 
+const isFiniteNumberInRange = (value: unknown, min: number, max: number): value is number =>
+  typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max;
+
 const isValidSettings = (value: unknown): boolean =>
   isRecord(value) && typeof value.volume === 'number' && Number.isFinite(value.volume) && typeof value.uiScale === 'number' && Number.isFinite(value.uiScale);
 
@@ -173,9 +176,29 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     if (!isRecord(record) || typeof record.id !== 'string' || record.kind !== 'vampire_vassal' || 'hunger' in record) {
       return false;
     }
+
+    const maxHealth = record.maxHealth;
+    const maxVitae = record.maxVitae;
+    if (!isFiniteNumberInRange(maxHealth, Number.EPSILON, Number.MAX_SAFE_INTEGER)) return false;
+    if (!isFiniteNumberInRange(record.health, 0, maxHealth)) return false;
+    if (!isFiniteNumberInRange(maxVitae, Number.EPSILON, Number.MAX_SAFE_INTEGER)) return false;
+    if (!isFiniteNumberInRange(record.vitae, 0, maxVitae)) return false;
+    if (
+      !isFiniteNumberInRange(record.loyalty, 0, 100)
+      || !isFiniteNumberInRange(record.morale, 0, 100)
+      || !isFiniteNumberInRange(record.ambition, 0, 100)
+      || !isFiniteNumberInRange(record.stress, 0, 100)
+    ) {
+      return false;
+    }
+
     if (record.state !== 'active' && record.state !== 'torpor') return false;
     if (record.state === 'active' && record.torporSinceDay !== null) return false;
-    if (record.state === 'torpor' && !isIntegerInRange(record.torporSinceDay, 1, Number.MAX_SAFE_INTEGER)) return false;
+    if (record.state === 'torpor') {
+      if (!isIntegerInRange(record.torporSinceDay, 1, Number.MAX_SAFE_INTEGER)) return false;
+      if (record.currentJob !== null || record.currentTask !== null) return false;
+    }
+
     if (!isRecord(record.operationalOrder)) return false;
     const orderType = record.operationalOrder.type;
     if (typeof orderType !== 'string' || !['none', 'guard', 'companion', 'scout', 'hunt', 'raid'].includes(orderType)) return false;
@@ -184,6 +207,7 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     } else if (!isIntegerInRange(record.operationalOrder.issuedDay, 1, Number.MAX_SAFE_INTEGER)) {
       return false;
     }
+    if (record.state === 'torpor' && orderType !== 'none') return false;
   }
   const rawRooms = value.rooms as unknown[];
   if (rawRooms.some((r) => !isRecord(r))) return false;

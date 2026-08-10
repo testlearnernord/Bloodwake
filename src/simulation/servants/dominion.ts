@@ -20,6 +20,11 @@ export interface DominionStrainResult {
   summary: DominionSummary;
 }
 
+export interface VassalLifecycleResult {
+  state: SaveGame;
+  message: string;
+}
+
 const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
 
 export const getDominionBaseCapacity = (state: Pick<SaveGame, 'player'>): number =>
@@ -91,34 +96,78 @@ export const resolveDominionStrain = (
   };
 };
 
+const enterTorpor = (
+  vassal: VampireVassal,
+  day: number,
+  taskReason: string,
+  health = vassal.health,
+): VampireVassal => ({
+  ...vassal,
+  health,
+  state: 'torpor',
+  torporSinceDay: day,
+  operationalOrder: { type: 'none', issuedDay: null },
+  currentJob: null,
+  currentTask: null,
+  taskReason,
+});
+
+const awakenVassal = (vassal: VampireVassal): VampireVassal => ({
+  ...vassal,
+  state: 'active',
+  torporSinceDay: null,
+  operationalOrder: { type: 'none', issuedDay: null },
+  currentJob: null,
+  currentTask: null,
+  taskReason: 'Awakened and awaiting orders.',
+});
+
 export const setVassalTorpor = (
   state: SaveGame,
   vassalId: string,
   torpor: boolean,
-): { state: SaveGame; message: string } => {
+): VassalLifecycleResult => {
   const vassal = state.vampireVassals.find((candidate) => candidate.id === vassalId);
   if (!vassal) return { state, message: 'Vampire Vassal not found.' };
   const nextState = torpor ? 'torpor' : 'active';
   if (vassal.state === nextState) {
     return { state, message: `${vassal.name} is already ${torpor ? 'in Torpor' : 'active'}.` };
   }
-  const updated: VampireVassal = {
-    ...vassal,
-    state: nextState,
-    torporSinceDay: torpor ? state.time.day : null,
-    operationalOrder: torpor ? { type: 'none', issuedDay: null } : vassal.operationalOrder,
-    currentJob: null,
-    currentTask: null,
-    taskReason: torpor ? 'In Torpor. No orders, work, or Dominion cost.' : 'Awakened and awaiting orders.',
-  };
+
+  const updated = torpor
+    ? enterTorpor(vassal, state.time.day, 'In Torpor. No orders, work, or Dominion cost.')
+    : awakenVassal(vassal);
+  const event = `${vassal.name} ${torpor ? 'entered Torpor' : 'awoke from Torpor'}.`;
   return {
     state: {
       ...state,
       vampireVassals: state.vampireVassals.map((candidate) => candidate.id === vassalId ? updated : candidate),
-      lastEventLog: [`${vassal.name} ${torpor ? 'entered Torpor' : 'awoke from Torpor'}.`, ...state.lastEventLog],
+      lastEventLog: [event, ...state.lastEventLog],
     },
     message: torpor
       ? `${vassal.name} entered Torpor and no longer consumes Dominion.`
       : `${vassal.name} awoke and again consumes Dominion.`,
+  };
+};
+
+export const incapacitateVassal = (
+  state: SaveGame,
+  vassalId: string,
+): VassalLifecycleResult => {
+  const vassal = state.vampireVassals.find((candidate) => candidate.id === vassalId);
+  if (!vassal) return { state, message: 'Vampire Vassal not found.' };
+  if (vassal.state === 'torpor') {
+    return { state, message: `${vassal.name} is already in Torpor.` };
+  }
+
+  const updated = enterTorpor(vassal, state.time.day, 'Driven into Torpor by combat injuries.', 1);
+  const event = `[Combat] ${vassal.name} was driven into Torpor.`;
+  return {
+    state: {
+      ...state,
+      vampireVassals: state.vampireVassals.map((candidate) => candidate.id === vassalId ? updated : candidate),
+      lastEventLog: [event, ...state.lastEventLog],
+    },
+    message: `${vassal.name} was driven into Torpor.`,
   };
 };

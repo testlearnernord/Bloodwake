@@ -24,7 +24,7 @@ import { getBloodResonanceLabel } from '../simulation/blood/bloodResonance';
 import { reassertThrallControl } from '../simulation/servants/humanThralls';
 import { elevateThrallToVassal } from '../simulation/servants/thrallElevation';
 import { bindThrallAsBloodDonor, validateBindThrallAsBloodDonor } from '../simulation/servants/bloodDonors';
-import { setVassalTorpor } from '../simulation/servants/dominion';
+import { incapacitateVassal, setVassalTorpor } from '../simulation/servants/dominion';
 import { issueVassalOperationalOrder } from '../simulation/servants/vassalOrders';
 import { BLOOD_DONOR_HOLD_MS, renderBloodDonorConfirmation } from '../ui/confirmations/bloodDonorConfirmation';
 import { renderBottomHud } from '../ui/hud/hud';
@@ -303,24 +303,10 @@ export class BloodwakeApp {
       },
       onVassalIncapacitated: (vassalId) => {
         if (!this.state) return;
-        const victim = this.state.vampireVassals.find((vassal) => vassal.id === vassalId);
-        if (!victim || victim.state === 'torpor') return;
-        this.state.vampireVassals = this.state.vampireVassals.map((vassal) =>
-          vassal.id === vassalId
-            ? {
-                ...vassal,
-                health: 1,
-                state: 'torpor',
-                torporSinceDay: this.state!.time.day,
-                operationalOrder: { type: 'none', issuedDay: null },
-                currentJob: null,
-                currentTask: null,
-                taskReason: 'Driven into Torpor by combat injuries.',
-              }
-            : vassal,
-        );
-        this.state.lastEventLog.unshift(`[Combat] ${victim.name} was driven into Torpor.`);
-        this.notify(`${victim.name} was driven into Torpor.`);
+        const result = incapacitateVassal(this.state, vassalId);
+        if (result.state === this.state) return;
+        this.state = result.state;
+        this.notify(result.message);
         void this.autoSave('slot-1');
         this.renderGame();
       },
@@ -896,7 +882,6 @@ export class BloodwakeApp {
       };
       holdButton.onclick = (event) => event.preventDefault();
     }
-
     cancelButton?.focus();
   }
 
