@@ -1,5 +1,5 @@
 import { ITEMS_BY_ID } from '../../data/items';
-import type { AttributeSet, InventoryEntry, ItemSlot, VampireCharacter } from '../../types/models';
+import type { AttributeSet, InventoryEntry, ItemSlot, VampireCharacter, VampireVassal } from '../../types/models';
 import { getVitaeConditionEffects } from '../blood/vitaeCondition';
 
 export interface CombatStats {
@@ -55,6 +55,45 @@ export const calculatePlayerCombatStats = (player: VampireCharacter): CombatStat
     armor: Math.max(0, armor),
     healingPower: Math.max(0, healingPower),
     baseAttributes: { ...player.attributes },
+    equipmentBonuses,
+    traitBonuses: {},
+    finalAttributes,
+  };
+};
+
+export const calculateVassalCombatStats = (vassal: VampireVassal): CombatStats => {
+  const equipmentBonuses = createZeroAttributes();
+  let attackDamage = Math.max(1, 2 + vassal.attributes.strength + Math.floor(vassal.combat / 2));
+  let armor = 0;
+  let healingPower = 0;
+
+  for (const slot of ['Weapon', 'Armor', 'Accessory'] as const satisfies ItemSlot[]) {
+    const itemId = vassal.equipped[slot];
+    if (!itemId) continue;
+    const item = ITEMS_BY_ID[itemId];
+    attackDamage += item.modifiers.damage ?? 0;
+    armor += item.modifiers.armor ?? 0;
+    healingPower += item.modifiers.healing ?? 0;
+    for (const key of Object.keys(equipmentBonuses) as Array<keyof AttributeSet>) {
+      equipmentBonuses[key] += item.modifiers[key] ?? 0;
+    }
+  }
+
+  const finalAttributes: AttributeSet = {
+    strength: vassal.attributes.strength + equipmentBonuses.strength,
+    agility: vassal.attributes.agility + equipmentBonuses.agility,
+    vitality: vassal.attributes.vitality + equipmentBonuses.vitality,
+    willpower: vassal.attributes.willpower + equipmentBonuses.willpower,
+    intelligence: vassal.attributes.intelligence + equipmentBonuses.intelligence,
+    presence: vassal.attributes.presence + equipmentBonuses.presence,
+    bloodControl: vassal.attributes.bloodControl + equipmentBonuses.bloodControl,
+  };
+
+  return {
+    attackDamage: Math.max(1, Math.round(attackDamage * getVitaeConditionEffects(vassal.vitae, vassal.maxVitae).attackMultiplier)),
+    armor: Math.max(0, armor),
+    healingPower: Math.max(0, healingPower),
+    baseAttributes: { ...vassal.attributes },
     equipmentBonuses,
     traitBonuses: {},
     finalAttributes,

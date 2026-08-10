@@ -138,3 +138,11 @@ Vampire Vassals are autonomous political actors rather than controlled Thralls. 
 Night-start political events are deterministic from world seed, day and Vassal identity. Dominion Strain settles first, so overextended authority can push an already ambitious or stressed Vassal toward resentment or rivalry. Torpid Vassals remain outside active political settlement. Operational orders in 0.6.4d should consume this same political profile for compliance/refusal rather than inventing a separate obedience system.
 
 The old generic work-shift servant event table has been removed. Crafting, gathering or guarding no longer mutate Loyalty merely because a work task completed; political consequences belong to the political resolver.
+
+## Shared Vassal Combat AI (0.6.4d1)
+
+Vampire Vassals on Guard, Companion, Scout, Hunt, or Raid orders can enter real world combat. They use the same `startAction` / `stepAction` runtime and the same Light, Heavy, Dodge, Blood Lance, and Bite action definitions as the player rather than a parallel fake damage ticker. Their operational order controls engagement radius and risk tolerance; Scout retreats early, Raid accepts substantially more danger, and Companion prioritizes threats near the Vampire Lord.
+
+A Vassal keeps a combat target lock until the target dies or leaves an expanded break radius and uses the same locked-movement orbit primitive as the player. Personal Health and Vitae are persistent character state. Heavy Attack and Blood Lance consume the Vassal's own Vitae. Predatory Bite can replenish that Vitae from physically weakened enemies; AI bite resolution is deterministic and can fail, causing real injury. At zero combat Health a Vassal is driven into Torpor instead of being deleted from the bloodline.
+
+Combat runtime, current target lock, dodge velocity, and action cooldown presentation remain transient scene state. No new save-version field is introduced by this milestone.

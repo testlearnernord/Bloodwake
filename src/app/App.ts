@@ -293,6 +293,37 @@ export class BloodwakeApp {
         this.state.player.vitae = nextVitae;
         this.renderCombatHud();
       },
+      onVassalVitalsChanged: (vassalId, nextHealth, nextVitae) => {
+        if (!this.state) return;
+        this.state.vampireVassals = this.state.vampireVassals.map((vassal) =>
+          vassal.id === vassalId
+            ? { ...vassal, health: Math.max(0, Math.min(vassal.maxHealth, nextHealth)), vitae: Math.max(0, Math.min(vassal.maxVitae, nextVitae)) }
+            : vassal,
+        );
+      },
+      onVassalIncapacitated: (vassalId) => {
+        if (!this.state) return;
+        const victim = this.state.vampireVassals.find((vassal) => vassal.id === vassalId);
+        if (!victim || victim.state === 'torpor') return;
+        this.state.vampireVassals = this.state.vampireVassals.map((vassal) =>
+          vassal.id === vassalId
+            ? {
+                ...vassal,
+                health: 1,
+                state: 'torpor',
+                torporSinceDay: this.state!.time.day,
+                operationalOrder: { type: 'none', issuedDay: null },
+                currentJob: null,
+                currentTask: null,
+                taskReason: 'Driven into Torpor by combat injuries.',
+              }
+            : vassal,
+        );
+        this.state.lastEventLog.unshift(`[Combat] ${victim.name} was driven into Torpor.`);
+        this.notify(`${victim.name} was driven into Torpor.`);
+        void this.autoSave('slot-1');
+        this.renderGame();
+      },
       onRespawn: () => {
         if (!this.state) return;
         this.state.player.health = this.state.player.maxHealth;

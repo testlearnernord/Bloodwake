@@ -54,8 +54,15 @@ import { createEnemyRuntime, applyEnemyStagger, stepEnemyCombat, type EnemyRunti
 import { computeFreeMovement, computeLockedMovement, type MovementInput } from '../../simulation/combat/movement';
 import { createProjectile, registerProjectileImpact, resolveProjectileDirection, stepProjectile, type CombatProjectile } from '../../simulation/combat/projectiles';
 import { cycleLockTarget, selectLockTarget, selectTargetNearPoint, shouldBreakLock } from '../../simulation/combat/targeting';
-import { applyIncomingDamage } from '../../simulation/combat/stats';
+import { applyIncomingDamage, calculateVassalCombatStats } from '../../simulation/combat/stats';
 import { getVitaeConditionEffects } from '../../simulation/blood/vitaeCondition';
+import {
+  chooseVassalCombatDecision,
+  getVassalCombatMovementInput,
+  resolveVassalPredatoryBiteSuccess,
+  selectVassalCombatTarget,
+  type VassalCombatTarget,
+} from '../../simulation/combat/vassalCombatAi';
 import { createCombatFeedRuntime, getCombatFeedEligibility, getCombatFeedFailureDamage, getCombatFeedMarkerProgress, getCombatFeedPrompt, getCombatFeedVitaeGain, pressCombatFeedInput, stepCombatFeedRuntime, type CombatFeedRuntime } from '../../simulation/combat/combatFeed';
 
 interface SceneEnemy {
@@ -85,7 +92,7 @@ interface SceneResourceNode {
 interface SceneProjectile {
   runtime: CombatProjectile;
   visual: Phaser.GameObjects.Arc;
-  owner: 'player' | 'enemy';
+  owner: 'player' | 'vassal' | 'enemy';
   lastTrailAt: number;
 }
 
@@ -117,6 +124,11 @@ interface SceneVassal {
   motion: DomainActorMotionRuntime;
   plan: DomainActorTaskPlan | null;
   planCacheKey: string | null;
+  combatAction: PlayerActionRuntime;
+  combatTargetId: string | null;
+  aimAngle: number;
+  dodgeVelocity: { x: number; y: number } | null;
+  biteAttempts: number;
 }
 
 interface SceneRoom {
@@ -226,7 +238,7 @@ export class WorldScene extends Phaser.Scene {
     this.syncThrallsWithState();
     this.syncDonorsWithState();
     this.syncVassalsWithState();
-    this.updateDomainPopulationActors(delta);
+    this.updateDomainPopulationActors(time, delta);
     this.syncRoomsWithState();
     this.syncResourcesWithState();
     this.syncEnemiesWithState();
@@ -420,7 +432,7 @@ export class WorldScene extends Phaser.Scene {
     const sprite = this.add.image(anchor.x, anchor.y, 'vassal-token').setDepth(5);
     const nameLabel = this.add.text(anchor.x, anchor.y - 29, vassal.name, { color: '#ff9aaa', fontSize: '10px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6);
     const jobLabel = this.add.text(anchor.x, anchor.y + 21, '', { color: '#c8a6d8', fontSize: '8px', stroke: '#0b0f13', strokeThickness: 2 }).setOrigin(0.5).setDepth(6).setVisible(false);
-    this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime(), plan: null, planCacheKey: null });
+    this.vassals.push({ vassalId: vassal.id, sprite, shadow, nameLabel, jobLabel, motion: createDomainActorMotionRuntime(), plan: null, planCacheKey: null, combatAction: createInitialPlayerActionRuntime(), combatTargetId: null, aimAngle: 0, dodgeVelocity: null, biteAttempts: 0 });
   }
 
   private createRooms(): void {
@@ -940,77 +952,88 @@ export class WorldScene extends Phaser.Scene {
     this.projectiles.push({ runtime, visual, owner: 'player', lastTrailAt: now });
   }
 
-  private spawnEnemyProjectile(enemy: SceneEnemy, now: number): void {
-    const direction = new Phaser.Math.Vector2(enemy.runtime.facing.x, enemy.runtime.facing.y);
-    const runtime = createProjectile('holy_bolt', enemy.id, { x: enemy.sprite.x, y: enemy.sprite.y }, direction, now, 'player');
+  private spawnEnemyProjectile(enemy: SceneEnemy, now: number, targetId: string, targetPosition: { x: number; y: number }): void {
+    const direction = resolveProjectileDirection(
+      { x: enemy.sprite.x, y: enemy.sprite.y },
+      targetPosition,
+      targetPosition,
+    );
+    const runtime = createProjectile('holy_bolt', enemy.id, { x: enemy.sprite.x, y: enemy.sprite.y }, direction, now, targetId);
     const visual = CombatPresentation.showProjectile(this, enemy.sprite.x, enemy.sprite.y, HOLY_BOLT_PROJECTILE.trailColor, 5);
     this.projectiles.push({ runtime, visual, owner: 'enemy', lastTrailAt: now });
   }
 
+  private getProjectileTargetPosition(targetId: string | null): { x: number; y: number } | null {
+    if (!targetId) return null;
+    const enemy = this.findEnemyById(targetId);
+    if (enemy) return { x: enemy.sprite.x, y: enemy.sprite.y };
+    if (targetId === 'player' && this.bridge.getState().player.health > 0) return { x: this.player.x, y: this.player.y };
+    const vassal = this.bridge.getState().vampireVassals.find((candidate) => candidate.id === targetId && candidate.state === 'active' && candidate.health > 0);
+    const entry = vassal ? this.vassalsById.get(vassal.id) : undefined;
+    return entry ? { x: entry.sprite.x, y: entry.sprite.y } : null;
+  }
+
   private updateProjectiles(time: number, delta: number): void {
     this.projectiles = this.projectiles.filter((projectile) => {
-      const target = projectile.runtime.targetId ? this.findEnemyById(projectile.runtime.targetId) : null;
-      projectile.runtime = stepProjectile(
-        projectile.runtime,
-        time,
-        delta,
-        target?.sprite.active ? { x: target.sprite.x, y: target.sprite.y } : null,
-      );
+      const targetPosition = this.getProjectileTargetPosition(projectile.runtime.targetId);
+      projectile.runtime = stepProjectile(projectile.runtime, time, delta, targetPosition);
       projectile.visual.setPosition(projectile.runtime.position.x, projectile.runtime.position.y);
       if (time - projectile.lastTrailAt >= 60) {
         projectile.lastTrailAt = time;
-        const color = projectile.owner === 'player' ? BLOOD_LANCE_PROJECTILE.trailColor : HOLY_BOLT_PROJECTILE.trailColor;
-        const dot = this.add.circle(projectile.runtime.position.x, projectile.runtime.position.y, projectile.owner === 'player' ? 3 : 2, color, 0.45).setDepth(5);
+        const color = projectile.owner === 'enemy' ? HOLY_BOLT_PROJECTILE.trailColor : BLOOD_LANCE_PROJECTILE.trailColor;
+        const dot = this.add.circle(projectile.runtime.position.x, projectile.runtime.position.y, projectile.owner === 'enemy' ? 2 : 3, color, 0.45).setDepth(5);
         this.tweens.add({ targets: dot, alpha: 0, scale: 0.4, duration: 160, onComplete: () => dot.destroy() });
       }
-      if (!projectile.runtime.destroyed) {
-        if (projectile.owner === 'player') {
-          for (const enemy of this.enemies) {
-            if (!enemy.sprite.active || enemy.runtime.health <= 0) continue;
-            const distance = Phaser.Math.Distance.Between(projectile.runtime.position.x, projectile.runtime.position.y, enemy.sprite.x, enemy.sprite.y);
-            if (distance <= BLOOD_LANCE_PROJECTILE.collisionRadius) {
-              const impact = registerProjectileImpact(projectile.runtime, enemy.id);
-              projectile.runtime = impact.projectile;
-              if (impact.applied) {
-                this.applyDamageEvent(
-                  {
-                    sourceId: 'player',
-                    targetId: enemy.id,
-                    actionId: 'blood_lance',
-                    rawDamage: BLOOD_LANCE_PROJECTILE.damage,
-                    mitigatedDamage: BLOOD_LANCE_PROJECTILE.damage,
-                    stagger: BLOOD_LANCE_PROJECTILE.stagger,
-                    worldPosition: { x: enemy.sprite.x, y: enemy.sprite.y },
-                  },
-                  time,
-                );
-                enemy.runtime = applyEnemyStagger(enemy.runtime, BLOOD_LANCE_PROJECTILE.stagger, time);
-              }
-              break;
-            }
+
+      if (!projectile.runtime.destroyed && projectile.owner !== 'enemy') {
+        for (const enemy of this.enemies) {
+          if (!enemy.sprite.active || enemy.runtime.health <= 0) continue;
+          const hitDistance = Phaser.Math.Distance.Between(projectile.runtime.position.x, projectile.runtime.position.y, enemy.sprite.x, enemy.sprite.y);
+          if (hitDistance > BLOOD_LANCE_PROJECTILE.collisionRadius) continue;
+          const impact = registerProjectileImpact(projectile.runtime, enemy.id);
+          projectile.runtime = impact.projectile;
+          if (impact.applied) {
+            this.applyDamageEvent({
+              sourceId: projectile.runtime.sourceId,
+              targetId: enemy.id,
+              actionId: 'blood_lance',
+              rawDamage: BLOOD_LANCE_PROJECTILE.damage,
+              mitigatedDamage: BLOOD_LANCE_PROJECTILE.damage,
+              stagger: BLOOD_LANCE_PROJECTILE.stagger,
+              worldPosition: { x: enemy.sprite.x, y: enemy.sprite.y },
+            }, time);
+            enemy.runtime = applyEnemyStagger(enemy.runtime, BLOOD_LANCE_PROJECTILE.stagger, time);
           }
-        } else {
-          const distance = Phaser.Math.Distance.Between(projectile.runtime.position.x, projectile.runtime.position.y, this.player.x, this.player.y);
-          if (distance <= HOLY_BOLT_PROJECTILE.collisionRadius) {
-            const impact = registerProjectileImpact(projectile.runtime, 'player');
+          break;
+        }
+      } else if (!projectile.runtime.destroyed && projectile.owner === 'enemy') {
+        const targetId = projectile.runtime.targetId ?? 'player';
+        const target = this.getProjectileTargetPosition(targetId);
+        if (target) {
+          const hitDistance = Phaser.Math.Distance.Between(projectile.runtime.position.x, projectile.runtime.position.y, target.x, target.y);
+          if (hitDistance <= HOLY_BOLT_PROJECTILE.collisionRadius) {
+            const impact = registerProjectileImpact(projectile.runtime, targetId);
             projectile.runtime = impact.projectile;
             if (impact.applied) {
-              const damage = applyIncomingDamage(HOLY_BOLT_PROJECTILE.damage, this.bridge.getCombatStats().armor);
+              const vassal = targetId === 'player' ? null : this.bridge.getState().vampireVassals.find((candidate) => candidate.id === targetId);
+              const armor = targetId === 'player' ? this.bridge.getCombatStats().armor : vassal ? calculateVassalCombatStats(vassal).armor : 0;
+              const damage = applyIncomingDamage(HOLY_BOLT_PROJECTILE.damage, armor);
               this.applyDamageEvent({
                 sourceId: projectile.runtime.sourceId,
-                targetId: 'player',
+                targetId,
                 actionId: 'holy_bolt',
                 rawDamage: HOLY_BOLT_PROJECTILE.damage,
                 mitigatedDamage: damage,
                 stagger: HOLY_BOLT_PROJECTILE.stagger,
-                worldPosition: { x: this.player.x, y: this.player.y },
+                worldPosition: target,
               }, time);
             }
           }
         }
       }
+
       if (projectile.runtime.destroyed) {
-        CombatPresentation.spawnBloodBurst(this, projectile.runtime.position.x, projectile.runtime.position.y, projectile.owner === 'player' ? BLOOD_LANCE_PROJECTILE.impactColor : HOLY_BOLT_PROJECTILE.impactColor);
+        CombatPresentation.spawnBloodBurst(this, projectile.runtime.position.x, projectile.runtime.position.y, projectile.owner === 'enemy' ? HOLY_BOLT_PROJECTILE.impactColor : BLOOD_LANCE_PROJECTILE.impactColor);
         projectile.visual.destroy();
         return false;
       }
@@ -1044,6 +1067,25 @@ export class WorldScene extends Phaser.Scene {
       }
       return;
     }
+
+    const vassal = this.bridge.getState().vampireVassals.find((candidate) => candidate.id === event.targetId);
+    const vassalEntry = vassal ? this.vassalsById.get(vassal.id) : undefined;
+    if (vassal && vassalEntry) {
+      if (vassal.state !== 'active' || isInvulnerable(vassalEntry.combatAction, time)) return;
+      const nextHealth = Math.max(0, vassal.health - event.mitigatedDamage);
+      this.bridge.onVassalVitalsChanged(vassal.id, nextHealth, vassal.vitae);
+      CombatPresentation.flashSprite(this, vassalEntry.sprite, 0xffa8c8, true);
+      CombatPresentation.spawnFloatingDamage(this, vassalEntry.sprite.x, vassalEntry.sprite.y - 22, event.mitigatedDamage, '#ffd7e7');
+      if (nextHealth <= 0) {
+        vassalEntry.combatAction = createInitialPlayerActionRuntime();
+        vassalEntry.combatTargetId = null;
+        vassalEntry.dodgeVelocity = null;
+        vassalEntry.jobLabel.setText('Combat · Torpor');
+        this.bridge.onVassalIncapacitated(vassal.id);
+      }
+      return;
+    }
+
     const enemy = this.findEnemyById(event.targetId);
     if (!enemy) {
       return;
@@ -1076,12 +1118,39 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private updateEnemyAi(time: number): void {
-    const playerArmor = this.bridge.getCombatStats().armor;
-    for (const enemy of this.enemies) {
-      if (!enemy.sprite.active || enemy.runtime.health <= 0) {
-        continue;
+  private getEnemyCombatTarget(enemy: SceneEnemy): { id: string; position: { x: number; y: number }; armor: number } {
+    const state = this.bridge.getState();
+    const candidates: Array<{ id: string; position: { x: number; y: number }; armor: number }> = [];
+    if (state.player.health > 0) {
+      candidates.push({ id: 'player', position: { x: this.player.x, y: this.player.y }, armor: this.bridge.getCombatStats().armor });
+    }
+    if (state.time.phase === 'night') {
+      for (const vassal of state.vampireVassals) {
+        if (vassal.state !== 'active' || vassal.health <= 0 || vassal.operationalOrder.type === 'none') continue;
+        const entry = this.vassalsById.get(vassal.id);
+        if (!entry) continue;
+        candidates.push({ id: vassal.id, position: { x: entry.sprite.x, y: entry.sprite.y }, armor: calculateVassalCombatStats(vassal).armor });
       }
+    }
+    if (candidates.length === 0) {
+      return { id: 'player', position: { x: this.player.x, y: this.player.y }, armor: this.bridge.getCombatStats().armor };
+    }
+    const definition = ENEMIES_BY_ID[enemy.runtime.type];
+    const current = enemy.runtime.targetId ? candidates.find((candidate) => candidate.id === enemy.runtime.targetId) : undefined;
+    if (current) {
+      const currentDistance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, current.position.x, current.position.y);
+      if (currentDistance <= definition.detectionRange * 1.35) return current;
+    }
+    return candidates.sort((left, right) => {
+      const leftDistance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, left.position.x, left.position.y);
+      const rightDistance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, right.position.x, right.position.y);
+      return leftDistance === rightDistance ? left.id.localeCompare(right.id) : leftDistance - rightDistance;
+    })[0];
+  }
+
+  private updateEnemyAi(time: number): void {
+    for (const enemy of this.enemies) {
+      if (!enemy.sprite.active || enemy.runtime.health <= 0) continue;
       if (this.combatFeedSequence?.enemyId === enemy.id) {
         enemy.sprite.setVelocity(0, 0);
         enemy.telegraph?.destroy();
@@ -1089,8 +1158,9 @@ export class WorldScene extends Phaser.Scene {
         enemy.runtime.telegraphVisible = false;
         continue;
       }
+      const target = this.getEnemyCombatTarget(enemy);
       enemy.runtime.position = { x: enemy.sprite.x, y: enemy.sprite.y };
-      const step = stepEnemyCombat(enemy.runtime, { x: this.player.x, y: this.player.y }, time, playerArmor);
+      const step = stepEnemyCombat(enemy.runtime, target.position, time, target.armor, target.id);
       const previousState = enemy.runtime.state;
       enemy.runtime = step.enemy;
       if (previousState !== 'windup' && enemy.runtime.state === 'windup') {
@@ -1113,41 +1183,53 @@ export class WorldScene extends Phaser.Scene {
         enemy.telegraph = null;
       }
       if (step.shouldFireProjectile) {
-        this.spawnEnemyProjectile(enemy, time);
+        const lockedTarget = this.getEnemyCombatTarget(enemy);
+        this.spawnEnemyProjectile(enemy, time, lockedTarget.id, lockedTarget.position);
       }
-      for (const damageEvent of step.damageEvents) {
-        this.applyDamageEvent(damageEvent, time);
-      }
-      this.updateEnemyMovement(enemy);
+      for (const damageEvent of step.damageEvents) this.applyDamageEvent(damageEvent, time);
+      const movementTarget = this.getEnemyCombatTarget(enemy);
+      this.updateEnemyMovement(enemy, movementTarget.position);
     }
   }
 
-  private updateEnemyMovement(enemy: SceneEnemy): void {
+  private updateEnemyMovement(enemy: SceneEnemy, targetPosition: { x: number; y: number }): void {
     const definition = ENEMIES_BY_ID[enemy.runtime.type];
     const attack = ENEMY_ATTACKS_BY_ID[enemy.runtime.attackId];
     if (enemy.runtime.state === 'approach') {
       if (enemy.runtime.type === 'bandit') {
-        const angle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y) + 0.35;
-        this.physics.moveTo(enemy.sprite, this.player.x + Math.cos(angle) * 20, this.player.y + Math.sin(angle) * 20, definition.speed);
+        const angle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, targetPosition.x, targetPosition.y) + 0.35;
+        this.physics.moveTo(enemy.sprite, targetPosition.x + Math.cos(angle) * 20, targetPosition.y + Math.sin(angle) * 20, definition.speed);
       } else {
-        this.physics.moveToObject(enemy.sprite, this.player, definition.speed);
+        this.physics.moveTo(enemy.sprite, targetPosition.x, targetPosition.y, definition.speed);
       }
     } else if (enemy.runtime.state === 'reposition') {
-      const away = Phaser.Math.Angle.Between(this.player.x, this.player.y, enemy.sprite.x, enemy.sprite.y);
+      const away = Phaser.Math.Angle.Between(targetPosition.x, targetPosition.y, enemy.sprite.x, enemy.sprite.y);
       this.physics.moveTo(enemy.sprite, enemy.sprite.x + Math.cos(away) * 40, enemy.sprite.y + Math.sin(away) * 40, definition.speed);
     } else if (enemy.runtime.state === 'return_home') {
       this.physics.moveTo(enemy.sprite, enemy.runtime.homePosition.x, enemy.runtime.homePosition.y, definition.speed * 0.7);
       const homeDistance = Phaser.Math.Distance.Between(enemy.sprite.x, enemy.sprite.y, enemy.runtime.homePosition.x, enemy.runtime.homePosition.y);
-      if (homeDistance < 8) {
+      if (homeDistance < 10) enemy.sprite.setVelocity(0, 0);
+    } else if (enemy.runtime.state === 'windup') {
+      enemy.sprite.setVelocity(0, 0);
+      const facing = enemy.runtime.directionLock ?? enemy.runtime.facing;
+      enemy.aimAngle = Phaser.Math.Angle.Between(0, 0, facing.x, facing.y);
+      enemy.telegraph?.setRotation(enemy.aimAngle);
+      enemy.telegraph?.setPosition(enemy.sprite.x, enemy.sprite.y);
+    } else if (enemy.runtime.state === 'active_attack') {
+      if (!attack.projectileId) {
+        this.physics.moveTo(enemy.sprite, targetPosition.x, targetPosition.y, definition.speed * 0.45);
+      } else {
         enemy.sprite.setVelocity(0, 0);
       }
-    } else if (enemy.runtime.state === 'windup' || enemy.runtime.state === 'recovery' || enemy.runtime.state === 'active_attack' || enemy.runtime.state === 'stagger') {
+    } else if (enemy.runtime.state === 'recovery' || enemy.runtime.state === 'stagger') {
       enemy.sprite.setVelocity(0, 0);
     } else {
       enemy.sprite.setVelocity(0, 0);
     }
-    if (enemy.runtime.state === 'windup' && attack.trackingDuringWindup) {
-      enemy.aimAngle = Phaser.Math.Angle.Between(enemy.sprite.x, enemy.sprite.y, this.player.x, this.player.y);
+
+    if (enemy.runtime.state === 'windup') {
+      const facing = enemy.runtime.directionLock ?? enemy.runtime.facing;
+      enemy.aimAngle = Phaser.Math.Angle.Between(0, 0, facing.x, facing.y);
       enemy.telegraph?.setRotation(enemy.aimAngle);
       enemy.telegraph?.setPosition(enemy.sprite.x, enemy.sprite.y);
     } else if (enemy.runtime.directionLock) {
@@ -1156,9 +1238,7 @@ export class WorldScene extends Phaser.Scene {
       enemy.telegraph?.setPosition(enemy.sprite.x, enemy.sprite.y);
     } else if (enemy.runtime.state === 'approach' || enemy.runtime.state === 'reposition' || enemy.runtime.state === 'return_home') {
       const velocity = enemy.sprite.body?.velocity;
-      if (velocity && (velocity.x !== 0 || velocity.y !== 0)) {
-        enemy.aimAngle = Phaser.Math.Angle.Between(0, 0, velocity.x, velocity.y);
-      }
+      if (velocity && (velocity.x !== 0 || velocity.y !== 0)) enemy.aimAngle = Phaser.Math.Angle.Between(0, 0, velocity.x, velocity.y);
     }
   }
 
@@ -1442,7 +1522,7 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  private updateDomainPopulationActors(delta: number): void {
+  private updateDomainPopulationActors(time: number, delta: number): void {
     const state = this.bridge.getState();
     const environmentKey = getDomainActorTaskEnvironmentKey(state);
     state.humanServants.forEach((thrall, index) => {
@@ -1469,6 +1549,7 @@ export class WorldScene extends Phaser.Scene {
     state.vampireVassals.forEach((vassal, index) => {
       const entry = this.vassalsById.get(vassal.id);
       if (!entry) return;
+      if (this.updateVassalCombatActor(vassal, entry, time, delta)) return;
       const planCacheKey = getVassalActorTaskPlanCacheKey(environmentKey, vassal, index);
       const plan = entry.planCacheKey === planCacheKey && entry.plan
         ? entry.plan
@@ -1489,6 +1570,225 @@ export class WorldScene extends Phaser.Scene {
       if (Math.abs(step.position.x - previousX) > 0.05) entry.sprite.setFlipX(step.position.x < previousX);
       entry.sprite.setScale(step.runtime.phase === 'working' ? 1 + Math.sin(this.time.now / 125 + index) * 0.03 : 1);
     });
+  }
+
+
+  private resetVassalCombatActor(entry: SceneVassal): void {
+    if (entry.combatAction.actionId || entry.combatTargetId) {
+      entry.combatAction = { ...createInitialPlayerActionRuntime(), cooldowns: { ...entry.combatAction.cooldowns } };
+    }
+    entry.combatTargetId = null;
+    entry.dodgeVelocity = null;
+  }
+
+  private updateVassalCombatActor(vassal: VampireVassal, entry: SceneVassal, time: number, delta: number): boolean {
+    const state = this.bridge.getState();
+    if (state.time.phase !== 'night' || vassal.state !== 'active' || vassal.operationalOrder.type === 'none') {
+      this.resetVassalCombatActor(entry);
+      return false;
+    }
+
+    const targets: VassalCombatTarget[] = this.enemies
+      .filter((enemy) => enemy.sprite.active && enemy.runtime.health > 0)
+      .map((enemy) => ({ ...this.toTargetSnapshot(enemy), state: enemy.runtime.state }));
+    const target = selectVassalCombatTarget(
+      vassal,
+      { x: entry.sprite.x, y: entry.sprite.y },
+      { x: this.player.x, y: this.player.y },
+      targets,
+      entry.combatTargetId,
+    );
+    if (!target) {
+      this.resetVassalCombatActor(entry);
+      return false;
+    }
+
+    entry.combatTargetId = target.id;
+    let enemy = this.findEnemyById(target.id);
+    if (!enemy) {
+      this.resetVassalCombatActor(entry);
+      return false;
+    }
+
+    const steppedAction = stepAction(entry.combatAction, time);
+    entry.combatAction = steppedAction.runtime;
+    let currentVassal = this.bridge.getState().vampireVassals.find((candidate) => candidate.id === vassal.id) ?? vassal;
+    if (steppedAction.committedCost && entry.combatAction.actionId) {
+      const definition = PLAYER_ACTIONS_BY_ID[entry.combatAction.actionId];
+      this.bridge.onVassalVitalsChanged(currentVassal.id, currentVassal.health, currentVassal.vitae - definition.vitaeCost);
+      currentVassal = this.bridge.getState().vampireVassals.find((candidate) => candidate.id === vassal.id) ?? currentVassal;
+    }
+    if (steppedAction.becameActive && entry.combatAction.actionId) {
+      this.onVassalActionBecameActive(currentVassal, entry, enemy, entry.combatAction.actionId, time);
+    }
+
+    enemy = this.findEnemyById(target.id);
+    currentVassal = this.bridge.getState().vampireVassals.find((candidate) => candidate.id === vassal.id) ?? currentVassal;
+    if (!enemy || currentVassal.state !== 'active') {
+      entry.combatTargetId = null;
+      entry.jobLabel.setPosition(entry.sprite.x, entry.sprite.y + 21).setText('Combat · Recovering').setVisible(true);
+      return true;
+    }
+
+    const currentTarget: VassalCombatTarget = { ...this.toTargetSnapshot(enemy), state: enemy.runtime.state };
+    const decision = chooseVassalCombatDecision(
+      currentVassal,
+      { x: entry.sprite.x, y: entry.sprite.y },
+      currentTarget,
+      entry.combatAction,
+      time,
+    );
+
+    if (!entry.combatAction.actionId && decision.actionId) {
+      const started = startAction(PLAYER_ACTIONS_BY_ID[decision.actionId], entry.combatAction, {
+        now: time,
+        blocked: false,
+        dead: currentVassal.health <= 0,
+        activeMenuOpen: false,
+        currentVitae: currentVassal.vitae,
+      });
+      if (started.ok) {
+        entry.combatAction = started.runtime;
+        if (decision.actionId === 'bite') entry.biteAttempts += 1;
+        if (decision.actionId === 'dodge') {
+          const away = new Phaser.Math.Vector2(entry.sprite.x - enemy.sprite.x, entry.sprite.y - enemy.sprite.y).normalize();
+          entry.dodgeVelocity = { x: away.x * DODGE_SPEED, y: away.y * DODGE_SPEED };
+        }
+      }
+    }
+
+    entry.aimAngle = Phaser.Math.Angle.Between(entry.sprite.x, entry.sprite.y, enemy.sprite.x, enemy.sprite.y);
+    const activeDefinition = entry.combatAction.actionId ? PLAYER_ACTIONS_BY_ID[entry.combatAction.actionId] : null;
+    let velocity = { x: 0, y: 0 };
+    if ((entry.combatAction.state === 'dodge_windup' || entry.combatAction.state === 'dodge_active') && entry.dodgeVelocity) {
+      velocity = entry.dodgeVelocity;
+    } else if (entry.combatAction.actionId !== 'bite') {
+      const moveSpeed = PLAYER_MOVE_SPEED * 0.9 * getVitaeConditionEffects(currentVassal.vitae, currentVassal.maxVitae).movementMultiplier;
+      const movement = computeLockedMovement(
+        getVassalCombatMovementInput(decision.movement),
+        { x: entry.sprite.x, y: entry.sprite.y },
+        { x: enemy.sprite.x, y: enemy.sprite.y },
+        moveSpeed,
+      );
+      const multiplier = activeDefinition?.movementMultiplier ?? 1;
+      velocity = { x: movement.velocity.x * multiplier, y: movement.velocity.y * multiplier };
+    }
+
+    const nextX = Phaser.Math.Clamp(entry.sprite.x + velocity.x * Math.max(0, delta) / 1000, 16, WORLD_BOUNDS.width - 16);
+    const nextY = Phaser.Math.Clamp(entry.sprite.y + velocity.y * Math.max(0, delta) / 1000, 16, WORLD_BOUNDS.height - 16);
+    const previousX = entry.sprite.x;
+    entry.sprite.setPosition(nextX, nextY);
+    entry.shadow.setPosition(nextX, nextY + 11);
+    entry.nameLabel.setPosition(nextX, nextY - 29);
+    const actionLabel = entry.combatAction.actionId ? PLAYER_ACTIONS_BY_ID[entry.combatAction.actionId].label : decision.retreating ? 'Retreating' : decision.reason;
+    entry.jobLabel.setPosition(nextX, nextY + 21).setText(`Combat · ${actionLabel}`).setVisible(true);
+    if (Math.abs(nextX - previousX) > 0.05) entry.sprite.setFlipX(nextX < previousX);
+    else entry.sprite.setFlipX(Math.cos(entry.aimAngle) < 0);
+    entry.sprite.setScale(entry.combatAction.state === 'heavy_windup' ? 1.1 : entry.combatAction.state === 'dodge_active' ? 0.96 : 1);
+    if (entry.combatAction.state !== 'dodge_windup' && entry.combatAction.state !== 'dodge_active') entry.dodgeVelocity = null;
+    return true;
+  }
+
+  private onVassalActionBecameActive(vassal: VampireVassal, entry: SceneVassal, enemy: SceneEnemy, actionId: CombatActionId, time: number): void {
+    const definition = PLAYER_ACTIONS_BY_ID[actionId];
+    if (actionId === 'light' || actionId === 'heavy') {
+      entry.sprite.setPosition(
+        Phaser.Math.Clamp(entry.sprite.x + Math.cos(entry.aimAngle) * definition.lungeDistance, 16, WORLD_BOUNDS.width - 16),
+        Phaser.Math.Clamp(entry.sprite.y + Math.sin(entry.aimAngle) * definition.lungeDistance, 16, WORLD_BOUNDS.height - 16),
+      );
+      CombatPresentation.showSlash(this, entry.sprite.x, entry.sprite.y, entry.aimAngle, definition.range, definition.attackArc, actionId === 'light' ? 0xe7d5ff : 0xd31345, this.reducedMotion);
+      this.damageEnemyFromVassalMelee(vassal, entry, enemy, actionId, time);
+      return;
+    }
+    if (actionId === 'blood_lance') {
+      this.spawnVassalProjectile(vassal, entry, enemy, time);
+      CombatPresentation.spawnBloodBurst(this, entry.sprite.x + Math.cos(entry.aimAngle) * 16, entry.sprite.y + Math.sin(entry.aimAngle) * 16, 0x9d4edd);
+      return;
+    }
+    if (actionId === 'bite') {
+      this.resolveVassalPredatoryBite(vassal, entry, enemy, time);
+    }
+  }
+
+  private damageEnemyFromVassalMelee(vassal: VampireVassal, entry: SceneVassal, enemy: SceneEnemy, actionId: 'light' | 'heavy', time: number): void {
+    const definition = PLAYER_ACTIONS_BY_ID[actionId];
+    const toEnemy = new Phaser.Math.Vector2(enemy.sprite.x - entry.sprite.x, enemy.sprite.y - entry.sprite.y);
+    const targetDistance = toEnemy.length();
+    if (targetDistance > definition.range) return;
+    const facing = new Phaser.Math.Vector2(Math.cos(entry.aimAngle), Math.sin(entry.aimAngle)).normalize();
+    const angleDot = targetDistance === 0 ? 1 : toEnemy.normalize().dot(facing);
+    if (angleDot < Math.cos(Phaser.Math.DegToRad(definition.attackArc / 2))) return;
+    const hit = registerActionHit(entry.combatAction, enemy.id);
+    entry.combatAction = hit.runtime;
+    if (!hit.applied) return;
+    const stats = calculateVassalCombatStats(vassal);
+    const rawDamage = Math.max(1, Math.round(stats.attackDamage * definition.damageMultiplier + definition.flatDamage));
+    this.applyDamageEvent({
+      sourceId: vassal.id,
+      targetId: enemy.id,
+      actionId,
+      rawDamage,
+      mitigatedDamage: rawDamage,
+      stagger: definition.stagger,
+      worldPosition: { x: enemy.sprite.x, y: enemy.sprite.y },
+    }, time);
+    enemy.runtime = applyEnemyStagger(enemy.runtime, definition.stagger, time);
+  }
+
+  private spawnVassalProjectile(vassal: VampireVassal, entry: SceneVassal, enemy: SceneEnemy, now: number): void {
+    const direction = resolveProjectileDirection(
+      { x: entry.sprite.x, y: entry.sprite.y },
+      { x: enemy.sprite.x, y: enemy.sprite.y },
+      { x: enemy.sprite.x, y: enemy.sprite.y },
+    );
+    const runtime = createProjectile('blood_lance', vassal.id, { x: entry.sprite.x, y: entry.sprite.y }, direction, now, enemy.id);
+    const visual = CombatPresentation.showProjectile(this, entry.sprite.x, entry.sprite.y, BLOOD_LANCE_PROJECTILE.trailColor, 5);
+    this.projectiles.push({ runtime, visual, owner: 'vassal', lastTrailAt: now });
+  }
+
+  private resolveVassalPredatoryBite(vassal: VampireVassal, entry: SceneVassal, enemy: SceneEnemy, time: number): void {
+    const definition = ENEMIES_BY_ID[enemy.runtime.type];
+    const targetDistance = Phaser.Math.Distance.Between(entry.sprite.x, entry.sprite.y, enemy.sprite.x, enemy.sprite.y);
+    const eligibility = getCombatFeedEligibility({
+      id: enemy.id,
+      health: enemy.runtime.health,
+      maxHealth: enemy.runtime.maxHealth,
+      elite: Boolean(definition.elite),
+      distance: targetDistance,
+      state: enemy.runtime.state,
+    });
+    if (!eligibility.ok) return;
+
+    const state = this.bridge.getState();
+    const success = resolveVassalPredatoryBiteSuccess(state.seed, state.time.day, vassal, enemy.id, Boolean(definition.elite), entry.biteAttempts);
+    if (success) {
+      const vitaeGain = getCombatFeedVitaeGain(vassal.vitae, vassal.maxVitae);
+      this.bridge.onVassalVitalsChanged(vassal.id, vassal.health, vassal.vitae + vitaeGain);
+      CombatPresentation.spawnBloodBurst(this, enemy.sprite.x, enemy.sprite.y, 0x8f1535);
+      this.applyDamageEvent({
+        sourceId: vassal.id,
+        targetId: enemy.id,
+        actionId: 'bite',
+        rawDamage: enemy.runtime.health,
+        mitigatedDamage: enemy.runtime.health,
+        stagger: 0,
+        worldPosition: { x: enemy.sprite.x, y: enemy.sprite.y },
+      }, time);
+      entry.jobLabel.setText(`Combat · Predatory Bite +${vitaeGain} Vitae`);
+      return;
+    }
+
+    const rawDamage = getCombatFeedFailureDamage(Boolean(definition.elite));
+    const damage = applyIncomingDamage(rawDamage, calculateVassalCombatStats(vassal).armor);
+    this.applyDamageEvent({
+      sourceId: enemy.id,
+      targetId: vassal.id,
+      actionId: 'predatory_bite_failure',
+      rawDamage,
+      mitigatedDamage: damage,
+      stagger: 0,
+      worldPosition: { x: entry.sprite.x, y: entry.sprite.y },
+    }, time);
   }
 
   private syncRoomsWithState(): void {

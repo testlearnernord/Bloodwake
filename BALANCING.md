@@ -154,3 +154,11 @@ Operational order compliance reuses derived Obedience. Stronghold Duties can alw
 - Raid: `-20`
 
 The decision roll is deterministic from world seed, day, Vassal identity and requested order, so repeatedly clicking the same order on the same night cannot reroll refusal.
+
+## 0.6.4d1 Vassal combat behavior
+
+Operational engagement radii: Guard 220, Companion 360, Scout 135, Hunt 320, Raid 520 world units. Target locks persist to 135% of the acquisition radius to reduce target-flapping.
+
+Retreat Health ratios: Guard 25%, Companion 30%, Scout 55%, Hunt 35%, Raid 20%. AI utility order is: retreat check, dodge a close telegraph, Predatory Bite weakened prey when below 80% Vitae, Blood Lance outside melee range, Heavy Attack for strong openings, Light Attack in melee, otherwise approach/orbit. Vassals reuse player action timing/cooldowns and personal Vitae costs.
+
+AI Predatory Bite success is deterministic per world/day/Vassal/target/attempt. Base chance is modified by Combat, Blood Control and Willpower, with an Elite penalty, clamped to 20–95%. Failure applies the existing combat-feed failure damage against Vassal armor. Vassals reduced to zero combat Health enter Torpor with 1 Health; they are not silently deleted.
