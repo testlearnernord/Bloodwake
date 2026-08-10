@@ -117,3 +117,10 @@ Human Servants are prisoners under vampiric venom and domination. They are not f
 Human Thralls retain their mortal identity: profession, skills/traits, family identity, Blood Resonance and human metadata. This is intentional groundwork for later genetics, family lines, donor selection and the strategic decision between keeping a valuable mortal or turning them into an autonomous Vampire Vassal. Controlled Humans and Vampire Vassals must also exist visibly in the Stronghold as projections of those persistent population records; later visible-work behavior will animate the same job/task state rather than inventing a parallel simulation.
 
 Vampire Vassals remain fundamentally different. They are powerful, immortal political subordinates with Loyalty and Ambition rather than controlled mortal captives. Turning is therefore not a simple upgrade from Human Thrall to better worker. A trained Thrall may now be deliberately Elevated into a Vassal: learned profession skills and gear carry across, while Control/Resistance cease to apply and Vampire politics take over.
+
+## Shared Vampire Combat Architecture
+
+The player and Vampire Vassals must ultimately use the same combat primitives rather than separate damage systems. A combatant owns health/Vitae, equipment, target lock, action runtime and the same Light Attack, Heavy Attack, Dodge, Blood Lance and Predatory Bite rules. Player input is one controller; Vassal utility AI is another controller over the same actions.
+
+Vassal jobs such as Guarding, Companion, Scouting, Hunting and Raiding determine mission context and engagement policy, not a different combat engine. Combat AI should lock a concrete target, orbit/reposition, read windups, exploit recovery windows, manage Vitae, simulate skill-based Predatory Bite timing, and choose retreat when local odds are poor. Combat skill, traits, stress, health, loyalty and mission role should affect reaction quality and risk tolerance so Vassals are capable but fallible. This is scheduled after operational orders as 0.6.4d1.
+

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.4b - Vassal Crypt & Dominion Strain
+
+- Added Vassal Crypt room; each completed Crypt contributes +2 derived Dominion capacity.
+- Dominion now reports base capacity, Crypt capacity, active cost, Strain and a readable Strain state without storing duplicate counters.
+- Dominion remains a soft cap: excess active Vassals stay active, but each Strain point applies 2 Loyalty loss and 4 Stress at the start of a new night; Torpid Vassals are unaffected.
+- The Strain resolver is a pure simulation rule currently triggered by the phase bridge and is explicitly reusable by the future continuous World Clock.
+- Roadmap now records Shared Vassal Combat AI as a dedicated 0.6.4d1 slice using the same player combat primitives rather than a parallel NPC damage system.
+- Save format remains v11 because no new persistent field is required; Vassal Crypt state already persists through the existing room model.
+
 ## 0.6.4a - Dominion & Torpor Foundation
 
 - Save format advances to v11 and Vampire Vassals now persist an explicit `active` / `torpor` lifecycle state.

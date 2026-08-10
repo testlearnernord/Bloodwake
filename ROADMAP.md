@@ -10,7 +10,7 @@
   - 0.6.2c Combat Feeding ✅
   - 0.6.2d Combat Feeding presentation / Clergy death hotfix ✅
   - 0.6.2e Circular Predatory Bite timing ✅
-- 0.6.3 Human Recruitment and Housing (current)
+- 0.6.3 Human Recruitment and Housing ✅
   - 0.6.3a Human Thralls: Enthrallment, Control, Housing & Food ✅
   - 0.6.3a1 Thrall playtest fixes ✅
   - 0.6.3b Human Work Foundation ✅
@@ -23,11 +23,12 @@
   - 0.6.3d Blood Stock & Blood Cellar Foundation ✅
   - 0.6.3e Stabilization & Legacy Purge ✅
   - 0.6.3e1 In-game irreversible confirmation & Stronghold readability ✅
-- 0.6.4 Dominion, Torpor, Vampire Politics & Orders
-  - 0.6.4a Dominion & Torpor Foundation (current)
-  - 0.6.4b Vassal Crypt & Dominion Strain
+- 0.6.4 Dominion, Torpor, Vampire Politics & Orders (current)
+  - 0.6.4a Dominion & Torpor Foundation ✅
+  - 0.6.4b Vassal Crypt & Dominion Strain (current)
   - 0.6.4c Loyalty, Ambition & political events
   - 0.6.4d Vassal operational orders
+  - 0.6.4d1 Shared Vassal Combat AI: shared player action runtime, target lock/orbit, Light/Heavy/Dodge/Blood Lance/Predatory Bite, utility decisions and retreat
   - 0.6.4e Stabilization & Legacy Purge
 - 0.6.5 Continuous World Simulation
   - 0.6.5a World Clock & solar cycle

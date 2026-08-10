@@ -23,7 +23,7 @@ export type ProfessionId =
   | 'monk'
   | 'scribe';
 export type FactionId = 'village' | 'bandit' | 'clergy' | 'wild';
-export type RoomId = 'coffin_chamber' | 'storage_room' | 'workshop' | 'servant_quarters' | 'blood_cellar';
+export type RoomId = 'coffin_chamber' | 'storage_room' | 'workshop' | 'servant_quarters' | 'blood_cellar' | 'vassal_crypt';
 export type JobType = 'Building' | 'Crafting' | 'Gathering' | 'Guarding' | 'Research' | 'Hunting';
 export type JobPriority = 'Disabled' | 'Low' | 'Normal' | 'High' | 'Critical';
 export type DayPhase = 'day' | 'night';
@@ -217,6 +217,7 @@ export interface RoomDefinition {
   housingCapacity: number;
   bloodStorageCapacity?: number;
   donorSlots?: number;
+  dominionCapacity?: number;
   productionCapabilities: string[];
   modifiers: ItemModifier;
   allowedJobTypes: JobType[];

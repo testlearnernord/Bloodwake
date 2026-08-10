@@ -6,6 +6,7 @@ import { getTraitEffectIds } from '../traits/traitUtils';
 import { markHumanEscaped, resolveNightlyHumanPopulation } from '../world/nightlyWorld';
 import { resolveHumanThrallDay } from '../servants/humanThralls';
 import { runHumanWorkDay } from '../servants/humanWork';
+import { resolveDominionStrain } from '../servants/dominion';
 
 export interface PhaseAdvanceResult {
   state: SaveGame;
@@ -28,6 +29,7 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
   let rooms = state.rooms.map((room) => ({ ...room, assignedWorkerIds: [...room.assignedWorkerIds] }));
   let craftingQueue = state.craftingQueue.map((order) => ({ ...order }));
   let strategicResources = { ...state.strategicResources };
+  let vampireVassals = state.vampireVassals.map((vassal) => ({ ...vassal, priorities: { ...vassal.priorities }, equipped: { ...vassal.equipped } }));
 
   // Night -> Day: vampires consume stored Vitae; daylight traits remain separate.
   if (nextPhase === 'day') {
@@ -86,11 +88,15 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     const population = resolveNightlyHumanPopulation(npcs, state.seed, nextDay, TARGET_HUMAN_POPULATION);
     npcs = population.npcs;
     for (const event of population.events) events.push(event);
+
+    const dominion = resolveDominionStrain({ player, rooms, vampireVassals });
+    vampireVassals = dominion.vampireVassals;
+    for (const event of dominion.events) events.push(event);
     events.push(`Night ${nextDay} begins. The world stirs anew.`);
   }
 
   const shift = runWorkShift(
-    state.vampireVassals,
+    vampireVassals,
     rooms,
     craftingQueue,
     strategicResources,
