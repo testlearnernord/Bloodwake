@@ -124,3 +124,11 @@ The player and Vampire Vassals must ultimately use the same combat primitives ra
 
 Vassal jobs such as Guarding, Companion, Scouting, Hunting and Raiding determine mission context and engagement policy, not a different combat engine. Combat AI should lock a concrete target, orbit/reposition, read windups, exploit recovery windows, manage Vitae, simulate skill-based Predatory Bite timing, and choose retreat when local odds are poor. Combat skill, traits, stress, health, loyalty and mission role should affect reaction quality and risk tolerance so Vassals are capable but fallible. This is scheduled after operational orders as 0.6.4d1.
 
+
+## Vampire Vassal Politics
+
+Vampire Vassals are autonomous political actors rather than controlled Thralls. Their current stance is derived from persistent character state instead of being saved as a second opinion meter. Loyalty and Morale support Obedience; Ambition and Stress undermine it. The derived states are Devoted, Loyal, Wary, Resentful and Defiant, with Defiance Risk exposed as the inverse of Obedience.
+
+Night-start political events are deterministic from world seed, day and Vassal identity. Dominion Strain settles first, so overextended authority can push an already ambitious or stressed Vassal toward resentment or rivalry. Torpid Vassals remain outside active political settlement. Operational orders in 0.6.4d should consume this same political profile for compliance/refusal rather than inventing a separate obedience system.
+
+The old generic work-shift servant event table has been removed. Crafting, gathering or guarding no longer mutate Loyalty merely because a work task completed; political consequences belong to the political resolver.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.4c - Loyalty, Ambition & Political Events
+
+- Added a derived Vampire Vassal political profile: Devoted, Loyal, Wary, Resentful or Defiant.
+- Obedience is derived from Loyalty, Morale, Ambition and Stress rather than stored as another counter; Defiance Risk is the inverse and becomes an input for future orders.
+- Added deterministic seeded night-start political events for active Vassals, including accord, ambition, Dominion resentment, rivalry and brooding discontent.
+- Torpid Vassals do not receive political events while dormant.
+- Removed the obsolete generic `SERVANT_EVENTS` work-shift mutation path and its unused model/data definitions, leaving Vassal politics with one authority.
+- Dominion Strain resolves before political events, allowing overextension to create immediate political consequences without coupling politics to work output.
+- Save format remains v11 because stance, obedience and defiance are derived from existing persistent character state.
+
 ## 0.6.4b - Vassal Crypt & Dominion Strain
 
 - Added Vassal Crypt room; each completed Crypt contributes +2 derived Dominion capacity.

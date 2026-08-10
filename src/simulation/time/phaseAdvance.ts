@@ -7,6 +7,7 @@ import { markHumanEscaped, resolveNightlyHumanPopulation } from '../world/nightl
 import { resolveHumanThrallDay } from '../servants/humanThralls';
 import { runHumanWorkDay } from '../servants/humanWork';
 import { resolveDominionStrain } from '../servants/dominion';
+import { resolveVassalPolitics } from '../servants/vassalPolitics';
 
 export interface PhaseAdvanceResult {
   state: SaveGame;
@@ -92,6 +93,10 @@ export const advanceWorldPhase = (state: SaveGame): PhaseAdvanceResult => {
     const dominion = resolveDominionStrain({ player, rooms, vampireVassals });
     vampireVassals = dominion.vampireVassals;
     for (const event of dominion.events) events.push(event);
+
+    const politics = resolveVassalPolitics(vampireVassals, state.seed, nextDay, dominion.summary.strain);
+    vampireVassals = politics.vampireVassals;
+    for (const event of politics.events) events.push(event);
     events.push(`Night ${nextDay} begins. The world stirs anew.`);
   }
 
