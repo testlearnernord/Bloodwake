@@ -244,8 +244,9 @@ export const renderOverlay = (
         </section>
         <section>
           <h3>Vampire Vassals</h3>
-          <p>Dominion: ${dominion.activeCost}/${dominion.capacity}${dominion.strain > 0 ? ` · Strain ${dominion.strain}` : ''} · Active ${dominion.activeVassals} · Torpor ${dominion.torpidVassals}</p>
-          <p class="hint">Active Vassals cost 1 Dominion each. Torpid Vassals cost 0 and cannot work or receive orders.</p>
+          <p>Dominion: ${dominion.activeCost}/${dominion.capacity}${dominion.strain > 0 ? ` · Strain ${dominion.strain} (${dominion.strainState})` : ' · Stable'} · Active ${dominion.activeVassals} · Torpor ${dominion.torpidVassals}</p>
+          <p class="hint">Capacity: ${dominion.baseCapacity} from Blood Control + Presence${dominion.cryptCapacity > 0 ? ` + ${dominion.cryptCapacity} from Vassal Crypts` : ''}. Each built Vassal Crypt adds 2 Dominion.</p>
+          <p class="hint">Active Vassals cost 1 Dominion each. Torpid Vassals cost 0. Each point of Strain applies 2 Loyalty loss and 4 Stress to active Vassals when a new night begins.</p>
           ${
             vassals.length === 0
               ? '<p>No vampire vassals yet. Turning creates a powerful but autonomous subordinate, not a thrall.</p>'

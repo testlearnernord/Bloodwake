@@ -31,6 +31,7 @@ const ICON_PATHS: Record<string, string> = {
   workshop: 'M2 16l5-5 2 2-5 5H2v-2zm9-9l4-4 6 6-4 4-6-6z',
   servant_quarters: 'M4 20v-7l8-6 8 6v7h-5v-4H9v4H4z',
   blood_cellar: 'M12 2C9 6 6 9 6 13a6 6 0 1012 0c0-4-3-7-6-11z',
+  vassal_crypt: 'M5 21V8l7-5 7 5v13h-4v-7H9v7H5zm4-11h6V8H9v2z',
   herbs: 'M12 2C8 5 6 9 6 13a6 6 0 0012 0c0-4-2-8-6-11zm0 6c2 1 3 3 3 5a3 3 0 01-6 0c0-2 1-4 3-5z',
   leather: 'M5 4h14l2 8-2 8H5l-2-8 2-8z',
   iron_ingot: 'M4 9h16l-2 6H6L4 9z',
