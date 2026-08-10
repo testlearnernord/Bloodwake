@@ -95,6 +95,7 @@ export const getVassalActorTaskPlanCacheKey = (
   vassal.id,
   index,
   vassal.health,
+  vassal.state,
   vassal.professionId,
   getPriorityKey(vassal.priorities),
   vassal.traitIds.join(','),
@@ -171,6 +172,7 @@ export const getVassalActorTaskPlan = (
   index: number,
 ): DomainActorTaskPlan => {
   const home = getDomainPopulationAnchor('vampire_vassal', index);
+  if (vassal.state === 'torpor') return inactivePlan(vassal.id, 'vampire_vassal', home, 'Torpor');
   if (state.time.phase !== 'night') return inactivePlan(vassal.id, 'vampire_vassal', home, 'Sheltered');
   const task = selectTaskForVassal(vassal, state.rooms, state.craftingQueue, state.inventory, state.time.phase);
   if (!task || task.score <= 0) return inactivePlan(vassal.id, 'vampire_vassal', home, 'Idle');

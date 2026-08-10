@@ -27,6 +27,7 @@ export type RoomId = 'coffin_chamber' | 'storage_room' | 'workshop' | 'servant_q
 export type JobType = 'Building' | 'Crafting' | 'Gathering' | 'Guarding' | 'Research' | 'Hunting';
 export type JobPriority = 'Disabled' | 'Low' | 'Normal' | 'High' | 'Critical';
 export type DayPhase = 'day' | 'night';
+export type VampireVassalState = 'active' | 'torpor';
 export type QualityLevel = 'Poor' | 'Common' | 'Fine' | 'Masterwork';
 export type ItemSlot = 'Weapon' | 'Armor' | 'Accessory';
 export type QuestStepStatus = 'locked' | 'active' | 'complete';
@@ -197,6 +198,8 @@ export interface VampireVassal extends PopulationBase {
   ambition: number;
   vitae: number;
   maxVitae: number;
+  state: VampireVassalState;
+  torporSinceDay: number | null;
 }
 
 export interface RoomDefinition {

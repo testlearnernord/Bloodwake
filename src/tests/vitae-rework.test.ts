@@ -98,10 +98,10 @@ describe('unified vampire Vitae model', () => {
     expect(foodAfter).toBe(foodBefore);
   });
 
-  it('uses save v10 and still rejects older or stale hunger fields', () => {
-    const state = createNewGameState({ seed: 'save-v10' });
-    expect(SAVE_FORMAT_VERSION).toBe(10);
-    expect(migrateSaveGame(state).version).toBe(10);
+  it('uses save v11 and still rejects older or stale hunger fields', () => {
+    const state = createNewGameState({ seed: 'save-v11' });
+    expect(SAVE_FORMAT_VERSION).toBe(11);
+    expect(migrateSaveGame(state).version).toBe(11);
     expect(() => migrateSaveGame({ ...state, version: 6 })).toThrow(/older game version/i);
     expect(validateSaveGame({ ...state, player: { ...state.player, hunger: 1 } })).toBe(false);
 
