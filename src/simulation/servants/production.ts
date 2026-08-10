@@ -1,5 +1,4 @@
 import { RECIPES_BY_ID } from '../../data/recipes';
-import { SERVANT_EVENTS } from '../../data/servantEvents';
 import type { BuiltRoom, CraftingOrder, DayPhase, DomainResourcePool, InventoryEntry, VampireVassal } from '../../types/models';
 import { completeCraftingOrder } from '../crafting/crafting';
 import { addItem, mergeCompatibleStacks } from '../inventory/inventory';
@@ -70,20 +69,6 @@ export const runWorkShift = (
     } else {
       updatedStrategicResources.security += 1;
       log.push(`${vassal.name} stands guard.`);
-    }
-    const triggeredEvent = SERVANT_EVENTS.find((event) => {
-      if (event.condition === 'low_morale') {
-        return updatedVassal.morale < 40;
-      }
-      if (event.condition === 'ambitious_vampire') {
-        return updatedVassal.ambition > 70 && workTask.type === 'guard_stronghold';
-      }
-      return updatedVassal.loyalty > 70;
-    });
-    if (triggeredEvent) {
-      updatedVassal.morale += triggeredEvent.effect.morale ?? 0;
-      updatedVassal.loyalty += triggeredEvent.effect.loyalty ?? 0;
-      log.push(`${triggeredEvent.title}: ${triggeredEvent.description}`);
     }
     updatedVassals.push(updatedVassal);
   }

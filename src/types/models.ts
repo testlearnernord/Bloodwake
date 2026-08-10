@@ -323,18 +323,6 @@ export interface EnemyDefinition {
   elite?: boolean;
 }
 
-export interface ServantEventDefinition {
-  id: string;
-  title: string;
-  description: string;
-  condition: 'low_morale' | 'ambitious_vampire' | 'loyal_bonus';
-  effect: {
-    morale?: number;
-    loyalty?: number;
-    productivity?: number;
-  };
-}
-
 export interface TaskCandidate {
   id: string;
   type: TaskType;

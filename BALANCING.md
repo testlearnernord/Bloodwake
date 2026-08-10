@@ -133,3 +133,12 @@ Human Servants are captive thralls, not citizens and not loyalty-based vassals.
 - At `0 Control`, the vampiric bond breaks and the captive escapes back into the free-human world.
 - Control states: Dominated `80-100`, Subdued `60-79`, Unstable `40-59`, Defiant `20-39`, Breaking `0-19`.
 - Human Thralls deliberately do not use `Loyalty`, `Ambition`, or `Morale`; those remain Vampire Vassal concerns.
+
+
+## Vampire Vassal politics (0.6.4c)
+
+Derived Obedience uses no separate save field:
+
+`round(Loyalty × 0.55 + Morale × 0.15 + (100 - Ambition) × 0.15 + (100 - Stress) × 0.15)`
+
+Stance thresholds: Devoted 80+, Loyal 65-79, Wary 45-64, Resentful 25-44, Defiant 0-24. Defiance Risk is `100 - Obedience`. Political-event base chance by stance is 10% / 15% / 22% / 35% / 50%, with +5 percentage points per Dominion Strain up to +25. Event selection is seeded and weighted by the Vassal's actual political pressures.

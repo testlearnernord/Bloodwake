@@ -10,6 +10,7 @@ import { calculatePlayerCombatStats } from '../../simulation/combat/stats';
 import { getVitaeCondition } from '../../simulation/blood/vitaeCondition';
 import { selectTaskForVassal } from '../../simulation/servants/tasks';
 import { getDominionSummary } from '../../simulation/servants/dominion';
+import { getVassalPoliticalProfile } from '../../simulation/servants/vassalPolitics';
 import { getHumanHousingCapacity, getThrallControlState, validateReassertThrallControl } from '../../simulation/servants/humanThralls';
 import { HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD, HUMAN_WORK_JOB_TYPES, selectTaskForHumanThrall } from '../../simulation/servants/humanWork';
 import { validateElevateThrall } from '../../simulation/servants/thrallElevation';
@@ -246,7 +247,7 @@ export const renderOverlay = (
           <h3>Vampire Vassals</h3>
           <p>Dominion: ${dominion.activeCost}/${dominion.capacity}${dominion.strain > 0 ? ` · Strain ${dominion.strain} (${dominion.strainState})` : ' · Stable'} · Active ${dominion.activeVassals} · Torpor ${dominion.torpidVassals}</p>
           <p class="hint">Capacity: ${dominion.baseCapacity} from Blood Control + Presence${dominion.cryptCapacity > 0 ? ` + ${dominion.cryptCapacity} from Vassal Crypts` : ''}. Each built Vassal Crypt adds ${ROOMS_BY_ID.vassal_crypt.dominionCapacity ?? 0} Dominion.</p>
-          <p class="hint">Active Vassals cost 1 Dominion each. Torpid Vassals cost 0. Each point of Strain applies 2 Loyalty loss and 4 Stress to active Vassals when a new night begins.</p>
+          <p class="hint">Active Vassals cost 1 Dominion each. Torpid Vassals cost 0. Each point of Strain applies 2 Loyalty loss and 4 Stress to active Vassals when a new night begins. Loyalty and Morale support Obedience; Ambition and Stress erode it.</p>
           ${
             vassals.length === 0
               ? '<p>No vampire vassals yet. Turning creates a powerful but autonomous subordinate, not a thrall.</p>'
@@ -258,7 +259,8 @@ export const renderOverlay = (
                     const predictedTaskReason = vassal.state === 'torpor'
                       ? 'In Torpor. No orders can be performed.'
                       : (predictedTask?.reason ?? 'No enabled work is available.');
-                    return `<article><h4>${htmlEscape(vassal.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>State: <strong>${htmlEscape(vassal.state === 'torpor' ? 'Torpor' : 'Active')}</strong> · Dominion ${vassal.state === 'active' ? 1 : 0}</p><p>Health ${vassal.health}/${vassal.maxHealth} · Morale ${vassal.morale} · Loyalty ${vassal.loyalty}</p><p>Ambition ${vassal.ambition} · Stress ${vassal.stress}</p><p>Current task: ${htmlEscape(vassal.currentTask ?? 'none')} — ${htmlEscape(vassal.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTaskLabel)} — ${htmlEscape(predictedTaskReason)}</p><div class="button-row compact"><button data-vassal-torpor="${htmlEscape(vassal.id)}" data-vassal-torpor-action="${vassal.state === 'torpor' ? 'wake' : 'sleep'}">${vassal.state === 'torpor' ? 'Awaken' : 'Enter Torpor'}</button></div></article>`;
+                    const politics = getVassalPoliticalProfile(vassal);
+                    return `<article><h4>${htmlEscape(vassal.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>State: <strong>${htmlEscape(vassal.state === 'torpor' ? 'Torpor' : 'Active')}</strong> · Dominion ${vassal.state === 'active' ? 1 : 0}</p><p>Health ${vassal.health}/${vassal.maxHealth} · Morale ${vassal.morale} · Loyalty ${vassal.loyalty}</p><p>Ambition ${vassal.ambition} · Stress ${vassal.stress}</p><p>Politics: <strong>${htmlEscape(politics.stance)}</strong> · Obedience ${politics.obedience}/100 · Defiance ${politics.defianceRisk}/100</p><p class="hint">${htmlEscape(politics.pressureSummary)}</p><p>Current task: ${htmlEscape(vassal.currentTask ?? 'none')} — ${htmlEscape(vassal.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTaskLabel)} — ${htmlEscape(predictedTaskReason)}</p><div class="button-row compact"><button data-vassal-torpor="${htmlEscape(vassal.id)}" data-vassal-torpor-action="${vassal.state === 'torpor' ? 'wake' : 'sleep'}">${vassal.state === 'torpor' ? 'Awaken' : 'Enter Torpor'}</button></div></article>`;
                   })
                   .join('')
           }
