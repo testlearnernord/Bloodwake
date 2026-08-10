@@ -42,9 +42,21 @@ There is deliberately no passive Blood Stock production in the current save mode
 
 `humanServants`, `bloodDonors`, and `vampireVassals` are separate explicit collections. The old generic `servants` field is invalid. Duplicate IDs are rejected within either stronghold collection and an ID may not occur in both collections. A Human Thrall deliberately shares identity with its source NPC record.
 
-### Vampire Vassal operational orders
+### Vampire Vassal lifecycle and operational orders
 
-Each `vampireVassals[]` record now requires `operationalOrder: { type, issuedDay }`. `type` is one of `none`, `guard`, `companion`, `scout`, `hunt`, or `raid`. `none` requires `issuedDay: null`; an active field order requires an integer day. Orders are persistent character intent, while their movement/combat execution remains a simulation concern.
+Each `vampireVassals[]` record requires `state`, `torporSinceDay`, personal Health/Vitae, political values, and `operationalOrder: { type, issuedDay }`.
+
+Lifecycle invariants are validated rather than silently repaired:
+
+- `state: "active"` requires `torporSinceDay: null`.
+- `state: "torpor"` requires a valid positive `torporSinceDay` and cannot retain `currentJob`, `currentTask`, or an active field operation.
+- Entering Torpor therefore always clears operational intent to `{ type: "none", issuedDay: null }`; awakening also starts without inventing a previous field order.
+- `health` and `vitae` must be finite and remain between zero and their positive finite maxima. Fractional combat values remain legal.
+- Vassal Loyalty, Morale, Ambition and Stress must be finite values within `0..100`; they are not forced to integers.
+
+Operational order `type` is one of `none`, `guard`, `companion`, `scout`, `hunt`, or `raid`. `none` requires `issuedDay: null`; an active field order requires an integer day. Orders are persistent character intent, while frame-level combat action, target-lock and dodge state remain transient.
+
+The 0.6.4e stabilization tightens these v12 invariants without changing the persistent schema, so the save version remains 12.
 
 ## Vampire resource rules
 

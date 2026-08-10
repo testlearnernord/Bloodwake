@@ -5,10 +5,12 @@ import { runWorkShift } from '../simulation/servants/production';
 import { selectTaskForVassal } from '../simulation/servants/tasks';
 import {
   getVassalOrderComplianceChance,
+  getVassalOperationalOrderDefinition,
   issueVassalOperationalOrder,
 } from '../simulation/servants/vassalOrders';
 import { createVampireVassal } from '../simulation/servants/vampireVassals';
 import { validateSaveGame } from '../persistence/saveStore';
+import type { VassalOperationalOrderType } from '../types/models';
 
 const withVassal = () => {
   const state = createNewGameState({ seed: 'operational-orders' });
@@ -31,6 +33,11 @@ describe('0.6.4d Vampire Vassal operational orders', () => {
     expect(getVassalOrderComplianceChance(vassal, 'none')).toBe(1);
   });
 
+  it('describes Guard and Companion as current shared-combat behaviors', () => {
+    expect(getVassalOperationalOrderDefinition('guard').description).not.toMatch(/once|later/i);
+    expect(getVassalOperationalOrderDefinition('companion').description).not.toMatch(/once|later/i);
+  });
+
   it('accepts a guaranteed low-risk order for a fully obedient vassal and makes it authoritative over routine work', () => {
     const state = withVassal();
     const issued = issueVassalOperationalOrder(state, state.vampireVassals[0].id, 'guard');
@@ -41,15 +48,18 @@ describe('0.6.4d Vampire Vassal operational orders', () => {
     expect(task?.type).toBe('guard_stronghold');
   });
 
-  it('keeps independent field operations from creating fake batch rewards', () => {
-    const state = withVassal();
-    state.vampireVassals[0].operationalOrder = { type: 'raid', issuedDay: state.time.day };
-    const beforeResources = { ...state.strategicResources };
-    const beforeInventory = [...state.inventory].sort((left, right) => left.itemId.localeCompare(right.itemId));
-    const shift = runWorkShift(state.vampireVassals, state.rooms, state.craftingQueue, state.strategicResources, state.inventory, 'night', state.seed);
-    expect(shift.strategicResources).toEqual(beforeResources);
-    expect(shift.inventory).toEqual(beforeInventory);
-    expect(shift.log.join(' ')).toMatch(/No batch reward/);
+  it('keeps Scout, Hunt and Raid from creating fake batch rewards', () => {
+    const operationTypes: VassalOperationalOrderType[] = ['scout', 'hunt', 'raid'];
+    for (const operationType of operationTypes) {
+      const state = withVassal();
+      state.vampireVassals[0].operationalOrder = { type: operationType, issuedDay: state.time.day };
+      const beforeResources = { ...state.strategicResources };
+      const beforeInventory = [...state.inventory].sort((left, right) => left.itemId.localeCompare(right.itemId));
+      const shift = runWorkShift(state.vampireVassals, state.rooms, state.craftingQueue, state.strategicResources, state.inventory, 'night', state.seed);
+      expect(shift.strategicResources).toEqual(beforeResources);
+      expect(shift.inventory).toEqual(beforeInventory);
+      expect(shift.log.join(' ')).toMatch(/No batch reward/);
+    }
   });
 
   it('rejects new operational orders while a vassal is in Torpor and clears an existing order on entering Torpor', () => {

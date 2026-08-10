@@ -120,22 +120,21 @@ Vampire Vassals remain fundamentally different. They are powerful, immortal poli
 
 ## Shared Vampire Combat Architecture
 
-The player and Vampire Vassals must ultimately use the same combat primitives rather than separate damage systems. A combatant owns health/Vitae, equipment, target lock, action runtime and the same Light Attack, Heavy Attack, Dodge, Blood Lance and Predatory Bite rules. Player input is one controller; Vassal utility AI is another controller over the same actions.
+The player and Vampire Vassals use the same combat primitives rather than separate damage systems. A combatant owns health/Vitae, equipment, target lock, action runtime and the same Light Attack, Heavy Attack, Dodge, Blood Lance and Predatory Bite rules. Player input is one controller; Vassal utility AI is another controller over the same actions.
 
-Vassal jobs such as Guarding, Companion, Scouting, Hunting and Raiding determine mission context and engagement policy, not a different combat engine. Combat AI should lock a concrete target, orbit/reposition, read windups, exploit recovery windows, manage Vitae, simulate skill-based Predatory Bite timing, and choose retreat when local odds are poor. Combat skill, traits, stress, health, loyalty and mission role should affect reaction quality and risk tolerance so Vassals are capable but fallible. This is scheduled after operational orders as 0.6.4d1.
-
+Vassal jobs such as Guarding, Companion, Scouting, Hunting and Raiding determine mission context and engagement policy, not a different combat engine. Operational Vassals lock concrete targets, orbit/reposition, react to close telegraphs, manage personal Vitae, use deterministic Predatory Bite resolution and retreat according to order-specific risk tolerance. Combat skill, attributes, equipment and Vitae condition feed the same combat-stat path instead of creating an NPC-only damage model.
 
 ## Vampire Vassal Operational Orders
 
 Vassal operations are a separate command layer from routine Stronghold work priorities. A Vassal may have no field order, Guard the Stronghold, act as Companion, Scout, Hunt, or Raid. Issuing a field order consumes the same derived political Obedience used by the politics system; mission danger changes compliance and an autonomous Vassal can refuse without creating a second loyalty meter. Torpor clears field orders.
 
-Operational orders describe intent and engagement policy, not instant outcomes. Guard/Companion/Scout/Hunt/Raid must not mint resources from a phase click. Companion can visibly follow the player and the other orders can stage the Vassal at explicit world destinations now, but combat, prey, loot, injury and return travel become causal through 0.6.4d1 shared combat and 0.6.5 authoritative tasks.
+Operational orders describe intent and engagement policy, not instant outcomes. Guard/Companion/Scout/Hunt/Raid must not mint resources from a phase click. Shared combat now makes hostile encounters, damage, Vitae use, Predatory Bite and combat Torpor causal in the world. Full operation completion, physical loot recovery, hauling and return authority remain part of the 0.6.5 continuous-task conversion.
 
 ## Vampire Vassal Politics
 
 Vampire Vassals are autonomous political actors rather than controlled Thralls. Their current stance is derived from persistent character state instead of being saved as a second opinion meter. Loyalty and Morale support Obedience; Ambition and Stress undermine it. The derived states are Devoted, Loyal, Wary, Resentful and Defiant, with Defiance Risk exposed as the inverse of Obedience.
 
-Night-start political events are deterministic from world seed, day and Vassal identity. Dominion Strain settles first, so overextended authority can push an already ambitious or stressed Vassal toward resentment or rivalry. Torpid Vassals remain outside active political settlement. Operational orders in 0.6.4d should consume this same political profile for compliance/refusal rather than inventing a separate obedience system.
+Night-start political events are deterministic from world seed, day and Vassal identity. Dominion Strain settles first, so overextended authority can push an already ambitious or stressed Vassal toward resentment or rivalry. Torpid Vassals remain outside active political settlement. Operational orders consume this same political profile for compliance/refusal rather than inventing a separate obedience system.
 
 The old generic work-shift servant event table has been removed. Crafting, gathering or guarding no longer mutate Loyalty merely because a work task completed; political consequences belong to the political resolver.
 

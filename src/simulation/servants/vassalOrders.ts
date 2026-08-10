@@ -28,13 +28,13 @@ const DEFINITIONS: Record<VassalOperationalOrderType, VassalOperationalOrderDefi
   guard: {
     type: 'guard',
     label: 'Guard Stronghold',
-    description: 'Hold a Stronghold guard post and engage intruders once shared Vassal combat is active.',
+    description: 'Hold a Stronghold guard post and engage intruders with shared Vassal combat.',
     complianceModifier: 20,
   },
   companion: {
     type: 'companion',
     label: 'Companion',
-    description: 'Remain with the Vampire Lord and later prioritize threats around the player.',
+    description: 'Remain with the Vampire Lord and prioritize threats around the player.',
     complianceModifier: 10,
   },
   scout: {
