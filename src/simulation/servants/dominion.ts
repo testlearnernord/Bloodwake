@@ -71,8 +71,8 @@ export const resolveDominionStrain = (
   if (summary.strain <= 0) {
     return { vampireVassals: state.vampireVassals, events: [], summary };
   }
-  const loyaltyLoss = Math.min(20, summary.strain * 2);
-  const stressGain = Math.min(30, summary.strain * 4);
+  const loyaltyLoss = summary.strain * 2;
+  const stressGain = summary.strain * 4;
   const vampireVassals = state.vampireVassals.map((vassal) =>
     vassal.state === 'active'
       ? {

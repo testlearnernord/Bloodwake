@@ -44,6 +44,20 @@ describe('0.6.4b Vassal Crypt and Dominion Strain', () => {
     expect(result.vampireVassals[2].stress).toBe(beforeTorpid.stress);
   });
 
+  it('scales nightly Dominion Strain penalties directly with each strain point', () => {
+    const state = createNewGameState({ seed: 'strain-scaling' });
+    state.player.attributes.bloodControl = 0;
+    state.player.attributes.presence = 0;
+    state.vampireVassals = makeVassals(12);
+    state.vampireVassals[0] = { ...state.vampireVassals[0], loyalty: 80, stress: 10 };
+    const beforeActive = state.vampireVassals[0];
+    const result = resolveDominionStrain(state);
+    expect(result.summary.capacity).toBe(1);
+    expect(result.summary.strain).toBe(11);
+    expect(result.vampireVassals[0].loyalty).toBe(beforeActive.loyalty - 22);
+    expect(result.vampireVassals[0].stress).toBe(beforeActive.stress + 44);
+  });
+
   it('does nothing while Dominion is stable', () => {
     const state = createNewGameState({ seed: 'stable' });
     state.vampireVassals = makeVassals(1);
