@@ -4,6 +4,7 @@ import { RECIPES_BY_ID } from '../../data/recipes';
 import type { BuiltRoom, CraftingOrder, DayPhase, InventoryEntry, JobType, TaskCandidate, VampireVassal } from '../../types/models';
 import { getItemQuantity } from '../inventory/inventory';
 import { getTraitById } from '../traits/traitUtils';
+import { getVassalOperationalTask } from './vassalOrders';
 
 export const canVassalWorkInPhase = (vassal: VampireVassal, phase: DayPhase): boolean =>
   vassal.state === 'active' && WORK_PHASES['vampire'].includes(phase);
@@ -98,6 +99,8 @@ export const selectTaskForVassal = (
   if (vassal.health <= 3) {
     return { id: 'recover', type: 'guard_stronghold', jobType: 'Guarding', score: -1, reason: 'Too wounded to work.' };
   }
+  const operationalTask = getVassalOperationalTask(vassal);
+  if (operationalTask) return operationalTask;
   const candidates = createTaskCandidates(vassal, rooms, craftingQueue, inventory).sort((left, right) => right.score - left.score);
   const best = candidates[0] ?? null;
   if (!best || best.score <= 0) {

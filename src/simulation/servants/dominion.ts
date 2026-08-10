@@ -106,6 +106,7 @@ export const setVassalTorpor = (
     ...vassal,
     state: nextState,
     torporSinceDay: torpor ? state.time.day : null,
+    operationalOrder: torpor ? { type: 'none', issuedDay: null } : vassal.operationalOrder,
     currentJob: null,
     currentTask: null,
     taskReason: torpor ? 'In Torpor. No orders, work, or Dominion cost.' : 'Awakened and awaiting orders.',

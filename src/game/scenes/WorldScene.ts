@@ -1475,13 +1475,16 @@ export class WorldScene extends Phaser.Scene {
         : getVassalActorTaskPlan(state, vassal, index);
       entry.plan = plan;
       entry.planCacheKey = planCacheKey;
+      const motionPlan = vassal.operationalOrder.type === 'companion' && plan.active
+        ? { ...plan, destination: { x: this.player.x - 34 - (index % 2) * 24, y: this.player.y + ((index % 3) - 1) * 28 } }
+        : plan;
       const previousX = entry.sprite.x;
-      const step = stepDomainActorMotion(entry.motion, { x: entry.sprite.x, y: entry.sprite.y }, plan, delta);
+      const step = stepDomainActorMotion(entry.motion, { x: entry.sprite.x, y: entry.sprite.y }, motionPlan, delta);
       entry.motion = step.runtime;
       entry.sprite.setPosition(step.position.x, step.position.y);
       entry.shadow.setPosition(step.position.x, step.position.y + 11);
       entry.nameLabel.setPosition(step.position.x, step.position.y - 29);
-      const motionLabel = getDomainActorMotionLabel(plan, step.runtime).replace(/^Vassal · /, '');
+      const motionLabel = getDomainActorMotionLabel(motionPlan, step.runtime).replace(/^Vassal · /, '');
       entry.jobLabel.setPosition(step.position.x, step.position.y + 21).setText(motionLabel).setVisible(plan.active || step.runtime.phase === 'returning');
       if (Math.abs(step.position.x - previousX) > 0.05) entry.sprite.setFlipX(step.position.x < previousX);
       entry.sprite.setScale(step.runtime.phase === 'working' ? 1 + Math.sin(this.time.now / 125 + index) * 0.03 : 1);

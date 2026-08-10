@@ -2,6 +2,7 @@ import type { BuiltRoom, DayPhase, HumanServant, JobType, SaveGame, VampireVassa
 import { RECIPES_BY_ID } from '../../data/recipes';
 import { selectTaskForHumanThrall, type HumanWorkTask } from '../servants/humanWork';
 import { selectTaskForVassal } from '../servants/tasks';
+import { getVassalOrderLabel } from '../servants/vassalOrders';
 import { getDomainPopulationAnchor, type DomainPopulationAnchor, type DomainPopulationKind } from './domainPresence';
 
 export type DomainActorMotionPhase = 'idle' | 'moving_to_task' | 'working' | 'returning';
@@ -36,6 +37,8 @@ export const STRONGHOLD_CELL_H = 76;
 const WOOD_GATHER_DESTINATION = { x: 430, y: 340 } as const;
 const HERB_GATHER_DESTINATION = { x: 740, y: 250 } as const;
 const HUNT_DESTINATION = { x: 700, y: 540 } as const;
+const SCOUT_DESTINATION = { x: 855, y: 170 } as const;
+const RAID_DESTINATION = { x: 1040, y: 360 } as const;
 const GUARD_POST_X = 292;
 const GUARD_POST_Y = 296;
 const GUARD_POST_ROWS = 4;
@@ -57,9 +60,10 @@ export const getStrongholdRoomCenter = (room: Pick<BuiltRoom, 'x' | 'y' | 'width
 
 interface ActorTaskLike {
   id: string;
-  type: 'construct_room' | 'craft_recipe' | 'gather_resource' | 'hunt_food' | 'guard_stronghold';
+  type: 'construct_room' | 'craft_recipe' | 'gather_resource' | 'hunt_food' | 'guard_stronghold' | 'vassal_companion' | 'vassal_scout' | 'vassal_hunt' | 'vassal_raid';
   jobType: JobType;
   itemId?: 'wood' | 'herbs';
+  operationalOrderType?: VampireVassal['operationalOrder']['type'];
 }
 
 export const getDomainActorTaskEnvironmentKey = (state: Pick<SaveGame, 'time' | 'rooms' | 'craftingQueue' | 'inventory'>): string => [
@@ -96,6 +100,8 @@ export const getVassalActorTaskPlanCacheKey = (
   index,
   vassal.health,
   vassal.state,
+  vassal.operationalOrder.type,
+  vassal.operationalOrder.issuedDay ?? 'none',
   vassal.professionId,
   getPriorityKey(vassal.priorities),
   vassal.traitIds.join(','),
@@ -118,9 +124,13 @@ const resolveTaskDestination = (state: SaveGame, task: ActorTaskLike, home: Doma
     const itemId = task.itemId ?? 'wood';
     return itemId === 'herbs' ? HERB_GATHER_DESTINATION : WOOD_GATHER_DESTINATION;
   }
-  if (task.type === 'hunt_food') {
+  if (task.type === 'hunt_food' || task.type === 'vassal_hunt') {
     return HUNT_DESTINATION;
   }
+  if (task.type === 'vassal_scout') return SCOUT_DESTINATION;
+  if (task.type === 'vassal_raid') return RAID_DESTINATION;
+  // Companion destination is replaced each frame by WorldScene with the player's live position.
+  if (task.type === 'vassal_companion') return home;
   if (task.type === 'guard_stronghold') {
     return getGuardPostDestination(actorIndex);
   }
@@ -183,7 +193,7 @@ export const getVassalActorTaskPlan = (
     jobType: task.jobType,
     taskId: task.id,
     taskKey: `${task.type}:${task.id}`,
-    activityLabel: task.jobType,
+    activityLabel: task.operationalOrderType ? getVassalOrderLabel(task.operationalOrderType) : task.jobType,
     home,
     destination: resolveTaskDestination(state, task, home, index),
   };

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.4d - Vampire Vassal Operational Orders
+
+- Save format advances to v12 and every Vampire Vassal persists one explicit operational order: Stronghold Duties, Guard, Companion, Scout, Hunt or Raid.
+- Issuing a field order uses the existing derived political Obedience plus mission-specific risk; a refusal leaves the previous authoritative order unchanged and cannot be rerolled by repeated clicks within the same day/seed/order tuple.
+- Operational orders override routine Vassal work priorities until cleared. Entering Torpor clears the field order and Torpid Vassals cannot receive new ones.
+- Guard/Companion/Scout/Hunt/Raid now drive visible world intent. Companion follows the player at night; Guard uses real guard posts; Scout/Hunt/Raid move toward explicit regional operation destinations.
+- Independent field operations intentionally grant no batch loot, Blood, security or other fabricated result. Their outcomes belong to Shared Vassal Combat AI and later continuous operation tasks.
+- 0.6.4d1 remains the combat implementation: Vassals will use the same combat primitives as the player instead of a parallel damage system.
+
 ## 0.6.4c - Loyalty, Ambition & Political Events
 
 - Added a derived Vampire Vassal political profile: Devoted, Loyal, Wary, Resentful or Defiant.

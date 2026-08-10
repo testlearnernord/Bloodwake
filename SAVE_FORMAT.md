@@ -4,9 +4,9 @@ Save data is stored as versioned JSON in IndexedDB.
 
 ## Current version
 
-- `version: 11`
+- `version: 12`
 
-## Version 11 key fields
+## Version 12 key fields
 
 The main collections include `player`, `npcs`, `humanServants`, `bloodDonors`, `vampireVassals`, `bloodStock`, `strategicResources`, `inventory`, `rooms`, `craftingQueue`, `time`, `worldCycle`, `quests`, `collectibles`, `inheritanceHistory`, `settings`, and `lastEventLog`.
 
@@ -42,6 +42,10 @@ There is deliberately no passive Blood Stock production in the current save mode
 
 `humanServants`, `bloodDonors`, and `vampireVassals` are separate explicit collections. The old generic `servants` field is invalid. Duplicate IDs are rejected within either stronghold collection and an ID may not occur in both collections. A Human Thrall deliberately shares identity with its source NPC record.
 
+### Vampire Vassal operational orders
+
+Each `vampireVassals[]` record now requires `operationalOrder: { type, issuedDay }`. `type` is one of `none`, `guard`, `companion`, `scout`, `hunt`, or `raid`. `none` requires `issuedDay: null`; an active field order requires an integer day. Orders are persistent character intent, while their movement/combat execution remains a simulation concern.
+
 ## Vampire resource rules
 
 Ordinary vampire `hunger` was removed in save v6. Vitae is the personal blood/supernatural-energy resource for the player and Vampire Vassals. Blood Essence exists only in `strategicResources.bloodEssence`; the obsolete duplicate `player.bloodEssence` field is invalid. Recovered memories are authoritative through `collectibles[].discovered`; the obsolete duplicate `player.memoryFragments` field is invalid. Saves containing these stale fields are rejected.
@@ -52,7 +56,7 @@ Enemy and resource instance IDs are generated deterministically from the current
 
 ## Old save compatibility
 
-**Saves at versions 1 through 10 are intentionally incompatible with v11.** Loading or importing an older save returns a clear incompatibility error. There is no partial migration or silent repair; players must start a new game.
+**Saves at versions 1 through 11 are intentionally incompatible with v12.** Loading or importing an older save returns a clear incompatibility error. There is no partial migration or silent repair; players must start a new game.
 
 ## Historical breaking changes
 
@@ -65,3 +69,5 @@ Enemy and resource instance IDs are generated deterministically from the current
 - v9 adds persistent Blood Stock capacity, irreversible Blood Donors, and slow regional Human repopulation instead of immediate one-for-one replacement.
 - v10 removes the unused `constructionTasks` save field plus duplicate `player.bloodEssence` and `player.memoryFragments` authorities. Construction is authoritative in `rooms[].status/progress`, Blood Essence in `strategicResources`, and recovered memories in `collectibles`.
 - v11 adds explicit Vampire Vassal `state` (`active` or `torpor`) and `torporSinceDay`; Dominion is derived from the active Vassal roster rather than stored as a duplicate counter.
+
+- v12 adds persistent Vampire Vassal operational orders and makes political Obedience the single compliance input for Guard/Companion/Scout/Hunt/Raid commands.

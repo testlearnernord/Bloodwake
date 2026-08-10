@@ -43,9 +43,9 @@ describe('0.6.4a Dominion and Torpor', () => {
     expect(getDominionSummary(awake).activeCost).toBe(1);
   });
 
-  it('requires explicit v11 lifecycle fields in saves', () => {
+  it('requires explicit v12 lifecycle fields in saves', () => {
     const state = withVassal();
-    expect(state.version).toBe(11);
+    expect(state.version).toBe(12);
     expect(validateSaveGame(state)).toBe(true);
     const malformed = { ...state, vampireVassals: [{ ...state.vampireVassals[0], state: 'torpor', torporSinceDay: null }] };
     expect(validateSaveGame(malformed)).toBe(false);

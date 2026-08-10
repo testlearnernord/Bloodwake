@@ -10,7 +10,7 @@ import { completeQuestStep } from '../simulation/quests/quests';
 import { advanceWorldPhase } from '../simulation/time/phaseAdvance';
 import { loadSettings, saveSettings } from '../persistence/settings';
 import { deleteSlot, exportSaveGame, importSaveGame, listSaveSlots, loadFromSlot, saveToSlot } from '../persistence/saveStore';
-import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, VampireVassal } from '../types/models';
+import type { ItemCategory, ItemId, JobPriority, RoomId, SaveGame, SaveSlot, VampireVassal, VassalOperationalOrderType } from '../types/models';
 import { createDefaultSeed } from '../utilities/rng';
 import type { GameBridge } from '../game/bridge';
 import { WorldScene } from '../game/scenes/WorldScene';
@@ -25,6 +25,7 @@ import { reassertThrallControl } from '../simulation/servants/humanThralls';
 import { elevateThrallToVassal } from '../simulation/servants/thrallElevation';
 import { bindThrallAsBloodDonor, validateBindThrallAsBloodDonor } from '../simulation/servants/bloodDonors';
 import { setVassalTorpor } from '../simulation/servants/dominion';
+import { issueVassalOperationalOrder } from '../simulation/servants/vassalOrders';
 import { BLOOD_DONOR_HOLD_MS, renderBloodDonorConfirmation } from '../ui/confirmations/bloodDonorConfirmation';
 import { renderBottomHud } from '../ui/hud/hud';
 import { renderOverlay, getRoomReadiness, getRecipeReadiness } from '../ui/overlays/overlays';
@@ -579,6 +580,23 @@ export class BloodwakeApp {
         );
         this.notify('Human Thrall work priorities updated.');
         await this.autoSave('slot-1');
+        this.renderGame();
+      };
+    }
+
+    for (const select of this.root.querySelectorAll<HTMLSelectElement>('select[data-vassal-order-id]')) {
+      select.onchange = async () => {
+        if (!this.state) return;
+        const vassalId = select.dataset.vassalOrderId ?? '';
+        const type = select.value as VassalOperationalOrderType;
+        const result = issueVassalOperationalOrder(this.state, vassalId, type);
+        this.notify(result.message);
+        if (result.state !== this.state) {
+          this.state = result.state;
+          this.completeStepForEvent('assign');
+          await this.autoSave('slot-1');
+        }
+        // Always rerender so a refused order snaps the select back to the authoritative order.
         this.renderGame();
       };
     }

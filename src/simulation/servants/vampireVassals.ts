@@ -20,6 +20,7 @@ export const createVampireVassal = (vampire: VampireCharacter): VampireVassal =>
   maxVitae: vampire.maxVitae,
   state: 'active',
   torporSinceDay: null,
+  operationalOrder: { type: 'none', issuedDay: null },
   priorities: {
     Building: 'Normal',
     Crafting: 'High',

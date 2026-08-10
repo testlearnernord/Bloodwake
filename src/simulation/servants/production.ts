@@ -3,6 +3,7 @@ import type { BuiltRoom, CraftingOrder, DayPhase, DomainResourcePool, InventoryE
 import { completeCraftingOrder } from '../crafting/crafting';
 import { addItem, mergeCompatibleStacks } from '../inventory/inventory';
 import { selectTaskForVassal } from './tasks';
+import { getVassalOrderLabel } from './vassalOrders';
 
 export interface WorkShiftResult {
   vampireVassals: VampireVassal[];
@@ -66,9 +67,11 @@ export const runWorkShift = (
       const itemId = workTask.itemId ?? 'wood';
       updatedInventory = addItem(updatedInventory, itemId, 3);
       log.push(`${vassal.name} gathers ${itemId === 'wood' ? 'Wood' : 'Herbs'}.`);
-    } else {
+    } else if (workTask.type === 'guard_stronghold') {
       updatedStrategicResources.security += 1;
       log.push(`${vassal.name} stands guard.`);
+    } else {
+      log.push(`${vassal.name} is committed to ${getVassalOrderLabel(vassal.operationalOrder.type)}. No batch reward is granted; the operation awaits real world/combat resolution.`);
     }
     updatedVassals.push(updatedVassal);
   }
