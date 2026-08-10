@@ -117,7 +117,7 @@ export const getVassalOperationalTask = (vassal: VampireVassal): TaskCandidate |
     jobType: 'Guarding',
     score: 1000,
     reason: 'Operational order: stage an aggressive raid.',
-    operationalOrderType: 'raid',
+    operationalOrderType: type,
   };
 };
 
