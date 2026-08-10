@@ -1183,12 +1183,10 @@ export class WorldScene extends Phaser.Scene {
         enemy.telegraph = null;
       }
       if (step.shouldFireProjectile) {
-        const lockedTarget = this.getEnemyCombatTarget(enemy);
-        this.spawnEnemyProjectile(enemy, time, lockedTarget.id, lockedTarget.position);
+        this.spawnEnemyProjectile(enemy, time, target.id, target.position);
       }
       for (const damageEvent of step.damageEvents) this.applyDamageEvent(damageEvent, time);
-      const movementTarget = this.getEnemyCombatTarget(enemy);
-      this.updateEnemyMovement(enemy, movementTarget.position);
+      this.updateEnemyMovement(enemy, target.position);
     }
   }
 
@@ -1619,6 +1617,7 @@ export class WorldScene extends Phaser.Scene {
       currentVassal = this.bridge.getState().vampireVassals.find((candidate) => candidate.id === vassal.id) ?? currentVassal;
     }
     if (steppedAction.becameActive && entry.combatAction.actionId) {
+      entry.aimAngle = Phaser.Math.Angle.Between(entry.sprite.x, entry.sprite.y, enemy.sprite.x, enemy.sprite.y);
       this.onVassalActionBecameActive(currentVassal, entry, enemy, entry.combatAction.actionId, time);
     }
 
