@@ -117,7 +117,7 @@ Until the 0.6.5 conversion begins, existing phase-batched systems may remain fun
 - Keep world/presentation movement non-authoritative until 0.6.5b rather than secretly granting rewards from Phaser.
 - `0.6.3c Nightly World Variation` may use dusk/night-start as its current trigger, but generation logic must live outside the UI/phase button so the WorldClock can call it later.
 - `0.6.3d Blood Stock & Blood Cellar Foundation` may establish the resource, capacity and rules, but automated Donor production should not become another permanent `+Blood Stock per day` path. Physical donor execution belongs to the continuous-task migration.
-- `0.6.4 Dominion/Torpor/Politics/Orders` must separate political/state rules from scheduling. Dominion and Vassal politics already live in focused pure resolvers; the phase bridge is only their temporary night-start trigger. Night orders can initially resolve through adapters, but their model must support real durations and actors later.
+- `0.6.4 Dominion/Torpor/Politics/Orders` must separate political/state rules from scheduling. Dominion, Vassal politics and operational-order acceptance live in focused rules. Operational orders may currently drive presentation destinations, but Scout/Hunt/Raid must not fabricate batch rewards; combat and mission outcomes become causal through shared combat and authoritative tasks.
 
 ## Planned 0.6.5 conversion sequence
 

@@ -28,11 +28,12 @@ export type JobType = 'Building' | 'Crafting' | 'Gathering' | 'Guarding' | 'Rese
 export type JobPriority = 'Disabled' | 'Low' | 'Normal' | 'High' | 'Critical';
 export type DayPhase = 'day' | 'night';
 export type VampireVassalState = 'active' | 'torpor';
+export type VassalOperationalOrderType = 'none' | 'guard' | 'companion' | 'scout' | 'hunt' | 'raid';
 export type QualityLevel = 'Poor' | 'Common' | 'Fine' | 'Masterwork';
 export type ItemSlot = 'Weapon' | 'Armor' | 'Accessory';
 export type QuestStepStatus = 'locked' | 'active' | 'complete';
 export type EnemyType = 'bandit' | 'clergy_hunter' | 'elite_knight';
-export type TaskType = 'construct_room' | 'craft_recipe' | 'gather_resource' | 'guard_stronghold';
+export type TaskType = 'construct_room' | 'craft_recipe' | 'gather_resource' | 'guard_stronghold' | 'vassal_companion' | 'vassal_scout' | 'vassal_hunt' | 'vassal_raid';
 export type HumanStatus = 'wandering' | 'fed' | 'drained' | 'turned' | 'enthralled' | 'donor';
 export type HumanWorldPresence = 'active' | 'dormant';
 export type HumanDormantReason = 'regional' | 'escaped' | 'captured';
@@ -190,6 +191,11 @@ export interface BloodStockState {
   amount: number;
 }
 
+export interface VassalOperationalOrder {
+  type: VassalOperationalOrderType;
+  issuedDay: number | null;
+}
+
 /** An autonomous vampire political subordinate, not a mortal thrall. */
 export interface VampireVassal extends PopulationBase {
   kind: 'vampire_vassal';
@@ -200,6 +206,7 @@ export interface VampireVassal extends PopulationBase {
   maxVitae: number;
   state: VampireVassalState;
   torporSinceDay: number | null;
+  operationalOrder: VassalOperationalOrder;
 }
 
 export interface RoomDefinition {
@@ -330,6 +337,7 @@ export interface TaskCandidate {
   score: number;
   reason: string;
   itemId?: 'wood' | 'herbs';
+  operationalOrderType?: Exclude<VassalOperationalOrderType, 'none'>;
 }
 
 export interface InheritanceReport {

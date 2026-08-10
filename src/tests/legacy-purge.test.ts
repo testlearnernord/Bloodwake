@@ -4,9 +4,9 @@ import { SAVE_FORMAT_VERSION } from '../config/game';
 import { migrateSaveGame, validateSaveGame } from '../persistence/saveStore';
 
 describe('0.6.3e save authority purge', () => {
-  it('uses save v11 with one authority for construction, Blood Essence, and memories', () => {
+  it('uses save v12 with one authority for construction, Blood Essence, and memories', () => {
     const state = createNewGameState({ seed: 'legacy-purge' });
-    expect(SAVE_FORMAT_VERSION).toBe(11);
+    expect(SAVE_FORMAT_VERSION).toBe(12);
     expect('constructionTasks' in state).toBe(false);
     expect('bloodEssence' in state.player).toBe(false);
     expect('memoryFragments' in state.player).toBe(false);
@@ -16,7 +16,7 @@ describe('0.6.3e save authority purge', () => {
     expect(validateSaveGame(state)).toBe(true);
   });
 
-  it('rejects stale v11 payloads that reintroduce removed duplicate authorities', () => {
+  it('rejects stale v12 payloads that reintroduce removed duplicate authorities', () => {
     const state = createNewGameState({ seed: 'legacy-reject' });
     expect(validateSaveGame({ ...state, constructionTasks: [] })).toBe(false);
     expect(validateSaveGame({ ...state, player: { ...state.player, bloodEssence: 4 } })).toBe(false);

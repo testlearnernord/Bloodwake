@@ -142,3 +142,15 @@ Derived Obedience uses no separate save field:
 `round(Loyalty × 0.55 + Morale × 0.15 + (100 - Ambition) × 0.15 + (100 - Stress) × 0.15)`
 
 Stance thresholds: Devoted 80+, Loyal 65-79, Wary 45-64, Resentful 25-44, Defiant 0-24. Defiance Risk is `100 - Obedience`. Political-event base chance by stance is 10% / 15% / 22% / 35% / 50%, with +5 percentage points per Dominion Strain up to +25. Event selection is seeded and weighted by the Vassal's actual political pressures.
+
+## Vassal operational-order compliance
+
+Operational order compliance reuses derived Obedience. Stronghold Duties can always be restored. Field-order chance is `clamp((Obedience + modifier) / 100, 5%, 100%)` with these modifiers:
+
+- Guard Stronghold: `+20`
+- Companion: `+10`
+- Scout: `+0`
+- Hunt: `-5`
+- Raid: `-20`
+
+The decision roll is deterministic from world seed, day, Vassal identity and requested order, so repeatedly clicking the same order on the same night cannot reroll refusal.

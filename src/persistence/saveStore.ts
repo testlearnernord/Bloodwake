@@ -176,6 +176,14 @@ export const validateSaveGame = (value: unknown): value is SaveGame => {
     if (record.state !== 'active' && record.state !== 'torpor') return false;
     if (record.state === 'active' && record.torporSinceDay !== null) return false;
     if (record.state === 'torpor' && !isIntegerInRange(record.torporSinceDay, 1, Number.MAX_SAFE_INTEGER)) return false;
+    if (!isRecord(record.operationalOrder)) return false;
+    const orderType = record.operationalOrder.type;
+    if (typeof orderType !== 'string' || !['none', 'guard', 'companion', 'scout', 'hunt', 'raid'].includes(orderType)) return false;
+    if (orderType === 'none') {
+      if (record.operationalOrder.issuedDay !== null) return false;
+    } else if (!isIntegerInRange(record.operationalOrder.issuedDay, 1, Number.MAX_SAFE_INTEGER)) {
+      return false;
+    }
   }
   const rawRooms = value.rooms as unknown[];
   if (rawRooms.some((r) => !isRecord(r))) return false;
@@ -234,7 +242,7 @@ const normalizeWorldCycle = (raw: unknown): WorldCycleState => {
   };
 };
 
-const normalizeV11 = (value: SaveGame): SaveGame => {
+const normalizeV12 = (value: SaveGame): SaveGame => {
   const inventory = value.inventory.map((entry) => normalizeInventoryEntry(entry));
   if (inventory.some((entry) => entry === null)) {
     throw new Error('Inventory contains malformed entries.');
@@ -283,7 +291,7 @@ export const migrateSaveGame = (value: unknown): SaveGame => {
   if (!validateSaveGame(value)) {
     throw new Error('Imported save does not match the expected structure.');
   }
-  return normalizeV11(value);
+  return normalizeV12(value);
 };
 
 export const listSaveSlots = async (): Promise<SaveSlot[]> => {

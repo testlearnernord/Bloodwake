@@ -45,6 +45,7 @@ const vassal: VampireVassal = {
   maxVitae: 8,
   state: 'active',
   torporSinceDay: null,
+  operationalOrder: { type: 'none', issuedDay: null },
   professionSkills: { Building: 2, Gathering: 2 },
   priorities: {
     Building: 'Critical',
