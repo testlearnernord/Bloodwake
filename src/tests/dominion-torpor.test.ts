@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
 import { getDominionSummary, setVassalTorpor } from '../simulation/servants/dominion';
+import { runWorkShift } from '../simulation/servants/production';
 import { createVampireVassal } from '../simulation/servants/vampireVassals';
 import { selectTaskForVassal } from '../simulation/servants/tasks';
 import { validateSaveGame } from '../persistence/saveStore';
@@ -28,6 +29,10 @@ describe('0.6.4a Dominion and Torpor', () => {
     const task = selectTaskForVassal(vassal, state.rooms, state.craftingQueue, state.inventory, 'night');
     expect(task?.reason).toMatch(/Torpor/);
     expect(task?.score).toBeLessThan(0);
+    const shift = runWorkShift(state.vampireVassals, state.rooms, state.craftingQueue, state.strategicResources, state.inventory, 'night', state.seed);
+    expect(shift.vampireVassals[0]?.currentJob).toBeNull();
+    expect(shift.vampireVassals[0]?.currentTask).toBeNull();
+    expect(shift.vampireVassals[0]?.taskReason).toContain('Torpor');
   });
 
   it('wakes a vassal back into active Dominion', () => {

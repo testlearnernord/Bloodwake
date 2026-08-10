@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createNewGameState } from '../app/state';
 import { HUMAN_THRALL_WOUNDED_HEALTH_THRESHOLD } from '../simulation/servants/humanWork';
+import { createVampireVassal } from '../simulation/servants/vampireVassals';
 import { getRecipeReadiness, renderOverlay } from '../ui/overlays/overlays';
 
 const ALL_MENUS = ['character', 'inventory', 'servants', 'stronghold', 'crafting', 'journal', 'pause'] as const;
@@ -161,6 +162,16 @@ describe('overlay rendering safety', () => {
 
     const html = renderOverlay('servants', state, null, 'all', 'workshop');
     expect(html).toContain('Next day: Idle — Too wounded for daytime labor.');
+  });
+
+  it('shows torpid vassals with torpor-specific next task text', () => {
+    const state = createNewGameState({ seed: 'torpid-vassal-overlay', playerName: 'Tester' });
+    state.vampireVassals = [
+      { ...createVampireVassal({ ...state.player, id: 'vassal-1', name: 'Alda' }), state: 'torpor', torporSinceDay: state.time.day },
+    ];
+
+    const html = renderOverlay('servants', state, null, 'all', 'workshop');
+    expect(html).toContain('Next likely task: Torpor — In Torpor. No orders can be performed.');
   });
 });
 

@@ -253,7 +253,11 @@ export const renderOverlay = (
                   .map((vassal) => {
                     const profession = PROFESSIONS_BY_ID[vassal.professionId];
                     const predictedTask = selectTaskForVassal(vassal, state.rooms, state.craftingQueue, state.inventory, state.time.phase);
-                    return `<article><h4>${htmlEscape(vassal.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>State: <strong>${htmlEscape(vassal.state === 'torpor' ? 'Torpor' : 'Active')}</strong> · Dominion ${vassal.state === 'active' ? 1 : 0}</p><p>Health ${vassal.health}/${vassal.maxHealth} · Morale ${vassal.morale} · Loyalty ${vassal.loyalty}</p><p>Ambition ${vassal.ambition} · Stress ${vassal.stress}</p><p>Current task: ${htmlEscape(vassal.currentTask ?? 'none')} — ${htmlEscape(vassal.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTask?.jobType ?? 'Idle')} — ${htmlEscape(predictedTask?.reason ?? 'No enabled work is available.')}</p><div class="button-row compact"><button data-vassal-torpor="${htmlEscape(vassal.id)}" data-vassal-torpor-action="${vassal.state === 'torpor' ? 'wake' : 'sleep'}">${vassal.state === 'torpor' ? 'Awaken' : 'Enter Torpor'}</button></div></article>`;
+                    const predictedTaskLabel = vassal.state === 'torpor' ? 'Torpor' : (predictedTask?.jobType ?? 'Idle');
+                    const predictedTaskReason = vassal.state === 'torpor'
+                      ? 'In Torpor. No orders can be performed.'
+                      : (predictedTask?.reason ?? 'No enabled work is available.');
+                    return `<article><h4>${htmlEscape(vassal.name)}</h4><p>${htmlEscape(profession.name)} · ${htmlEscape(profession.practicalBenefit)}</p><p>State: <strong>${htmlEscape(vassal.state === 'torpor' ? 'Torpor' : 'Active')}</strong> · Dominion ${vassal.state === 'active' ? 1 : 0}</p><p>Health ${vassal.health}/${vassal.maxHealth} · Morale ${vassal.morale} · Loyalty ${vassal.loyalty}</p><p>Ambition ${vassal.ambition} · Stress ${vassal.stress}</p><p>Current task: ${htmlEscape(vassal.currentTask ?? 'none')} — ${htmlEscape(vassal.taskReason)}</p><p>Next likely task: ${htmlEscape(predictedTaskLabel)} — ${htmlEscape(predictedTaskReason)}</p><div class="button-row compact"><button data-vassal-torpor="${htmlEscape(vassal.id)}" data-vassal-torpor-action="${vassal.state === 'torpor' ? 'wake' : 'sleep'}">${vassal.state === 'torpor' ? 'Awaken' : 'Enter Torpor'}</button></div></article>`;
                   })
                   .join('')
           }

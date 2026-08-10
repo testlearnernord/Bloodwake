@@ -31,14 +31,20 @@ export const runWorkShift = (
   const log: string[] = [];
   for (const vassal of vassals) {
     const task = selectTaskForVassal(vassal, updatedRooms, updatedQueue, updatedInventory, phase);
-    const updatedVassal = { ...vassal, currentJob: task?.jobType ?? null, currentTask: task?.id ?? null, taskReason: task?.reason ?? 'Idle.' };
+    const updatedVassal = {
+      ...vassal,
+      currentJob: task && task.score >= 0 ? task.jobType : null,
+      currentTask: task && task.score >= 0 ? task.id : null,
+      taskReason: task?.reason ?? 'Idle.',
+    };
     if (!task || task.score < 0) {
       updatedVassals.push(updatedVassal);
       continue;
     }
-    if (task.type === 'construct_room') {
+    const workTask = task;
+    if (workTask.type === 'construct_room') {
       updatedRooms = updatedRooms.map((room) =>
-        room.id === task.id
+        room.id === workTask.id
           ? {
               ...room,
               progress: room.progress + 1,
@@ -48,8 +54,8 @@ export const runWorkShift = (
           : room,
       );
       log.push(`${vassal.name} advances construction in the stronghold.`);
-    } else if (task.type === 'craft_recipe') {
-      const order = updatedQueue.find((entry) => entry.id === task.id);
+    } else if (workTask.type === 'craft_recipe') {
+      const order = updatedQueue.find((entry) => entry.id === workTask.id);
       if (order) {
         const recipe = RECIPES_BY_ID[order.recipeId];
         const completed = completeCraftingOrder(updatedInventory, order, updatedVassal, `${seed}-${order.id}`);
@@ -57,8 +63,8 @@ export const runWorkShift = (
         updatedQueue = updatedQueue.map((entry) => (entry.id === order.id ? completed.order : entry));
         log.push(`${vassal.name} crafts ${recipe.name}.`);
       }
-    } else if (task.type === 'gather_resource') {
-      const itemId = task.itemId ?? 'wood';
+    } else if (workTask.type === 'gather_resource') {
+      const itemId = workTask.itemId ?? 'wood';
       updatedInventory = addItem(updatedInventory, itemId, 3);
       log.push(`${vassal.name} gathers ${itemId === 'wood' ? 'Wood' : 'Herbs'}.`);
     } else {
@@ -70,7 +76,7 @@ export const runWorkShift = (
         return updatedVassal.morale < 40;
       }
       if (event.condition === 'ambitious_vampire') {
-        return updatedVassal.ambition > 70 && task.type === 'guard_stronghold';
+        return updatedVassal.ambition > 70 && workTask.type === 'guard_stronghold';
       }
       return updatedVassal.loyalty > 70;
     });
